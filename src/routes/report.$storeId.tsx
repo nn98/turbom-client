@@ -523,20 +523,24 @@ function TimelineCard({ timeline }: { timeline: Tenancy[] }) {
                     </span>
                   </div>
                   <div className="mt-4">
-                    <div className="flex items-center gap-2">
-                      <p className="text-base font-semibold text-navy">{displayCategory}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="min-w-0 flex-1 text-base font-semibold text-navy">
+                        {displayCategory}
+                      </p>
                       {t.status === "영업" && (
-                        <Badge className="rounded-full bg-brand text-brand-foreground hover:bg-brand text-[10px]">
+                        <Badge className="shrink-0 rounded-full bg-brand text-[10px] text-brand-foreground hover:bg-brand">
                           운영 중
                         </Badge>
                       )}
                       {t.status === "휴업" && (
-                        <Badge className="rounded-full bg-warn-soft text-warn hover:bg-warn-soft text-[10px]">
+                        <Badge className="shrink-0 rounded-full bg-warn-soft text-[10px] text-warn hover:bg-warn-soft">
                           휴업 중
                         </Badge>
                       )}
                     </div>
-                    <p className="mt-1 text-sm text-muted-foreground">{t.businessName}</p>
+                    <p className="mt-1 break-words text-sm text-muted-foreground">
+                      {t.businessName}
+                    </p>
                     <p className="mt-2 text-xs text-muted-foreground">{t.survivalMonths}개월</p>
                   </div>
                 </button>
