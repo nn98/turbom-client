@@ -148,7 +148,6 @@ function SearchPage() {
                 query={q}
                 onSelect={(j) => navigate({ to: "/search", search: { q, jibun: j } })}
               />
-              {activeCandidate && <ActiveJibunSummary candidate={activeCandidate} />}
 
               {siteDetailQuery.isLoading ? (
                 <UnitListSkeleton />
@@ -158,15 +157,12 @@ function SearchPage() {
                   onRetry={() => siteDetailQuery.refetch()}
                 />
               ) : (
-                <UnitList units={siteDetailQuery.data?.units ?? []} />
+                <UnitList
+                  units={siteDetailQuery.data?.units ?? []}
+                  jibunAddress={activeCandidate?.jibunAddress ?? ""}
+                />
               )}
 
-              {siteDetailQuery.data?.disclaimer && (
-                <p className="text-xs text-muted-foreground">
-                  기준일 {siteDetailQuery.data.disclaimer.dataAsOf} ·{" "}
-                  {siteDetailQuery.data.disclaimer.note}
-                </p>
-              )}
             </div>
             <div className="lg:sticky lg:top-24 lg:self-start">
               {activeCandidate &&
@@ -299,35 +295,13 @@ function JibunTabs({
   );
 }
 
-function ActiveJibunSummary({ candidate }: { candidate: Candidate }) {
-  return (
-    <Card className="rounded-2xl border-border/70 bg-surface p-5 shadow-card">
-      <p className="text-xs font-medium text-brand">지금 보고 있는 자리</p>
-      <h2 className="mt-2 text-xl font-semibold text-navy">{candidate.jibunAddress}</h2>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Badge variant="secondary" className="rounded-full bg-secondary text-navy">
-          점포 {candidate.unitCount}개
-        </Badge>
-        <Badge className="rounded-full bg-warn-soft text-warn hover:bg-warn-soft">
-          폐업 이력 {candidate.closedCount}건
-        </Badge>
-      </div>
-    </Card>
-  );
-}
-
-const unitSummaryLine = (u: UnitSummary) => {
-  const head = u.currentBusinessName
-    ? u.industryDetail
-      ? `${u.currentBusinessName} · ${u.industryDetail}`
-      : u.currentBusinessName
-    : "지금은 비어 있어요";
-  const tail = [`가게 ${u.totalTenancyCount}곳 거쳐감`, `폐업 ${u.closedCount}번`];
-  if (u.averageSurvivalMonths != null) tail.push(`평균 ${u.averageSurvivalMonths}개월`);
-  return `${head} · ${tail.join(" · ")}`;
-};
-
-function UnitList({ units }: { units: UnitSummary[] }) {
+function UnitList({
+  units,
+  jibunAddress,
+}: {
+  units: UnitSummary[];
+  jibunAddress: string;
+}) {
   if (!units.length) return null;
   const sortedUnits = [...units].sort((a, b) => {
     const floorDiff = inferredFloorSortValue(a.label) - inferredFloorSortValue(b.label);
@@ -354,20 +328,32 @@ function UnitList({ units }: { units: UnitSummary[] }) {
           >
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-base font-semibold text-navy">{u.label}</span>
-                <span className="flex items-center gap-1 text-xs">
+                <span
+                  className={
+                    "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium " +
+                    (u.currentStatus === "영업"
+                      ? "bg-brand-soft text-navy"
+                      : "bg-secondary text-muted-foreground")
+                  }
+                >
                   <span
                     className={
-                      "h-1.5 w-1.5 rounded-full " +
+                      "mr-1.5 h-1.5 w-1.5 rounded-full " +
                       (u.currentStatus === "영업" ? "bg-brand" : "bg-muted-foreground/50")
                     }
                   />
-                  <span className="text-muted-foreground">{u.currentStatus}</span>
+                  <span>{u.currentStatus}</span>
                 </span>
+                <span className="text-base font-semibold text-navy">
+                  {u.currentStatus === "영업" && u.currentBusinessName ? `${u.label})` : u.label}
+                </span>
+                {u.currentStatus === "영업" && u.currentBusinessName ? (
+                  <span className="text-base font-semibold text-navy">
+                    {u.currentBusinessName}
+                  </span>
+                ) : null}
               </div>
-              <p className="mt-1.5 line-clamp-1 text-sm text-muted-foreground">
-                {unitSummaryLine(u)}
-              </p>
+              <p className="mt-1.5 line-clamp-1 text-sm text-muted-foreground">{jibunAddress}</p>
             </div>
             <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-navy" />
           </Card>
