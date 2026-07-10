@@ -133,8 +133,11 @@ function ReportPage() {
         <ReportHeader detail={detail} current={current} />
 
         <div className="mt-10 space-y-16">
-          <Section index="01" title="핵심 요약" subtitle="가장 먼저 확인할 판단 지표">
+          <Section index="01" title="통계" subtitle="이 자리에서 먼저 확인할 핵심 지표">
             <SummaryGrid detail={detail} analysis={analysis} current={current} />
+            <div className="mt-6">
+              <StatsBoard detail={detail} current={current} />
+            </div>
           </Section>
 
           <Section
@@ -161,12 +164,8 @@ function ReportPage() {
             <TimelineCard timeline={detail.timeline} />
           </Section>
 
-          <Section index="06" title="통계" subtitle="자리 운영과 주변 상권의 숫자">
-            <StatsBoard detail={detail} analysis={analysis} current={current} />
-          </Section>
-
           <Section
-            index="07"
+            index="06"
             title="계약 체크리스트"
             subtitle="계약 전에 반드시 확인해야 하는 항목"
           >
@@ -347,8 +346,11 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
               </div>
               <div className="mt-1 h-2 overflow-hidden rounded-full bg-secondary">
                 <div
-                  className="h-full rounded-full bg-navy"
-                  style={{ width: `${(c.count / max) * 100}%` }}
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${(c.count / max) * 100}%`,
+                    background: "var(--color-navy)",
+                  }}
                 />
               </div>
             </button>
@@ -691,11 +693,9 @@ function MarketRow({ k, v, real }: { k: string; v: string; real?: boolean }) {
 
 function StatsBoard({
   detail,
-  analysis,
   current,
 }: {
   detail: UnitDetail;
-  analysis: UnitAnalysis;
   current: Tenancy | null;
 }) {
   const { statistics, timeline } = detail;
@@ -738,52 +738,21 @@ function StatsBoard({
       wide: true,
     },
   ];
-  const areaStats = [
-    { label: "전체 점포", value: String(analysis.district.stats.totalStores) },
-    {
-      label: "동일 업종",
-      value:
-        analysis.district.stats.sameCategory != null
-          ? String(analysis.district.stats.sameCategory)
-          : "정보 없음",
-    },
-    { label: "반경", value: "300m" },
-    { label: "집계일", value: analysis.district.stats.referenceDate, wide: true },
-  ];
-
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <StatColumn title="자리 운영" items={selfStats} />
-      <StatColumn title="주변 상권" items={areaStats} />
-    </div>
-  );
-}
-
-function StatColumn({
-  title,
-  items,
-}: {
-  title: string;
-  items: { label: string; value: string; hint?: string; wide?: boolean }[];
-}) {
-  return (
-    <div>
-      <h3 className="mb-4 text-sm font-medium text-muted-foreground">{title}</h3>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {items.map((it) => (
-          <Card
-            key={it.label}
-            className={
-              "rounded-xl border-border/70 bg-surface p-5 shadow-card " +
-              (it.wide ? "sm:col-span-2" : "")
-            }
-          >
-            <p className="text-xs text-muted-foreground">{it.label}</p>
-            <p className="mt-2 text-2xl font-bold text-navy">{it.value}</p>
-            {it.hint ? <p className="mt-1 text-xs text-muted-foreground">{it.hint}</p> : null}
-          </Card>
-        ))}
-      </div>
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {selfStats.map((it) => (
+        <Card
+          key={it.label}
+          className={
+            "rounded-xl border-border/70 bg-surface p-5 shadow-card " +
+            (it.wide ? "sm:col-span-2 lg:col-span-4" : "")
+          }
+        >
+          <p className="text-xs text-muted-foreground">{it.label}</p>
+          <p className="mt-2 text-2xl font-bold text-navy">{it.value}</p>
+          {it.hint ? <p className="mt-1 text-xs text-muted-foreground">{it.hint}</p> : null}
+        </Card>
+      ))}
     </div>
   );
 }
