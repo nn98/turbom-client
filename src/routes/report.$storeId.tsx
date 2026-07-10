@@ -407,10 +407,7 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
         <Card className="rounded-2xl border-border/70 bg-surface p-6 shadow-card">
           <h3 className="text-base font-semibold text-navy">상권 통계</h3>
           <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-            <StatRow
-              k="동일 업종"
-              v={String(stats.sameCategory ?? 0)}
-            />
+            <StatRow k="동일 업종" v={String(stats.sameCategory ?? 0)} />
             <StatRow k="전체 점포" v={String(stats.totalStores)} />
             <StatRow k="집계 기준일" v={stats.referenceDate} />
           </dl>
@@ -601,9 +598,7 @@ function TimelineCard({ timeline }: { timeline: Tenancy[] }) {
               <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
                 <MarketRow
                   k="동일업종 인근"
-                  v={
-                    `${selected.marketInfo.sameCategoryNearbyCount ?? 0}개`
-                  }
+                  v={`${selected.marketInfo.sameCategoryNearbyCount ?? 0}개`}
                   real
                 />
                 <MarketRow
@@ -684,13 +679,7 @@ function MarketRow({ k, v, real }: { k: string; v: string; real?: boolean }) {
   );
 }
 
-function StatsBoard({
-  detail,
-  current,
-}: {
-  detail: UnitDetail;
-  current: Tenancy | null;
-}) {
+function StatsBoard({ detail, current }: { detail: UnitDetail; current: Tenancy | null }) {
   const { statistics, timeline } = detail;
   // 실 timeline 데이터로 계산 가능한 값 — 현재 점유 이력을 제외하고, subCategory가
   // 같은 "확정 폐업" 이력 수. (휴업은 아직 폐업이 아니라서 제외)
@@ -728,12 +717,7 @@ function StatsBoard({
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {selfStats.map((it) => (
-        <Card
-          key={it.label}
-          className={
-            "rounded-xl border-border/70 bg-surface p-5 shadow-card"
-          }
-        >
+        <Card key={it.label} className={"rounded-xl border-border/70 bg-surface p-5 shadow-card"}>
           <p className="text-xs text-muted-foreground">{it.label}</p>
           <p className="mt-2 text-2xl font-bold text-navy">{it.value}</p>
           {it.hint ? <p className="mt-1 text-xs text-muted-foreground">{it.hint}</p> : null}

@@ -21,6 +21,7 @@
 ### Task 1: 라인엔딩 위생 (`.gitattributes`)
 
 **Files:**
+
 - Create: `.gitattributes`
 - Modify: 전체 추적 파일(`git add --renormalize .`로 자동 처리, 개별 나열 불필요)
 
@@ -86,10 +87,12 @@ Expected: 충돌 없이 복원. 만약 줄바꿈 차이로 충돌이 나면, 스
 ### Task 2: 스펙 로컬 미러링 (`docs/spec/`)
 
 **Files:**
+
 - Create: `docs/spec/api-spec.md`
 - Create: `docs/spec/frontend-spec.md`
 
 **Interfaces:**
+
 - Produces: `docs/spec/api-spec.md`, `docs/spec/frontend-spec.md` — Task 3(CLAUDE.md)과 Task 4(GitHub Actions)가 이 정확한 경로를 참조한다.
 
 두 파일 모두 `nn98/turbom-server`의 `main` 브랜치 `spec/` 아래에 이미 존재함을 확인했다(2026-07-11, 둘 다 raw.githubusercontent.com에서 200 응답).
@@ -128,9 +131,11 @@ EOF
 ### Task 3: `CLAUDE.md` 거버넌스 문서
 
 **Files:**
+
 - Create: `CLAUDE.md`
 
 **Interfaces:**
+
 - Consumes: Task 2가 만든 `docs/spec/api-spec.md`, `docs/spec/frontend-spec.md` 경로(파일 내용에서 경로만 참조, 실행 의존성 없음).
 - Consumes: Task 7에서 확정되는 `isOccupiedStatus`(파일 내 "알려진 스펙-실측 차이" 절에서 함수명을 언급 — Task 7과 명칭이 어긋나면 안 됨).
 
@@ -172,13 +177,13 @@ EOF
 
 `api-spec.md`는 `"영업" | "폐업" | "휴업"` 3값만 선언하지만, 실 배포 백엔드는 인허가 원본 상태값을 정규화 없이 그대로 내려줄 때가 있다. 2026-07-11, 성남시 수정구 12개 동·515개 물건·1298개 이력 샘플 실측:
 
-| status 값 | 건수 | 비율 |
-|---|---|---|
-| 폐업 | 658 | 50.7% |
-| 영업 | 570 | 43.9% |
-| 취소/말소/만료/정지/중지 | 39 | 3.0% |
-| 제외/삭제/전출 | 29 | 2.2% |
-| 휴업 | 2 | 0.2% |
+| status 값                | 건수 | 비율  |
+| ------------------------ | ---- | ----- |
+| 폐업                     | 658  | 50.7% |
+| 영업                     | 570  | 43.9% |
+| 취소/말소/만료/정지/중지 | 39   | 3.0%  |
+| 제외/삭제/전출           | 29   | 2.2%  |
+| 휴업                     | 2    | 0.2%  |
 
 **처리**: `영업`/`휴업`이 아니면 전부 "폐업과 동등"하게 취급한다. `src/lib/api/tenancy.ts`의 `isOccupiedStatus()`가 이 판정의 유일한 창구이며, `Tenancy.status`의 타입은 `"영업" | "휴업" | (string & {})`로 넓혀 실제 응답과 타입이 어긋나지 않게 했다(`src/lib/api/types.ts`).
 ```
@@ -202,14 +207,16 @@ EOF
 ### Task 4: 스펙 드리프트 GitHub Actions 워크플로우
 
 **Files:**
+
 - Create: `.github/workflows/spec-drift-check.yml`
 
 **Interfaces:**
+
 - Consumes: Task 2의 `docs/spec/api-spec.md`, `docs/spec/frontend-spec.md`(비교 대상).
 
 - [ ] **Step 1: 워크플로우 작성**
 
-```yaml
+````yaml
 name: Spec Drift Check
 
 on:
@@ -270,7 +277,7 @@ jobs:
               --label spec-drift \
               --body-file /tmp/issue-body.md
           fi
-```
+````
 
 - [ ] **Step 2: YAML 문법 검증**
 
@@ -305,6 +312,7 @@ EOF
 ### Task 5: 유령 문서 경로 + `lang` 속성 수정
 
 **Files:**
+
 - Modify: `.env.example:4`
 - Modify: `src/lib/mock-data.ts:12`
 - Modify: `src/lib/api/client.ts:6`
@@ -424,6 +432,7 @@ EOF
 ### Task 6: `README.md` 아키텍처 서술 갱신
 
 **Files:**
+
 - Modify: `README.md` (5번 "폴더 구조", 6번 "데이터 설계 개요" 절)
 
 **Interfaces:** 없음(문서 전용).
@@ -436,36 +445,37 @@ EOF
 
 ```markdown
 ## 5. 폴더 구조 (Directory Structure)
-
 ```
+
 src/
 ├── routes/
-│   ├── __root.tsx           # 루트 레이아웃 + 메타
-│   ├── index.tsx             # 랜딩
-│   ├── search.tsx            # 검색
-│   └── report.$storeId.tsx   # 리포트
+│ ├── __root.tsx # 루트 레이아웃 + 메타
+│ ├── index.tsx # 랜딩
+│ ├── search.tsx # 검색
+│ └── report.$storeId.tsx # 리포트
 ├── components/
-│   ├── site-header.tsx
-│   ├── site-footer.tsx
-│   ├── map-view.tsx          # 네이버 지도 wrapper (VITE_NAVER_MAP_CLIENT_ID 필요)
-│   └── ui/                   # shadcn/ui
+│ ├── site-header.tsx
+│ ├── site-footer.tsx
+│ ├── map-view.tsx # 네이버 지도 wrapper (VITE_NAVER_MAP_CLIENT_ID 필요)
+│ └── ui/ # shadcn/ui
 ├── hooks/
-│   └── use-sites.ts          # TanStack Query 훅 (useSiteSearch/useSiteDetail/useUnitDetail)
+│ └── use-sites.ts # TanStack Query 훅 (useSiteSearch/useSiteDetail/useUnitDetail)
 ├── lib/
-│   ├── api/                  # 백엔드 계약 레이어 — routes/hooks는 이 폴더만 import한다
-│   │   ├── types.ts          # docs/spec/api-spec.md를 그대로 미러링한 응답 타입
-│   │   ├── client.ts         # VITE_API_BASE_URL 유무로 mock/real 전환하는 공개 엔트리포인트
-│   │   ├── real-client.ts    # 실 백엔드 fetch 구현
-│   │   ├── mock-client.ts    # mock-data.ts를 API 계약 모양으로 변환해 서빙
-│   │   ├── legacy-adapter.ts # mock-data.ts(Store/StoreHistory) → api 타입(Tenancy 등) 변환
-│   │   ├── tenancy.ts        # Tenancy[] 순수 헬퍼(findOccupant, isOccupiedStatus)
-│   │   ├── unit-analysis.ts  # 백엔드 계약에 없는 프론트 전용 분석(riskLevel/narrative/체크리스트)
-│   │   ├── errors.ts         # ApiRequestError + 에러 코드별 생성 함수
-│   │   └── index.ts          # 공개 re-export (routes/hooks는 "@/lib/api"만 import)
-│   ├── mock-data.ts           # 데모 모드 원본 데이터셋(legacy-adapter.ts가 소비)
-│   └── utils.ts
-└── styles.css                  # Design tokens (Navy · White · Green)
-```
+│ ├── api/ # 백엔드 계약 레이어 — routes/hooks는 이 폴더만 import한다
+│ │ ├── types.ts # docs/spec/api-spec.md를 그대로 미러링한 응답 타입
+│ │ ├── client.ts # VITE_API_BASE_URL 유무로 mock/real 전환하는 공개 엔트리포인트
+│ │ ├── real-client.ts # 실 백엔드 fetch 구현
+│ │ ├── mock-client.ts # mock-data.ts를 API 계약 모양으로 변환해 서빙
+│ │ ├── legacy-adapter.ts # mock-data.ts(Store/StoreHistory) → api 타입(Tenancy 등) 변환
+│ │ ├── tenancy.ts # Tenancy[] 순수 헬퍼(findOccupant, isOccupiedStatus)
+│ │ ├── unit-analysis.ts # 백엔드 계약에 없는 프론트 전용 분석(riskLevel/narrative/체크리스트)
+│ │ ├── errors.ts # ApiRequestError + 에러 코드별 생성 함수
+│ │ └── index.ts # 공개 re-export (routes/hooks는 "@/lib/api"만 import)
+│ ├── mock-data.ts # 데모 모드 원본 데이터셋(legacy-adapter.ts가 소비)
+│ └── utils.ts
+└── styles.css # Design tokens (Navy · White · Green)
+
+````
 
 ## 6. 데이터 설계 개요 (Domain Model)
 
@@ -480,12 +490,13 @@ UnitSummary { unitId, label, currentBusinessName, currentStatus: "영업"|"공�
 
 UnitDetail { unit, statistics, timeline: Tenancy[], disclaimer }
 Tenancy { tenancyId, businessName, category, subCategory, status, marketInfo, ... }
-```
+````
 
 **목/실 전환**: `VITE_API_BASE_URL` 미설정 = 데모 모드(`mock-client.ts`가 `mock-data.ts`를 계약 모양으로 변환해 서빙). 설정 시 `real-client.ts`가 그 값으로 실 백엔드를 호출한다 — 어느 쪽이든 라우트/컴포넌트 코드는 `src/lib/api`의 동일한 타입만 본다(`client.ts` 참고).
 
 **그레이존 분석**: 위험도(riskLevel)·종합 분석(narrative)·상권 구성(district)·체크리스트는 백엔드 계약(`UnitDetail`)에 없는 값이다. `src/lib/api/unit-analysis.ts`가 `UnitDetail`을 받아 프론트엔드에서만 계산하며, 실측 가능한 필드(`marketInfo.categoryBreakdown` 등)가 있으면 그걸 쓰고 없으면 데모용 고정값으로 폴백한다.
-```
+
+````
 
 - [ ] **Step 2: 커밋**
 
@@ -500,13 +511,14 @@ mock-data.ts만 있던 시절 서술을 실제 src/lib/api/ 레이어(목/실 �
 Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
 EOF
 )"
-```
+````
 
 ---
 
 ### Task 7: `Tenancy.status` 정규화 (Vitest 도입 + `isOccupiedStatus`)
 
 **Files:**
+
 - Create: `vitest.config.ts`
 - Create: `src/lib/api/tenancy.test.ts`
 - Modify: `package.json` (devDependency + `test` 스크립트)
@@ -516,6 +528,7 @@ EOF
 - Modify: `src/routes/report.$storeId.tsx` (`sameSubCategoryFailures` 계산)
 
 **Interfaces:**
+
 - Produces: `isOccupiedStatus(status: Tenancy["status"]): boolean` — `src/lib/api/tenancy.ts`에서 export, `src/lib/api/index.ts`를 통해 `@/lib/api`에서도 접근 가능.
 - Consumes: 기존 `Tenancy` 타입(`src/lib/api/types.ts`), 기존 `findOccupant`(`src/lib/api/tenancy.ts`).
 
@@ -751,6 +764,6 @@ EOF
 
 ## Self-Review 메모 (기록용)
 
-- **스펙 커버리지**: 설계 문서(Section A/B/C, 항목 1~5)가 Task 1~7과 1:1로 대응됨. 항목 6(파일 분할)·7(전체 테스트 커버리지)은 설계 문서에서 이미 "재량/팀 판단"으로 범위 밖 처리되어 이 플랜에도 포함하지 않음.
+- **스펙 커버리지**: 설계 문서(Section A/B/C, 항목 1~~5)가 Task 1~~7과 1:1로 대응됨. 항목 6(파일 분할)·7(전체 테스트 커버리지)은 설계 문서에서 이미 "재량/팀 판단"으로 범위 밖 처리되어 이 플랜에도 포함하지 않음.
 - **플레이스홀더 스캔**: 없음 — 모든 스텝이 실행 가능한 정확한 명령/코드.
 - **타입/네이밍 일관성**: `isOccupiedStatus`(Task 3의 CLAUDE.md, Task 7의 구현·테스트·소비처)가 전부 동일 이름으로 일치. `docs/spec/api-spec.md` 경로 문자열이 Task 2/3/4/5/6에서 전부 동일.
