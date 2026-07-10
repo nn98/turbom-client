@@ -77,14 +77,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "터봄 Turbohm · 자리를 보면, 창업이 보입니다" },
+      {
+        name: "description",
+        content:
+          "터봄은 계약 전, 그 자리의 개업·폐업 이력과 생존 통계를 확인할 수 있는 예비 창업자용 입지 실사 리포트입니다.",
+      },
+      { name: "author", content: "Turbohm" },
+      { property: "og:title", content: "터봄 Turbohm · 자리를 보면, 창업이 보입니다" },
+      {
+        property: "og:description",
+        content: "계약하려는 바로 그 자리의 층·호 단위 운영 이력과 생존 통계를 분석합니다.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
