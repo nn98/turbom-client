@@ -5,6 +5,7 @@ import {
   ArrowRight,
   Building2,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   Circle,
   Clock,
@@ -15,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -357,9 +359,40 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
         <Card className="rounded-2xl border-border/70 bg-surface p-6 shadow-card">
           <div className="flex items-baseline justify-between">
             <h3 className="text-base font-semibold text-navy">경쟁도</h3>
-            <span className="text-xs text-muted-foreground">
-              {selectedCategory?.category ?? "업종 선택"}
-            </span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-8 rounded-full border-border/70 px-3 text-xs text-muted-foreground"
+                >
+                  {selectedCategory?.category ?? "업종 선택"}
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-auto max-w-[320px] p-3">
+                <div className="flex flex-wrap gap-2">
+                  {composition.map((c) => {
+                    const active = selectedCategory?.category === c.category;
+                    return (
+                      <button
+                        key={c.category}
+                        type="button"
+                        onClick={() => setSelectedCategory(c)}
+                        className={
+                          "rounded-full px-3 py-1.5 text-xs transition " +
+                          (active
+                            ? "bg-navy text-navy-foreground"
+                            : "border border-border bg-surface text-muted-foreground hover:border-brand/40 hover:text-navy")
+                        }
+                      >
+                        {c.category}
+                      </button>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="mt-4 flex items-baseline gap-2">
             <span className="text-4xl font-bold text-navy">{competitionScore}</span>
