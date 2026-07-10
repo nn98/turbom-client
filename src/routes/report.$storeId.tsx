@@ -1,6 +1,7 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import {
+  AlertTriangle,
   ArrowRight,
   Building2,
   CheckCircle2,
@@ -17,91 +18,144 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { buildReport, getStoreById } from "@/lib/mock-data";
-import type { RiskLevel } from "@/lib/mock-data";
+import { ApiRequestError, buildUnitAnalysis, findOccupant } from "@/lib/api";
+import type { RiskLevel, Tenancy, UnitAnalysis, UnitDetail } from "@/lib/api";
+import { useUnitDetail } from "@/hooks/use-sites";
+
+const jibunBaseOf = (jibunAddress: string) => jibunAddress.replace(/-\d+$/, "");
+const formatKrw = (n: number) => `${n.toLocaleString("ko-KR")}원`;
+const errorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
 
 export const Route = createFileRoute("/report/$storeId")({
-  loader: ({ params }) => {
-    const store = getStoreById(params.storeId);
-    if (!store) throw notFound();
-    return { report: buildReport(store) };
-  },
-  head: ({ loaderData }) => {
-    const s = loaderData?.report.store;
-    const title = s ? `${s.buildingName} ${s.floor} ${s.unit} · 자리 리포트 | 터봄` : "자리 리포트 | 터봄";
-    return {
-      meta: [
-        { title },
-        {
-          name: "description",
-          content: s
-            ? `${s.jibunFull} ${s.floor} ${s.unit}의 운영 이력·폐업 통계·계약 체크리스트 리포트.`
-            : "자리별 상가 리포트",
-        },
-      ],
-    };
-  },
+  head: () => ({
+    meta: [
+      { title: "자리 리포트 | 터봄" },
+      {
+        name: "description",
+        content: "층·호 단위 상가의 운영 이력·폐업 통계·계약 체크리스트 리포트.",
+      },
+    ],
+  }),
   component: ReportPage,
-  errorComponent: ({ error }) => (
-    <div className="mx-auto max-w-lg px-4 py-24 text-center">
-      <p className="text-sm text-danger">{error.message}</p>
-    </div>
-  ),
-  notFoundComponent: () => (
-    <div className="mx-auto max-w-lg px-4 py-24 text-center">
-      <h1 className="text-xl font-semibold text-navy">해당 자리를 찾을 수 없습니다</h1>
-      <Button asChild className="mt-6 rounded-full bg-navy text-navy-foreground hover:bg-navy/90">
-        <Link to="/search">다른 자리 찾기</Link>
-      </Button>
-    </div>
-  ),
 });
 
 function ReportPage() {
-  const { report } = Route.useLoaderData();
-  const { store } = report;
+  const { storeId } = Route.useParams();
+  const unitQuery = useUnitDetail(storeId);
+
+  if (unitQuery.isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <SiteHeader />
+        <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+          <ReportSkeleton />
+        </main>
+      </div>
+    );
+  }
+
+  if (unitQuery.isError) {
+    const notFound =
+      unitQuery.error instanceof ApiRequestError && unitQuery.error.code === "UNIT_NOT_FOUND";
+    return (
+      <div className="min-h-screen bg-background">
+        <SiteHeader />
+        <div className="mx-auto max-w-lg px-4 py-24 text-center">
+          {notFound ? (
+            <>
+              <h1 className="text-xl font-semibold text-navy">해당 자리를 찾을 수 없습니다</h1>
+              <Button
+                asChild
+                className="mt-6 rounded-full bg-navy text-navy-foreground hover:bg-navy/90"
+              >
+                <Link to="/search">다른 자리 찾기</Link>
+              </Button>
+            </>
+          ) : (
+            <>
+              <AlertTriangle className="mx-auto h-8 w-8 text-danger" />
+              <p className="mt-4 text-sm text-danger">{errorMessage(unitQuery.error)}</p>
+              <Button
+                variant="outline"
+                className="mt-6 rounded-full"
+                onClick={() => unitQuery.refetch()}
+              >
+                다시 시도
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const detail = unitQuery.data;
+  if (!detail) return null;
+  const analysis = buildUnitAnalysis(detail);
+  const current = findOccupant(detail.timeline);
 
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <Breadcrumbs store={store} />
-        <ReportHeader report={report} />
+        <Breadcrumbs detail={detail} />
+        <ReportHeader detail={detail} analysis={analysis} current={current} />
 
         <div className="mt-10 space-y-16">
           <Section index="01" title="핵심 요약" subtitle="가장 먼저 확인할 판단 지표">
-            <SummaryGrid report={report} />
+            <SummaryGrid detail={detail} analysis={analysis} current={current} />
           </Section>
 
-          <Section index="02" title="종합 분석" subtitle="운영 이력과 상권 데이터를 함께 해석했습니다">
-            <NarrativeCard lines={report.narrative} />
+          <Section
+            index="02"
+            title="종합 분석"
+            subtitle="운영 이력과 상권 데이터를 함께 해석했습니다"
+          >
+            <NarrativeCard lines={analysis.narrative} />
           </Section>
 
-          <Section index="03" title="주변 상권 분석" subtitle="주변 경쟁 환경을 시각적으로 정리했습니다">
-            <DistrictAnalysis report={report} />
+          <Section
+            index="03"
+            title="주변 상권 분석"
+            subtitle="주변 경쟁 환경을 시각적으로 정리했습니다"
+          >
+            <DistrictAnalysis district={analysis.district} />
           </Section>
 
           <Section index="04" title="위험도" subtitle="여러 신호를 종합한 참고용 등급">
-            <RiskCard level={report.summary.riskLevel} label={report.summary.riskLabel} />
+            <RiskCard level={analysis.riskLevel} label={analysis.riskLabel} />
           </Section>
 
           <Section index="05" title="핵심 인사이트" subtitle="판단에 도움이 되는 핵심 내용">
-            <InsightGrid insights={report.insights} />
+            <InsightGrid insights={analysis.insights} />
           </Section>
 
           <Section index="06" title="운영 이력" subtitle="이 자리를 거쳐간 업종의 시간 흐름입니다.">
-            <TimelineCard report={report} />
+            <TimelineCard timeline={detail.timeline} />
           </Section>
 
           <Section index="07" title="통계" subtitle="자리 운영과 주변 상권의 숫자">
-            <StatsBoard report={report} />
+            <StatsBoard detail={detail} analysis={analysis} current={current} />
           </Section>
 
-          <Section index="08" title="계약 체크리스트" subtitle="계약 전에 반드시 확인해야 하는 항목">
-            <ChecklistCard items={report.checklist} />
+          <Section
+            index="08"
+            title="계약 체크리스트"
+            subtitle="계약 전에 반드시 확인해야 하는 항목"
+          >
+            <ChecklistCard items={analysis.checklist} />
           </Section>
         </div>
 
@@ -112,25 +166,33 @@ function ReportPage() {
   );
 }
 
-function Breadcrumbs({ store }: { store: ReturnType<typeof getStoreById> }) {
-  if (!store) return null;
+function Breadcrumbs({ detail }: { detail: UnitDetail }) {
+  const { unit } = detail;
   return (
     <nav className="mb-6 flex items-center gap-1.5 text-xs text-muted-foreground">
       <Link to="/" className="hover:text-navy">
         홈
       </Link>
       <ChevronRight className="h-3 w-3" />
-      <Link to="/search" search={{ q: store.jibunBase }} className="hover:text-navy">
-        {store.jibunBase}
+      <Link to="/search" search={{ q: jibunBaseOf(unit.jibunAddress) }} className="hover:text-navy">
+        {jibunBaseOf(unit.jibunAddress)}
       </Link>
       <ChevronRight className="h-3 w-3" />
-      <span className="text-navy">{store.floor} {store.unit}</span>
+      <span className="text-navy">{unit.label}</span>
     </nav>
   );
 }
 
-function ReportHeader({ report }: { report: ReturnType<typeof buildReport> }) {
-  const { store, summary, observationYears } = report;
+function ReportHeader({
+  detail,
+  analysis,
+  current,
+}: {
+  detail: UnitDetail;
+  analysis: UnitAnalysis;
+  current: Tenancy | null;
+}) {
+  const { unit, disclaimer } = detail;
   return (
     <Card className="rounded-2xl border-border/70 bg-surface p-6 shadow-elevated sm:p-8">
       <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-start">
@@ -139,33 +201,43 @@ function ReportHeader({ report }: { report: ReturnType<typeof buildReport> }) {
             <Badge variant="outline" className="rounded-full border-border text-muted-foreground">
               <Building2 className="mr-1 h-3 w-3" /> 자리 리포트
             </Badge>
-            <span className="text-muted-foreground">관측기간 {observationYears}년</span>
+            <span className="text-muted-foreground">기준일 {disclaimer.dataAsOf}</span>
           </div>
           <h1 className="mt-3 text-3xl font-bold tracking-tight text-navy sm:text-4xl">
-            {store.buildingName}
+            {unit.label}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-            {store.jibunFull} · {store.roadAddress}
+            {unit.jibunAddress} · {unit.roadAddress}
           </p>
           <div className="mt-5 flex flex-wrap items-center gap-2">
-            <Badge className="rounded-full bg-navy text-navy-foreground hover:bg-navy">
-              {store.floor} {store.unit}
-            </Badge>
-            {store.currentCategory ? (
-              <Badge className="rounded-full bg-brand-soft text-navy hover:bg-brand-soft">
-                현재 {store.currentCategory}
-              </Badge>
+            {current ? (
+              <>
+                <Badge
+                  className={
+                    "rounded-full " +
+                    (current.status === "휴업"
+                      ? "bg-warn-soft text-warn hover:bg-warn-soft"
+                      : "bg-brand-soft text-navy hover:bg-brand-soft")
+                  }
+                >
+                  현재 {current.businessName}
+                  {current.status === "휴업" ? " · 휴업 중" : ""}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="rounded-full border-border text-muted-foreground"
+                >
+                  {current.survivalMonths}개월 {current.status === "휴업" ? "입점" : "운영"}
+                </Badge>
+              </>
             ) : (
-              <Badge variant="secondary" className="rounded-full">현재 공실</Badge>
-            )}
-            {store.currentCategory && (
-              <Badge variant="outline" className="rounded-full border-border text-muted-foreground">
-                {store.currentMonths}개월 운영
+              <Badge variant="secondary" className="rounded-full">
+                현재 공실
               </Badge>
             )}
           </div>
         </div>
-        <RiskBadge level={summary.riskLevel} label={summary.riskLabel} />
+        <RiskBadge level={analysis.riskLevel} label={analysis.riskLabel} />
       </div>
     </Card>
   );
@@ -178,12 +250,17 @@ function RiskBadge({ level, label }: { level: RiskLevel; label: string }) {
       <p className="text-xs text-muted-foreground">종합 위험도</p>
       <div className="mt-2 flex justify-center gap-1 text-xl">
         {[1, 2, 3, 4, 5].map((i) => (
-          <span key={i} className={i <= level ? (isRisk ? "text-danger" : "text-warn") : "text-border"}>
+          <span
+            key={i}
+            className={i <= level ? (isRisk ? "text-danger" : "text-warn") : "text-border"}
+          >
             ★
           </span>
         ))}
       </div>
-      <p className={"mt-2 text-lg font-semibold " + (isRisk ? "text-danger" : "text-navy")}>{label}</p>
+      <p className={"mt-2 text-lg font-semibold " + (isRisk ? "text-danger" : "text-navy")}>
+        {label}
+      </p>
     </div>
   );
 }
@@ -211,16 +288,32 @@ function Section({
   );
 }
 
-function SummaryGrid({ report }: { report: ReturnType<typeof buildReport> }) {
-  const s = report.summary;
+function SummaryGrid({
+  detail,
+  analysis,
+  current,
+}: {
+  detail: UnitDetail;
+  analysis: UnitAnalysis;
+  current: Tenancy | null;
+}) {
+  const { statistics } = detail;
   const items = [
-    { label: "위험도", value: <StarValue level={s.riskLevel} />, note: s.riskLabel },
-    { label: "최근 폐업", value: `${s.closureCount}회` },
-    { label: "평균 생존기간", value: `${s.avgSurvivalMonths}개월` },
-    { label: "현재 업종", value: s.currentCategory },
-    { label: "현재 운영기간", value: `${s.currentMonths}개월` },
-    { label: "동일 업종", value: `${s.sameCategoryCount}개` },
-    { label: "반경 내 점포", value: `${s.nearbyStoreCount}개` },
+    { label: "위험도", value: <StarValue level={analysis.riskLevel} />, note: analysis.riskLabel },
+    { label: "최근 폐업", value: `${statistics.closedCount}회` },
+    {
+      label: "평균 생존기간",
+      value:
+        statistics.averageSurvivalMonths != null ? `${statistics.averageSurvivalMonths}개월` : "-",
+    },
+    {
+      label: "현재 업종",
+      value: current ? (current.industryDetail ?? current.subCategory) : "공실",
+      note: current?.status === "휴업" ? "휴업 중" : undefined,
+    },
+    { label: "현재 운영기간", value: current ? `${current.survivalMonths}개월` : "-" },
+    { label: "동일 업종", value: `${analysis.district.stats.sameCategory}개` },
+    { label: "반경 내 점포", value: `${analysis.district.stats.totalStores}개` },
   ];
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -239,7 +332,9 @@ function StarValue({ level }: { level: RiskLevel }) {
   return (
     <div className="flex gap-0.5 text-xl">
       {[1, 2, 3, 4, 5].map((i) => (
-        <span key={i} className={i <= level ? "text-danger" : "text-border"}>★</span>
+        <span key={i} className={i <= level ? "text-danger" : "text-border"}>
+          ★
+        </span>
       ))}
     </div>
   );
@@ -260,8 +355,8 @@ function NarrativeCard({ lines }: { lines: string[] }) {
   );
 }
 
-function DistrictAnalysis({ report }: { report: ReturnType<typeof buildReport> }) {
-  const { composition, competitionScore, stats, tags } = report.district;
+function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) {
+  const { composition, competitionScore, stats, tags } = district;
   const max = Math.max(...composition.map((c) => c.count));
   return (
     <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
@@ -298,7 +393,10 @@ function DistrictAnalysis({ report }: { report: ReturnType<typeof buildReport> }
             <span className="text-sm text-muted-foreground">/ 100</span>
           </div>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
-            <div className="h-full rounded-full bg-warn" style={{ width: `${competitionScore}%` }} />
+            <div
+              className="h-full rounded-full bg-warn"
+              style={{ width: `${competitionScore}%` }}
+            />
           </div>
           <p className="mt-3 text-xs text-muted-foreground">경쟁이 다소 치열한 상권입니다.</p>
         </Card>
@@ -344,7 +442,9 @@ function RiskCard({ level, label }: { level: RiskLevel; label: string }) {
       <div className="grid gap-8 lg:grid-cols-[auto_1fr] lg:items-center">
         <div className="text-center">
           <StarValue level={level} />
-          <p className={"mt-3 text-2xl font-bold " + (isRisk ? "text-danger" : "text-navy")}>{label}</p>
+          <p className={"mt-3 text-2xl font-bold " + (isRisk ? "text-danger" : "text-navy")}>
+            {label}
+          </p>
           <p className="mt-1 text-xs text-muted-foreground">Level {level} / 5</p>
         </div>
         <div>
@@ -383,7 +483,7 @@ const INSIGHT_ICONS = {
   clock: Clock,
 } as const;
 
-function InsightGrid({ insights }: { insights: ReturnType<typeof buildReport>["insights"] }) {
+function InsightGrid({ insights }: { insights: UnitAnalysis["insights"] }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       {insights.map((it) => {
@@ -407,52 +507,274 @@ function InsightGrid({ insights }: { insights: ReturnType<typeof buildReport>["i
   );
 }
 
-function TimelineCard({ report }: { report: ReturnType<typeof buildReport> }) {
-  const items = report.store.history;
+// docs/backend-api.md "③ 물건 상세" 화면 규격: 타임라인(가로 바) + tenancyId
+// 선택 드롭다운 → 좌: 인허가정보 / 우: marketInfo(sameCategoryNearbyCount만
+// 실값, 나머지는 "예시" 뱃지 + 캡션 상시 노출).
+function TimelineCard({ timeline }: { timeline: Tenancy[] }) {
+  const [selectedId, setSelectedId] = useState(
+    () => findOccupant(timeline)?.tenancyId ?? timeline[timeline.length - 1]?.tenancyId ?? "",
+  );
+  const selected =
+    timeline.find((t) => t.tenancyId === selectedId) ?? timeline[timeline.length - 1];
+
   return (
-    <Card className="rounded-2xl border-border/70 bg-surface p-6 shadow-card sm:p-8">
-      <div className="relative">
-        <div className="absolute left-0 right-0 top-6 h-px bg-border" />
-        <div className="relative flex gap-6 overflow-x-auto pb-2">
-          {items.map((h, i) => {
-            const active = !!h.current;
-            return (
-              <div key={i} className="min-w-[180px] flex-1">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={
-                      "grid h-3 w-3 place-items-center rounded-full ring-4 " +
-                      (active ? "bg-brand ring-brand-soft" : "bg-muted-foreground/50 ring-secondary")
-                    }
-                  />
-                  <span className="text-[11px] text-muted-foreground">{h.period}</span>
-                </div>
-                <div className="mt-4">
+    <div className="space-y-6">
+      <Card className="rounded-2xl border-border/70 bg-surface p-6 shadow-card sm:p-8">
+        <div className="relative">
+          <div className="absolute left-0 right-0 top-6 h-px bg-border" />
+          <div className="relative flex gap-6 overflow-x-auto pb-2">
+            {timeline.map((t) => {
+              const displayCategory = t.industryDetail ?? t.subCategory;
+              return (
+                <button
+                  key={t.tenancyId}
+                  type="button"
+                  onClick={() => setSelectedId(t.tenancyId)}
+                  className={
+                    "-m-2 min-w-[180px] flex-1 rounded-lg p-2 text-left transition hover:bg-secondary/50 " +
+                    (t.tenancyId === selectedId ? "bg-secondary/60" : "")
+                  }
+                >
                   <div className="flex items-center gap-2">
-                    <p className="text-base font-semibold text-navy">{h.category}</p>
-                    {active && (
-                      <Badge className="rounded-full bg-brand text-brand-foreground hover:bg-brand text-[10px]">
-                        운영 중
-                      </Badge>
-                    )}
+                    <span
+                      className={
+                        "grid h-3 w-3 place-items-center rounded-full ring-4 " +
+                        (t.status === "영업"
+                          ? "bg-brand ring-brand-soft"
+                          : t.status === "휴업"
+                            ? "bg-warn ring-warn-soft"
+                            : "bg-muted-foreground/50 ring-secondary")
+                      }
+                    />
+                    <span className="text-[11px] text-muted-foreground">
+                      {t.licensedAt.slice(0, 7)} — {t.closedAt ? t.closedAt.slice(0, 7) : "현재"}
+                    </span>
                   </div>
-                  <p className="mt-1 text-sm text-muted-foreground">{h.brand}</p>
-                  <p className="mt-2 text-xs text-muted-foreground">{h.months}개월</p>
-                </div>
-              </div>
-            );
-          })}
+                  <div className="mt-4">
+                    <div className="flex items-center gap-2">
+                      <p className="text-base font-semibold text-navy">{displayCategory}</p>
+                      {t.status === "영업" && (
+                        <Badge className="rounded-full bg-brand text-brand-foreground hover:bg-brand text-[10px]">
+                          운영 중
+                        </Badge>
+                      )}
+                      {t.status === "휴업" && (
+                        <Badge className="rounded-full bg-warn-soft text-warn hover:bg-warn-soft text-[10px]">
+                          휴업 중
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">{t.businessName}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">{t.survivalMonths}개월</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+
+      {selected && (
+        <Card className="rounded-2xl border-border/70 bg-surface p-6 shadow-card sm:p-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-base font-semibold text-navy">가게 자세히 보기</h3>
+            <Select value={selectedId} onValueChange={setSelectedId}>
+              <SelectTrigger className="w-full rounded-full sm:w-72">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {timeline.map((t) => (
+                  <SelectItem key={t.tenancyId} value={t.tenancyId}>
+                    {t.businessName} ({t.licensedAt.slice(0, 7)}
+                    {t.closedAt ? ` — ${t.closedAt.slice(0, 7)}` : " — 현재"})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">인허가 정보</p>
+              <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                <StatRow k="상호" v={selected.businessName} />
+                <StatRow k="상태" v={selected.status} />
+                <StatRow k="업종(대분류)" v={selected.category} />
+                <StatRow k="업종(소분류)" v={selected.subCategory} />
+                <StatRow
+                  k="운영 기간"
+                  v={`${selected.licensedAt.slice(0, 7)} — ${selected.closedAt ? selected.closedAt.slice(0, 7) : "현재"}`}
+                />
+                {selected.industryDetail && (
+                  <StatRow k="상가API 세부업종" v={selected.industryDetail} />
+                )}
+              </dl>
+            </div>
+            <div>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-muted-foreground">시세 정보</p>
+                {selected.marketInfo.isPlaceholder && (
+                  <Badge
+                    variant="outline"
+                    className="rounded-full border-border text-[10px] text-muted-foreground"
+                  >
+                    예시
+                  </Badge>
+                )}
+              </div>
+              <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                <MarketRow
+                  k="동일업종 인근"
+                  v={
+                    selected.marketInfo.sameCategoryNearbyCount != null
+                      ? `${selected.marketInfo.sameCategoryNearbyCount}개`
+                      : "-"
+                  }
+                  real
+                />
+                <MarketRow
+                  k="전용면적"
+                  v={
+                    selected.marketInfo.leaseAreaSqm != null
+                      ? `${selected.marketInfo.leaseAreaSqm}㎡`
+                      : "-"
+                  }
+                />
+                <MarketRow
+                  k="보증금"
+                  v={
+                    selected.marketInfo.depositKrw != null
+                      ? formatKrw(selected.marketInfo.depositKrw)
+                      : "-"
+                  }
+                />
+                <MarketRow
+                  k="월세"
+                  v={
+                    selected.marketInfo.monthlyRentKrw != null
+                      ? formatKrw(selected.marketInfo.monthlyRentKrw)
+                      : "-"
+                  }
+                />
+                <MarketRow
+                  k="권리금"
+                  v={
+                    selected.marketInfo.keyMoneyKrw != null
+                      ? formatKrw(selected.marketInfo.keyMoneyKrw)
+                      : "-"
+                  }
+                />
+                <MarketRow
+                  k="일일 유동인구"
+                  v={
+                    selected.marketInfo.dailyFloatingPopulation != null
+                      ? `${selected.marketInfo.dailyFloatingPopulation.toLocaleString("ko-KR")}명`
+                      : "-"
+                  }
+                />
+                <MarketRow
+                  k="공실률"
+                  v={
+                    selected.marketInfo.vacancyRatePercent != null
+                      ? `${selected.marketInfo.vacancyRatePercent}%`
+                      : "-"
+                  }
+                />
+              </dl>
+              {selected.marketInfo.isPlaceholder && (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  실 데이터 연동 전 예시값입니다.
+                </p>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
+    </div>
   );
 }
 
-function StatsBoard({ report }: { report: ReturnType<typeof buildReport> }) {
+function MarketRow({ k, v, real }: { k: string; v: string; real?: boolean }) {
+  return (
+    <div>
+      <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        {k}
+        {!real && (
+          <span className="rounded border border-border px-1 text-[9px] text-muted-foreground">
+            예시
+          </span>
+        )}
+      </dt>
+      <dd className="mt-0.5 text-sm font-semibold text-navy">{v}</dd>
+    </div>
+  );
+}
+
+function StatsBoard({
+  detail,
+  analysis,
+  current,
+}: {
+  detail: UnitDetail;
+  analysis: UnitAnalysis;
+  current: Tenancy | null;
+}) {
+  const { statistics, timeline } = detail;
+  // 실 timeline 데이터로 계산 가능한 값 — 현재 점유 이력을 제외하고, subCategory가
+  // 같은 "확정 폐업" 이력 수. (휴업은 아직 폐업이 아니라서 제외)
+  const sameSubCategoryFailures = current
+    ? timeline.filter(
+        (t) =>
+          t.status === "폐업" &&
+          t.tenancyId !== current.tenancyId &&
+          t.subCategory === current.subCategory,
+      ).length
+    : 0;
+
+  const selfStats = [
+    { label: "폐업 횟수", value: `${statistics.closedCount}회` },
+    {
+      label: "평균 생존기간",
+      value:
+        statistics.averageSurvivalMonths != null ? `${statistics.averageSurvivalMonths}개월` : "-",
+    },
+    {
+      label: "최장 운영",
+      value:
+        statistics.longestSurvivalMonths != null ? `${statistics.longestSurvivalMonths}개월` : "-",
+    },
+    {
+      label: "최단 운영",
+      value:
+        statistics.shortestSurvivalMonths != null
+          ? `${statistics.shortestSurvivalMonths}개월`
+          : "-",
+    },
+    {
+      label: "동일 업종 실패",
+      value: `${sameSubCategoryFailures}회`,
+      hint: sameSubCategoryFailures
+        ? `현재 업종(${current?.subCategory})은 이 자리에서 과거 ${sameSubCategoryFailures}번 폐업했습니다.`
+        : "이 자리에서 동일 업종의 반복 폐업은 관측되지 않았습니다.",
+      wide: true,
+    },
+  ];
+  const areaStats = [
+    { label: "전체 점포", value: String(analysis.district.stats.totalStores) },
+    { label: "동일 업종", value: String(analysis.district.stats.sameCategory) },
+    {
+      label: "최근 개업",
+      value: String(analysis.district.stats.recentOpenings),
+      hint: "최근 3개월",
+    },
+    { label: "반경", value: "300m" },
+    { label: "집계일", value: analysis.district.stats.referenceDate, wide: true },
+  ];
+
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <StatColumn title="자리 운영" items={report.stats.self} />
-      <StatColumn title="주변 상권" items={report.stats.area} />
+      <StatColumn title="자리 운영" items={selfStats} />
+      <StatColumn title="주변 상권" items={areaStats} />
     </div>
   );
 }
@@ -505,7 +827,7 @@ function ChecklistCard({ items }: { items: { key: string; label: string }[] }) {
           const on = !!checked[it.key];
           return (
             <li key={it.key}>
-              <label className="flex cursor-pointer items-center gap-3 rounded-lg p-2 -m-2 transition hover:bg-secondary/60">
+              <label className="-m-2 flex cursor-pointer items-center gap-3 rounded-lg p-2 transition hover:bg-secondary/60">
                 <Checkbox
                   checked={on}
                   onCheckedChange={(v) => setChecked((s) => ({ ...s, [it.key]: !!v }))}
@@ -537,16 +859,37 @@ function ReportCta() {
     <div className="mt-20 overflow-hidden rounded-3xl bg-navy p-10 text-navy-foreground sm:p-14">
       <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
         <div>
-          <h2 className="text-2xl font-bold sm:text-3xl">좋은 창업은 여러 자리를 비교하는 것에서 시작됩니다.</h2>
+          <h2 className="text-2xl font-bold sm:text-3xl">
+            좋은 창업은 여러 자리를 비교하는 것에서 시작됩니다.
+          </h2>
           <p className="mt-2 text-sm text-navy-foreground/70">다른 자리와 비교해 보세요.</p>
         </div>
-        <Button asChild size="lg" className="rounded-full bg-background text-navy hover:bg-background/90">
+        <Button
+          asChild
+          size="lg"
+          className="rounded-full bg-background text-navy hover:bg-background/90"
+        >
           <Link to="/search">
             새로운 자리 분석하기
             <ArrowRight className="ml-1 h-4 w-4" />
           </Link>
         </Button>
       </div>
+    </div>
+  );
+}
+
+function ReportSkeleton() {
+  return (
+    <div className="space-y-8">
+      <Skeleton className="h-40 rounded-2xl" />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 rounded-xl" />
+        ))}
+      </div>
+      <Skeleton className="h-48 rounded-2xl" />
+      <Skeleton className="h-64 rounded-2xl" />
     </div>
   );
 }

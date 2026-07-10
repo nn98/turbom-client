@@ -9,6 +9,9 @@ export interface StoreHistory {
   brand: string;
   months: number;
   current?: boolean;
+  // 영업/폐업/휴업 3단계 (docs/backend-api.md의 Tenancy.status와 동일).
+  // 생략 시 current ? "영업" : "폐업"로 유도됨 — "휴업"은 반드시 명시해야 함.
+  status?: "영업" | "폐업" | "휴업";
 }
 
 export interface Store {
@@ -76,7 +79,14 @@ const stores_123_4: Store[] = [
       { start: "2018-01", end: "2019-06", category: "카페", brand: "이디야", months: 17 },
       { start: "2019-09", end: "2021-02", category: "주점", brand: "청담이상", months: 17 },
       { start: "2021-04", end: "2023-01", category: "편의점", brand: "GS25", months: 21 },
-      { start: "2023-02", end: null, category: "치킨집", brand: "교촌치킨", months: 41, current: true },
+      {
+        start: "2023-02",
+        end: null,
+        category: "치킨집",
+        brand: "교촌치킨",
+        months: 41,
+        current: true,
+      },
     ]),
   },
   {
@@ -113,7 +123,14 @@ const stores_123_4: Store[] = [
     summary: "파리바게뜨 · 제과점 · 가게 2곳 거쳐감 · 폐업 1번 · 평균 60개월",
     history: makeHistory([
       { start: "2018-05", end: "2021-01", category: "베이커리", brand: "뚜레쥬르", months: 32 },
-      { start: "2021-02", end: null, category: "제과점", brand: "파리바게뜨", months: 60, current: true },
+      {
+        start: "2021-02",
+        end: null,
+        category: "제과점",
+        brand: "파리바게뜨",
+        months: 60,
+        current: true,
+      },
     ]),
   },
 ];
@@ -135,7 +152,14 @@ const stores_123_1: Store[] = [
     history: makeHistory([
       { start: "2019-01", end: "2021-06", category: "편의점", brand: "CU", months: 30 },
       { start: "2021-09", end: "2024-11", category: "분식", brand: "고봉민김밥", months: 38 },
-      { start: "2025-11", end: null, category: "카페", brand: "스타벅스", months: 8, current: true },
+      {
+        start: "2025-11",
+        end: null,
+        category: "카페",
+        brand: "스타벅스",
+        months: 8,
+        current: true,
+      },
     ]),
   },
 ];
@@ -153,10 +177,18 @@ const stores_178_2: Store[] = [
     currentMonths: 28,
     matched: "상가API 매칭",
     status: "영업",
-    summary: "블루보틀 · 커피 · 가게 2곳 거쳐감 · 폐업 1번 · 평균 30개월",
+    summary: "블루보틀 · 커피 · 가게 2곳 거쳐감 · 폐업 1번 · 평균 30개월 · 현재 휴업 중",
     history: makeHistory([
       { start: "2020-04", end: "2023-05", category: "베이커리카페", brand: "폴바셋", months: 37 },
-      { start: "2023-11", end: null, category: "커피전문점", brand: "블루보틀", months: 28, current: true },
+      {
+        start: "2023-11",
+        end: null,
+        category: "커피전문점",
+        brand: "블루보틀",
+        months: 28,
+        current: true,
+        status: "휴업",
+      },
     ]),
   },
 ];
@@ -190,8 +222,22 @@ const ADDRESS_INDEX: Record<string, AddressSearchResult> = {
   "성남시 수정구 신흥동 123": {
     jibunBase: "성남시 수정구 신흥동 123",
     groups: [
-      { jibunFull: "성남시 수정구 신흥동 123-4", roadAddress: "경기도 성남시 수정구 대왕판교로 815", storeCount: 3, closureCount: 8, lat: 37.4079, lng: 127.1128 },
-      { jibunFull: "성남시 수정구 신흥동 123-1", roadAddress: "경기도 성남시 수정구 대왕판교로 811", storeCount: 1, closureCount: 2, lat: 37.408, lng: 127.113 },
+      {
+        jibunFull: "성남시 수정구 신흥동 123-4",
+        roadAddress: "경기도 성남시 수정구 대왕판교로 815",
+        storeCount: 3,
+        closureCount: 8,
+        lat: 37.4079,
+        lng: 127.1128,
+      },
+      {
+        jibunFull: "성남시 수정구 신흥동 123-1",
+        roadAddress: "경기도 성남시 수정구 대왕판교로 811",
+        storeCount: 1,
+        closureCount: 2,
+        lat: 37.408,
+        lng: 127.113,
+      },
     ],
     storesByJibun: {
       "성남시 수정구 신흥동 123-4": stores_123_4,
@@ -201,7 +247,14 @@ const ADDRESS_INDEX: Record<string, AddressSearchResult> = {
   "성남시 분당구 정자동 178": {
     jibunBase: "성남시 분당구 정자동 178",
     groups: [
-      { jibunFull: "성남시 분당구 정자동 178-2", roadAddress: "경기도 성남시 분당구 정자일로 121", storeCount: 1, closureCount: 1, lat: 37.3671, lng: 127.1086 },
+      {
+        jibunFull: "성남시 분당구 정자동 178-2",
+        roadAddress: "경기도 성남시 분당구 정자일로 121",
+        storeCount: 1,
+        closureCount: 1,
+        lat: 37.3671,
+        lng: 127.1086,
+      },
     ],
     storesByJibun: {
       "성남시 분당구 정자동 178-2": stores_178_2,
@@ -210,7 +263,14 @@ const ADDRESS_INDEX: Record<string, AddressSearchResult> = {
   "서울시 마포구 서교동 395": {
     jibunBase: "서울시 마포구 서교동 395",
     groups: [
-      { jibunFull: "서울시 마포구 서교동 395-10", roadAddress: "서울시 마포구 잔다리로 33", storeCount: 1, closureCount: 6, lat: 37.5547, lng: 126.9223 },
+      {
+        jibunFull: "서울시 마포구 서교동 395-10",
+        roadAddress: "서울시 마포구 잔다리로 33",
+        storeCount: 1,
+        closureCount: 6,
+        lat: 37.5547,
+        lng: 126.9223,
+      },
     ],
     storesByJibun: {
       "서울시 마포구 서교동 395-10": stores_395_10,
@@ -238,161 +298,4 @@ export const getStoreById = (id: string): Store | null => {
     }
   }
   return null;
-};
-
-// ---- Analysis report for the report page ----
-
-export type RiskLevel = 1 | 2 | 3 | 4 | 5;
-
-export interface AnalysisReport {
-  store: Store;
-  observationYears: number;
-  summary: {
-    riskLevel: RiskLevel;
-    riskLabel: string;
-    closureCount: number;
-    avgSurvivalMonths: number;
-    currentCategory: string;
-    currentMonths: number;
-    sameCategoryCount: number;
-    nearbyStoreCount: number;
-  };
-  narrative: string[];
-  district: {
-    composition: { category: string; count: number }[];
-    competitionScore: number;
-    stats: {
-      sameCategory: number;
-      recentOpenings: number;
-      totalStores: number;
-      referenceDate: string;
-    };
-    tags: string[];
-  };
-  insights: { icon: string; title: string; metric: string; description: string }[];
-  stats: {
-    self: { label: string; value: string; hint?: string; wide?: boolean }[];
-    area: { label: string; value: string; hint?: string; wide?: boolean }[];
-  };
-  checklist: { key: string; label: string }[];
-}
-
-const RISK_LABELS: Record<RiskLevel, string> = {
-  1: "매우 안정",
-  2: "안정",
-  3: "보통",
-  4: "위험",
-  5: "매우 위험",
-};
-
-export const buildReport = (store: Store): AnalysisReport => {
-  const closures = store.history.filter((h) => !h.current).length;
-  const durations = store.history.filter((h) => !h.current).map((h) => h.months);
-  const avg = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : store.currentMonths;
-  const max = Math.max(...store.history.map((h) => h.months));
-  const min = Math.min(...store.history.map((h) => h.months));
-
-  let riskLevel: RiskLevel = 3;
-  if (closures >= 5) riskLevel = 5;
-  else if (closures >= 3) riskLevel = 4;
-  else if (closures === 2) riskLevel = 3;
-  else if (closures === 1) riskLevel = 2;
-  else riskLevel = 1;
-
-  const currentCategory = store.currentCategory ?? "공실";
-
-  return {
-    store,
-    observationYears: 9,
-    summary: {
-      riskLevel,
-      riskLabel: RISK_LABELS[riskLevel],
-      closureCount: closures,
-      avgSurvivalMonths: avg,
-      currentCategory,
-      currentMonths: store.currentMonths,
-      sameCategoryCount: 14,
-      nearbyStoreCount: 148,
-    },
-    narrative: [
-      `최근 9년간 총 ${closures}회의 폐업이 발생했습니다.`,
-      `평균 생존기간은 ${avg}개월입니다.`,
-      store.currentCategory
-        ? `현재 ${currentCategory}은(는) ${store.currentMonths}개월째 운영 중입니다.`
-        : `현재는 공실 상태입니다.`,
-      `반경 300m 내 동일 업종은 14개입니다.`,
-      `최근 창업 활동은 꾸준히 이어지고 있습니다.`,
-      `경쟁이 치열한 업종은 운영 이력과 경쟁도를 함께 고려하는 것이 좋습니다.`,
-    ],
-    district: {
-      composition: [
-        { category: "음식점", count: 62 },
-        { category: "카페", count: 34 },
-        { category: "주점", count: 21 },
-        { category: "편의/생활", count: 28 },
-        { category: "서비스", count: 25 },
-        { category: "기타", count: 17 },
-      ],
-      competitionScore: 74,
-      stats: {
-        sameCategory: 14,
-        recentOpenings: 9,
-        totalStores: 187,
-        referenceDate: "2026-06-30",
-      },
-      tags: ["유동인구가 많은 역세권", "음식 업종 밀집 지역", "저녁 소비가 활발한 상권"],
-    },
-    insights: [
-      {
-        icon: "trending",
-        title: "현재 업종 장기 운영 중",
-        metric: `${store.currentMonths}개월`,
-        description: "평균 생존기간의 두 배 이상 운영 중입니다.",
-      },
-      {
-        icon: "users",
-        title: "반경 내 동일 업종",
-        metric: "14개",
-        description: "반경 300m 이내에서 유사 업종과 경쟁합니다.",
-      },
-      {
-        icon: "sparkles",
-        title: "최근 6개월 신규 개업",
-        metric: "9개",
-        description: "상권은 활발하지만 경쟁 강도가 함께 상승 중입니다.",
-      },
-      {
-        icon: "clock",
-        title: "저녁 소비 중심 상권",
-        metric: "저녁 68%",
-        description: "저녁 시간대 소비 비중이 높은 상권입니다.",
-      },
-    ],
-    stats: {
-      self: [
-        { label: "폐업 횟수", value: `${closures}회` },
-        { label: "평균 생존기간", value: `${avg}개월` },
-        { label: "최장 운영", value: `${max}개월` },
-        { label: "최단 운영", value: `${min}개월` },
-        { label: "동일 업종 실패", value: "0회", hint: "이 자리에서 동일 업종의 반복 폐업은 관측되지 않았습니다.", wide: true },
-      ],
-      area: [
-        { label: "전체 점포", value: "187" },
-        { label: "동일 업종", value: "14" },
-        { label: "최근 개업", value: "9", hint: "최근 3개월" },
-        { label: "반경", value: "300m" },
-        { label: "집계일", value: "2026-06-30", wide: true },
-      ],
-    },
-    checklist: [
-      { key: "closure", label: "최근 폐업 횟수를 확인했습니다" },
-      { key: "survival", label: "평균 생존기간을 확인했습니다" },
-      { key: "sameFail", label: "동일 업종 실패 여부를 확인했습니다" },
-      { key: "currentOp", label: "현재 운영기간을 확인했습니다" },
-      { key: "competition", label: "경쟁 점포 수를 확인했습니다" },
-      { key: "recentOpen", label: "최근 개업 흐름을 확인했습니다" },
-      { key: "composition", label: "업종 분포를 확인했습니다" },
-      { key: "density", label: "상권 밀도를 확인했습니다" },
-    ],
-  };
 };
