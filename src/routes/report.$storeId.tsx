@@ -254,7 +254,6 @@ function SummaryGrid({
   const { statistics } = detail;
   const items = [
     { label: "위험도", value: <StarValue level={analysis.riskLevel} />, note: analysis.riskLabel },
-    { label: "최근 폐업", value: `${statistics.closedCount}회` },
     {
       label: "평균 생존기간",
       value:
@@ -266,11 +265,6 @@ function SummaryGrid({
       note: current?.status === "휴업" ? "휴업 중" : undefined,
     },
     { label: "현재 운영기간", value: current ? `${current.survivalMonths}개월` : "-" },
-    {
-      label: "동일 업종",
-      value: `${analysis.district.stats.sameCategory ?? 0}개`,
-    },
-    { label: "반경 내 점포", value: `${analysis.district.stats.totalStores}개` },
   ];
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -708,11 +702,6 @@ function StatsBoard({
   const selfStats = [
     { label: "폐업 횟수", value: `${statistics.closedCount}회` },
     {
-      label: "평균 생존기간",
-      value:
-        statistics.averageSurvivalMonths != null ? `${statistics.averageSurvivalMonths}개월` : "-",
-    },
-    {
       label: "최장 운영",
       value:
         statistics.longestSurvivalMonths != null ? `${statistics.longestSurvivalMonths}개월` : "-",
@@ -730,7 +719,6 @@ function StatsBoard({
       hint: sameSubCategoryFailures
         ? `현재 업종(${current?.subCategory})은 이 자리에서 과거 ${sameSubCategoryFailures}번 폐업했습니다.`
         : "이 자리에서 동일 업종의 반복 폐업은 관측되지 않았습니다.",
-      wide: true,
     },
   ];
   return (
@@ -739,8 +727,7 @@ function StatsBoard({
         <Card
           key={it.label}
           className={
-            "rounded-xl border-border/70 bg-surface p-5 shadow-card " +
-            (it.wide ? "sm:col-span-2 lg:col-span-4" : "")
+            "rounded-xl border-border/70 bg-surface p-5 shadow-card"
           }
         >
           <p className="text-xs text-muted-foreground">{it.label}</p>
