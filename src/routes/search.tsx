@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SiteHeader } from "@/components/site-header";
 import { DEMO_ADDRESSES } from "@/lib/mock-data";
 import { isDemoMode } from "@/lib/api";
-import type { Candidate, LocationSource, UnitSummary } from "@/lib/api";
+import type { Candidate, UnitSummary } from "@/lib/api";
 import { useSiteDetail, useSiteSearch } from "@/hooks/use-sites";
 import { MapView } from "@/components/map-view";
 
@@ -268,12 +268,6 @@ function ActiveJibunSummary({ candidate }: { candidate: Candidate }) {
   );
 }
 
-const LOCATION_SOURCE_LABEL: Record<LocationSource, string> = {
-  license: "인허가 매칭",
-  sangga_api: "상가API 매칭",
-  overlap_inferred: "추정 분리",
-};
-
 const unitSummaryLine = (u: UnitSummary) => {
   const head = u.currentBusinessName
     ? u.industryDetail
@@ -299,8 +293,10 @@ function UnitList({ units }: { units: UnitSummary[] }) {
         >
           <Card
             className={
-              "flex items-center gap-3 rounded-xl border-l-4 border-border/70 bg-surface p-4 shadow-card transition hover:border-l-brand hover:shadow-elevated " +
-              (u.currentStatus === "영업" ? "border-l-brand" : "border-l-border")
+              "flex items-center gap-3 rounded-xl border border-border/70 p-4 shadow-card transition hover:shadow-elevated " +
+              (u.currentStatus === "영업"
+                ? "bg-brand-soft/60 hover:bg-brand-soft/80"
+                : "bg-surface hover:bg-surface-muted/60")
             }
           >
             <div className="flex-1">
@@ -315,12 +311,6 @@ function UnitList({ units }: { units: UnitSummary[] }) {
                   />
                   <span className="text-muted-foreground">{u.currentStatus}</span>
                 </span>
-                <Badge
-                  variant="secondary"
-                  className="rounded-full bg-secondary text-[10px] text-navy"
-                >
-                  {LOCATION_SOURCE_LABEL[u.locationSource]}
-                </Badge>
               </div>
               <p className="mt-1.5 line-clamp-1 text-sm text-muted-foreground">
                 {unitSummaryLine(u)}
