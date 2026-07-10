@@ -71,8 +71,20 @@ src/
 │   ├── site-footer.tsx
 │   ├── map-view.tsx         # 네이버 지도 wrapper (VITE_NAVER_MAP_CLIENT_ID 필요)
 │   └── ui/                  # shadcn/ui
+├── hooks/
+│   └── use-sites.ts         # TanStack Query 훅 (useSiteSearch/useSiteDetail/useUnitDetail)
 ├── lib/
-│   ├── mock-data.ts         # Mock DB + searchByJibun / buildReport
+│   ├── api/                 # 백엔드 계약 레이어 — routes/hooks는 이 폴더만 import한다
+│   │   ├── types.ts         # docs/spec/api-spec.md를 그대로 미러링한 응답 타입
+│   │   ├── client.ts        # VITE_API_BASE_URL 유무로 mock/real 전환하는 공개 엔트리포인트
+│   │   ├── real-client.ts   # 실 백엔드 fetch 구현
+│   │   ├── mock-client.ts   # mock-data.ts를 API 계약 모양으로 변환해 서빙
+│   │   ├── legacy-adapter.ts # mock-data.ts(Store/StoreHistory) → api 타입(Tenancy 등) 변환
+│   │   ├── tenancy.ts       # Tenancy[] 순수 헬퍼(findOccupant, isOccupiedStatus)
+│   │   ├── unit-analysis.ts # 백엔드 계약에 없는 프론트 전용 분석(riskLevel/narrative/체크리스트)
+│   │   ├── errors.ts        # ApiRequestError + 에러 코드별 생성 함수
+│   │   └── index.ts         # 공개 re-export (routes/hooks는 "@/lib/api"만 import)
+│   ├── mock-data.ts         # 데모 모드 원본 데이터셋(legacy-adapter.ts가 소비)
 │   └── utils.ts
 └── styles.css               # Design tokens (Navy · White · Green)
 ```
@@ -81,39 +93,22 @@ src/
 
 ## 6. 데이터 설계 개요 (Domain Model)
 
-프론트엔드는 `src/lib/mock-data.ts`의 도메인 타입을 기준으로 동작합니다. 실제 API 연결 시 아래 타입 계약만 유지하면 화면 변경 없이 교체 가능합니다.
+프론트엔드는 `src/lib/api/types.ts`의 타입을 기준으로 동작한다. 이 타입은 `docs/spec/api-spec.md`(터봄 서버 레포의 계약)를 그대로 미러링한 것이며, 로컬 사본과 원본이 어긋나면 `.github/workflows/spec-drift-check.yml`이 이슈로 알려준다 — 자세한 규칙은 레포 루트의 `CLAUDE.md` 참고.
 
 ```ts
-Store {
-  id, jibunBase, jibunFull, buildingName, roadAddress,
-  floor, unit, currentCategory, currentMonths,
-  matched: "상가API 매칭" | "추정 분리" | "공실",
-  status: "영업" | "공실",
-  history: StoreHistory[]
-}
+SearchResponse { candidates: Candidate[] }
+Candidate { pnu, jibunAddress, roadAddress, latitude, longitude, unitCount, closedCount }
 
-StoreHistory { period, start, end, category, brand, months, current? }
+SiteDetail { site, units: UnitSummary[], disclaimer }
+UnitSummary { unitId, label, currentBusinessName, currentStatus: "영업"|"공실", ... }
 
-AddressSearchResult {
-  jibunBase, groups: JibunGroup[], storesByJibun: Record<jibunFull, Store[]>
-}
-
-AnalysisReport {
-  store, observationYears,
-  summary: { riskLevel, riskLabel, closureCount, avgSurvivalMonths, currentCategory, currentMonths, sameCategoryCount, nearbyStoreCount },
-  narrative: string[],
-  district: { composition, competitionScore, stats, tags },
-  insights, stats: { self, area }, checklist
-}
+UnitDetail { unit, statistics, timeline: Tenancy[], disclaimer }
+Tenancy { tenancyId, businessName, category, subCategory, status, marketInfo, ... }
 ```
 
-### 데이터베이스 로직 원칙
+**목/실 전환**: `VITE_API_BASE_URL` 미설정 = 데모 모드(`mock-client.ts`가 `mock-data.ts`를 계약 모양으로 변환해 서빙). 설정 시 `real-client.ts`가 그 값으로 실 백엔드를 호출한다 — 어느 쪽이든 라우트/컴포넌트 코드는 `src/lib/api`의 동일한 타입만 본다(`client.ts` 참고).
 
-- DB 계층은 원자적 CRUD/조회만 담당한다.
-- 비즈니스 로직(위험도 계산, 요약 생성, 인사이트 추출 등)은 **Edge Function**에서 처리한다.
-- 프론트는 서비스 레이어(`searchByJibun`, `buildReport`)를 통해서만 데이터를 소비한다.
-
-현재는 인메모리 Mock 사용. 추후 IndexedDB/localStorage로 확장하거나 실제 API로 교체 시 `src/lib/mock-data.ts`의 함수 시그니처만 유지하면 됩니다.
+**그레이존 분석**: 위험도(riskLevel)·종합 분석(narrative)·상권 구성(district)·체크리스트는 백엔드 계약(`UnitDetail`)에 없는 값이다. `src/lib/api/unit-analysis.ts`가 `UnitDetail`을 받아 프론트엔드에서만 계산하며, 실측 가능한 필드(`marketInfo.categoryBreakdown` 등)가 있으면 그걸 쓰고 없으면 데모용 고정값으로 폴백한다.
 
 ---
 
