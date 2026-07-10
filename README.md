@@ -24,12 +24,12 @@
 | 페이지 | 설명 |
 | --- | --- |
 | 랜딩 (`/`) | Hero · 지번 검색 · 특징 · 왜 터봄인가 · 제공 정보 · CTA |
-| 검색 (`/search?q=...`) | 지번 → 부번 그룹 → 층·호 목록 · Leaflet 지도 |
+| 검색 (`/search?q=...`) | 지번 → 부번 그룹 → 층·호 목록 · 네이버 지도 |
 | 리포트 (`/report/:storeId`) | 요약 · 종합 분석 · 상권 · 위험도 · 인사이트 · 타임라인 · 통계 · 체크리스트 |
 
 - 데모 모드: API 없이 Mock Data 기반으로 동일한 사용자 경험 제공
 - 반응형 (Mobile / Tablet / Desktop)
-- 지도: **Leaflet + CARTO Light 타일** (API 키 불필요, 추후 Naver Maps SDK로 교체 예정)
+- 지도: **네이버 지도(Naver Maps) JS SDK** (Client ID 필요, `.env`의 `VITE_NAVER_MAP_CLIENT_ID`로 설정)
 
 ---
 
@@ -40,7 +40,7 @@
 - **Data**: TanStack Query
 - **UI**: Tailwind CSS v4 + shadcn/ui
 - **Icons**: lucide-react
-- **Map**: Leaflet + OpenStreetMap/CARTO (키 불필요)
+- **Map**: 네이버 지도(Naver Maps) JS SDK (Client ID 필요)
 - **Charts**: Recharts (필요 시)
 - **Build**: Vite 7
 
@@ -69,7 +69,7 @@ src/
 ├── components/
 │   ├── site-header.tsx
 │   ├── site-footer.tsx
-│   ├── map-view.tsx         # Leaflet wrapper
+│   ├── map-view.tsx         # 네이버 지도 wrapper (VITE_NAVER_MAP_CLIENT_ID 필요)
 │   └── ui/                  # shadcn/ui
 ├── lib/
 │   ├── mock-data.ts         # Mock DB + searchByJibun / buildReport
@@ -129,7 +129,8 @@ AnalysisReport {
 ## 8. 향후 개선 계획 (Future Work)
 
 - [ ] 공공데이터 인허가 API 실연동 (Edge Function 경유)
-- [ ] Naver Maps SDK 전환 (사용자 API 키 입력·수정 UI 포함)
+- [x] Naver Maps SDK 전환 (`.env`의 `VITE_NAVER_MAP_CLIENT_ID`)
+- [ ] 사용자가 직접 지도 API 키를 입력·수정할 수 있는 UI (현재는 `.env` 설정만 지원)
 - [ ] 리포트 PDF 내보내기
 - [ ] 후보지 비교(A/B) 기능
 - [ ] IndexedDB 기반 검색 이력 · 즐겨찾기
