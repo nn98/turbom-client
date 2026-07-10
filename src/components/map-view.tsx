@@ -5,6 +5,7 @@ export interface MapMarker {
   lat: number;
   lng: number;
   label: string;
+  jibunAddress: string;
   active?: boolean;
 }
 
@@ -33,6 +34,9 @@ interface NaverMapsNamespace {
     title?: string;
     icon?: { content: string };
   }) => NaverMarker;
+  Event: {
+    addListener(target: NaverMarker, eventName: string, handler: () => void): void;
+  };
 }
 
 declare global {
@@ -69,17 +73,36 @@ const loadNaverMaps = (clientId: string): Promise<void> => {
   return naverMapsLoader;
 };
 
-const pinHtml = (active?: boolean) => `
-  <div style="transform:translate(-50%,-100%);display:flex;align-items:center;justify-content:center;width:26px;height:34px;">
-    <svg viewBox='0 0 24 32' width='26' height='34' xmlns='http://www.w3.org/2000/svg'>
-      <path d='M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20C24 5.4 18.6 0 12 0z' fill='${
-        active ? "#0f172a" : "#94a3b8"
-      }'/>
-      <circle cx='12' cy='12' r='4.5' fill='white'/>
-    </svg>
+const escapeHtml = (value: string) =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+
+const pinHtml = (label: string, active?: boolean) => `
+  <div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:6px;">
+    <div style="padding:3px 8px;border:1px solid rgba(15,23,42,0.08);border-radius:9999px;background:rgba(255,255,255,0.96);color:#0f172a;font-size:11px;font-weight:700;line-height:1;white-space:nowrap;box-shadow:0 4px 12px rgba(15,23,42,0.12);">
+      ${escapeHtml(label)}
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;width:26px;height:34px;">
+      <svg viewBox='0 0 24 32' width='26' height='34' xmlns='http://www.w3.org/2000/svg'>
+        <path d='M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20C24 5.4 18.6 0 12 0z' fill='${
+          active ? "#dc2626" : "#94a3b8"
+        }'/>
+        <circle cx='12' cy='12' r='4.5' fill='white'/>
+      </svg>
+    </div>
   </div>`;
 
-export function MapView({ markers }: { markers: MapMarker[] }) {
+export function MapView({
+  markers,
+  onMarkerClick,
+}: {
+  markers: MapMarker[];
+  onMarkerClick?: (jibunAddress: string) => void;
+}) {
   const ref = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<NaverMap | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -108,12 +131,15 @@ export function MapView({ markers }: { markers: MapMarker[] }) {
         const map = new maps.Map(ref.current, { center, zoom: 17, zoomControl: true });
 
         markers.forEach((m) => {
-          new maps.Marker({
+          const marker = new maps.Marker({
             position: new maps.LatLng(m.lat, m.lng),
             map,
             title: m.label,
-            icon: { content: pinHtml(m.active) },
+            icon: { content: pinHtml(m.label, m.active) },
           });
+          if (onMarkerClick) {
+            maps.Event.addListener(marker, "click", () => onMarkerClick(m.jibunAddress));
+          }
         });
 
         mapRef.current = map;
@@ -129,7 +155,7 @@ export function MapView({ markers }: { markers: MapMarker[] }) {
         mapRef.current = null;
       }
     };
-  }, [markers]);
+  }, [markers, onMarkerClick]);
 
   if (error) {
     return (

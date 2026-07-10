@@ -48,8 +48,8 @@ export interface AddressSearchResult {
 // ---- Demo addresses (본번까지) ----
 export const DEMO_ADDRESSES = [
   "성남시 수정구 신흥동 123",
-  "성남시 분당구 정자동 178",
-  "서울시 마포구 서교동 395",
+  "성남시 수정구 창곡동 559-4",
+  "성남시 수정구 창곡동 513",
 ];
 
 // ---- Helpers ----
@@ -167,10 +167,10 @@ const stores_123_1: Store[] = [
 const stores_178_2: Store[] = [
   {
     id: "bd-178-2-1-101",
-    jibunBase: "성남시 분당구 정자동 178",
-    jibunFull: "성남시 분당구 정자동 178-2",
-    buildingName: "정자스퀘어",
-    roadAddress: "경기도 성남시 분당구 정자일로 121",
+    jibunBase: "성남시 수정구 창곡동 559-4",
+    jibunFull: "성남시 수정구 창곡동 559-4",
+    buildingName: "창곡스퀘어",
+    roadAddress: "경기도 성남시 수정구 위례광장로 310",
     floor: "1층",
     unit: "101호",
     currentCategory: "커피전문점",
@@ -196,10 +196,10 @@ const stores_178_2: Store[] = [
 const stores_395_10: Store[] = [
   {
     id: "mp-395-10-1-101",
-    jibunBase: "서울시 마포구 서교동 395",
-    jibunFull: "서울시 마포구 서교동 395-10",
-    buildingName: "서교빌딩",
-    roadAddress: "서울시 마포구 잔다리로 33",
+    jibunBase: "성남시 수정구 창곡동 513",
+    jibunFull: "성남시 수정구 창곡동 513-10",
+    buildingName: "창곡빌딩",
+    roadAddress: "경기도 성남시 수정구 위례광장로 300",
     floor: "1층",
     unit: "101호",
     currentCategory: null,
@@ -244,36 +244,36 @@ const ADDRESS_INDEX: Record<string, AddressSearchResult> = {
       "성남시 수정구 신흥동 123-1": stores_123_1,
     },
   },
-  "성남시 분당구 정자동 178": {
-    jibunBase: "성남시 분당구 정자동 178",
+  "성남시 수정구 창곡동 559-4": {
+    jibunBase: "성남시 수정구 창곡동 559-4",
     groups: [
       {
-        jibunFull: "성남시 분당구 정자동 178-2",
-        roadAddress: "경기도 성남시 분당구 정자일로 121",
+        jibunFull: "성남시 수정구 창곡동 559-4",
+        roadAddress: "경기도 성남시 수정구 위례광장로 310",
         storeCount: 1,
         closureCount: 1,
-        lat: 37.3671,
-        lng: 127.1086,
+        lat: 37.4712,
+        lng: 127.1427,
       },
     ],
     storesByJibun: {
-      "성남시 분당구 정자동 178-2": stores_178_2,
+      "성남시 수정구 창곡동 559-4": stores_178_2,
     },
   },
-  "서울시 마포구 서교동 395": {
-    jibunBase: "서울시 마포구 서교동 395",
+  "성남시 수정구 창곡동 513": {
+    jibunBase: "성남시 수정구 창곡동 513",
     groups: [
       {
-        jibunFull: "서울시 마포구 서교동 395-10",
-        roadAddress: "서울시 마포구 잔다리로 33",
+        jibunFull: "성남시 수정구 창곡동 513-10",
+        roadAddress: "경기도 성남시 수정구 위례광장로 300",
         storeCount: 1,
         closureCount: 6,
-        lat: 37.5547,
-        lng: 126.9223,
+        lat: 37.4673,
+        lng: 127.1416,
       },
     ],
     storesByJibun: {
-      "서울시 마포구 서교동 395-10": stores_395_10,
+      "성남시 수정구 창곡동 513-10": stores_395_10,
     },
   },
 };

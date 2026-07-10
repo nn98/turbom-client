@@ -154,13 +154,15 @@ function SearchPage() {
               ) : (
                 <Card className="overflow-hidden rounded-2xl border-border/70 p-0 shadow-card">
                   <MapView
+                    onMarkerClick={(j) => navigate({ to: "/search", search: { q, jibun: j } })}
                     markers={candidates
                       .filter((c) => c.latitude != null && c.longitude != null)
                       .map((c) => ({
                         id: c.pnu,
                         lat: c.latitude as number,
                         lng: c.longitude as number,
-                        label: c.jibunAddress,
+                        label: extractLotLabel(c.jibunAddress, q),
+                        jibunAddress: c.jibunAddress,
                         active: c.jibunAddress === activeCandidate?.jibunAddress,
                       }))}
                   />
@@ -316,10 +318,7 @@ function UnitList({ units }: { units: UnitSummary[] }) {
         >
           <Card
             className={
-              "flex items-center gap-3 rounded-xl border border-border/70 p-4 shadow-card transition hover:shadow-elevated " +
-              (u.currentStatus === "영업"
-                ? "bg-brand-soft/60 hover:bg-brand-soft/80"
-                : "bg-surface hover:bg-surface-muted/60")
+              "flex items-center gap-3 rounded-xl border border-border/70 bg-surface p-4 shadow-card transition hover:bg-surface-muted/60 hover:shadow-elevated"
             }
           >
             <div className="flex-1">
