@@ -6,6 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SiteHeader } from "@/components/site-header";
 import { DEMO_ADDRESSES } from "@/lib/mock-data";
@@ -304,18 +311,40 @@ function UnitList({
   units: UnitSummary[];
   jibunAddress: string;
 }) {
+  const [statusFilter, setStatusFilter] = useState<"all" | "영업" | "공실">("all");
   if (!units.length) return null;
-  const sortedUnits = [...units].sort((a, b) => {
-    const floorDiff = inferredFloorSortValue(a.label) - inferredFloorSortValue(b.label);
-    if (floorDiff !== 0) return floorDiff;
-    const unitDiff = unitSortValue(a.label) - unitSortValue(b.label);
-    if (unitDiff !== 0) return unitDiff;
-    return a.label.localeCompare(b.label, "ko-KR");
-  });
+  const sortedUnits = [...units]
+    .filter((u) => statusFilter === "all" || u.currentStatus === statusFilter)
+    .sort((a, b) => {
+      const floorDiff = inferredFloorSortValue(a.label) - inferredFloorSortValue(b.label);
+      if (floorDiff !== 0) return floorDiff;
+      const unitDiff = unitSortValue(a.label) - unitSortValue(b.label);
+      if (unitDiff !== 0) return unitDiff;
+      return a.label.localeCompare(b.label, "ko-KR");
+    });
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">궁금한 점포를 누르면 히스토리가 열려요</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-base text-muted-foreground">
+          📢 궁금한 점포를 누르면 보고서가 생성되요!
+        </p>
+        <Select
+          value={statusFilter}
+          onValueChange={(value) => {
+            if (value === "all" || value === "영업" || value === "공실") setStatusFilter(value);
+          }}
+        >
+          <SelectTrigger className="h-9 w-[110px] rounded-full border-border bg-surface text-xs text-navy shadow-none">
+            <SelectValue placeholder="필터" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">모두</SelectItem>
+            <SelectItem value="영업">영업</SelectItem>
+            <SelectItem value="공실">공실</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
       {sortedUnits.map((u) => (
         <Link
           key={u.unitId}
