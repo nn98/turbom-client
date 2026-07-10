@@ -37,6 +37,30 @@ const extractLotLabel = (jibunAddress: string, query: string): string => {
   return tokens[tokens.length - 1] ?? jibunAddress;
 };
 
+const floorSortValue = (label: string) => {
+  const floorMatch = label.match(/(-?\d+)\s*층/);
+  if (!floorMatch) return Number.MAX_SAFE_INTEGER;
+  return Number(floorMatch[1]);
+};
+
+const unitSortValue = (label: string) => {
+  const unitMatch = label.match(/(\d+)\s*호/);
+  if (!unitMatch) return Number.MAX_SAFE_INTEGER;
+  return Number(unitMatch[1]);
+};
+
+const inferredFloorSortValue = (label: string) => {
+  const explicitFloor = floorSortValue(label);
+  if (explicitFloor !== Number.MAX_SAFE_INTEGER) return explicitFloor;
+
+  const unit = unitSortValue(label);
+  if (unit === Number.MAX_SAFE_INTEGER) return Number.MAX_SAFE_INTEGER;
+
+  if (unit >= 1000) return Math.floor(unit / 100);
+  if (unit >= 100) return Math.floor(unit / 100);
+  return 0;
+};
+
 const searchSchema = z.object({
   q: z.string().optional().catch(""),
   jibun: z.string().optional().catch(""),
@@ -280,7 +304,6 @@ function ActiveJibunSummary({ candidate }: { candidate: Candidate }) {
     <Card className="rounded-2xl border-border/70 bg-surface p-5 shadow-card">
       <p className="text-xs font-medium text-brand">지금 보고 있는 자리</p>
       <h2 className="mt-2 text-xl font-semibold text-navy">{candidate.jibunAddress}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">{candidate.roadAddress}</p>
       <div className="mt-4 flex flex-wrap gap-2">
         <Badge variant="secondary" className="rounded-full bg-secondary text-navy">
           점포 {candidate.unitCount}개
@@ -306,10 +329,18 @@ const unitSummaryLine = (u: UnitSummary) => {
 
 function UnitList({ units }: { units: UnitSummary[] }) {
   if (!units.length) return null;
+  const sortedUnits = [...units].sort((a, b) => {
+    const floorDiff = inferredFloorSortValue(a.label) - inferredFloorSortValue(b.label);
+    if (floorDiff !== 0) return floorDiff;
+    const unitDiff = unitSortValue(a.label) - unitSortValue(b.label);
+    if (unitDiff !== 0) return unitDiff;
+    return a.label.localeCompare(b.label, "ko-KR");
+  });
+
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">궁금한 점포를 누르면 히스토리가 열려요</p>
-      {units.map((u) => (
+      {sortedUnits.map((u) => (
         <Link
           key={u.unitId}
           to="/report/$storeId"

@@ -33,6 +33,7 @@ interface NaverMapsNamespace {
     map: NaverMap;
     title?: string;
     icon?: { content: string };
+    zIndex?: number;
   }) => NaverMarker;
   Event: {
     addListener(target: NaverMarker, eventName: string, handler: () => void): void;
@@ -83,9 +84,13 @@ const escapeHtml = (value: string) =>
 
 const pinHtml = (label: string, active?: boolean) => `
   <div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:6px;">
-    <div style="padding:3px 8px;border:1px solid rgba(15,23,42,0.08);border-radius:9999px;background:rgba(255,255,255,0.96);color:#0f172a;font-size:11px;font-weight:700;line-height:1;white-space:nowrap;box-shadow:0 4px 12px rgba(15,23,42,0.12);">
+    ${
+      active
+        ? `<div style="padding:3px 8px;border:1px solid rgba(15,23,42,0.08);border-radius:9999px;background:rgba(255,255,255,0.98);color:#0f172a;font-size:11px;font-weight:700;line-height:1;white-space:nowrap;box-shadow:0 4px 12px rgba(15,23,42,0.12);">
       ${escapeHtml(label)}
-    </div>
+    </div>`
+        : ""
+    }
     <div style="display:flex;align-items:center;justify-content:center;width:26px;height:34px;">
       <svg viewBox='0 0 24 32' width='26' height='34' xmlns='http://www.w3.org/2000/svg'>
         <path d='M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20C24 5.4 18.6 0 12 0z' fill='${
@@ -105,7 +110,17 @@ export function MapView({
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<NaverMap | null>(null);
+  const markerRefs = useRef<NaverMarker[]>([]);
+  const onMarkerClickRef = useRef(onMarkerClick);
+  const initialCenterRef = useRef<{ lat: number; lng: number } | null>(
+    markers.length ? { lat: markers[0].lat, lng: markers[0].lng } : null,
+  );
   const [error, setError] = useState<string | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+
+  useEffect(() => {
+    onMarkerClickRef.current = onMarkerClick;
+  }, [onMarkerClick]);
 
   useEffect(() => {
     if (!ref.current || typeof window === "undefined") return;
@@ -120,29 +135,14 @@ export function MapView({
       .then(() => {
         if (disposed || !ref.current || !window.naver) return;
         setError(null);
-        if (mapRef.current) {
-          mapRef.current.destroy();
-          mapRef.current = null;
-        }
+        if (mapRef.current) return;
         const { maps } = window.naver;
-        const center = markers.length
-          ? new maps.LatLng(markers[0].lat, markers[0].lng)
+        const initialCenter = initialCenterRef.current;
+        const center = initialCenter
+          ? new maps.LatLng(initialCenter.lat, initialCenter.lng)
           : new maps.LatLng(37.5665, 126.978);
-        const map = new maps.Map(ref.current, { center, zoom: 17, zoomControl: true });
-
-        markers.forEach((m) => {
-          const marker = new maps.Marker({
-            position: new maps.LatLng(m.lat, m.lng),
-            map,
-            title: m.label,
-            icon: { content: pinHtml(m.label, m.active) },
-          });
-          if (onMarkerClick) {
-            maps.Event.addListener(marker, "click", () => onMarkerClick(m.jibunAddress));
-          }
-        });
-
-        mapRef.current = map;
+        mapRef.current = new maps.Map(ref.current, { center, zoom: 17, zoomControl: true });
+        setMapReady(true);
       })
       .catch((e: unknown) => {
         if (!disposed) setError(e instanceof Error ? e.message : "지도를 불러오지 못했습니다.");
@@ -154,8 +154,32 @@ export function MapView({
         mapRef.current.destroy();
         mapRef.current = null;
       }
+      setMapReady(false);
     };
-  }, [markers, onMarkerClick]);
+  }, []);
+
+  useEffect(() => {
+    if (!mapReady || !mapRef.current || !window.naver) return;
+    const { maps } = window.naver;
+
+    markerRefs.current.forEach((marker) => marker.setMap(null));
+    markerRefs.current = markers.map((m) => {
+      const marker = new maps.Marker({
+        position: new maps.LatLng(m.lat, m.lng),
+        map: mapRef.current!,
+        title: m.label,
+        icon: { content: pinHtml(m.label, m.active) },
+        zIndex: m.active ? 1000 : 100,
+      });
+      maps.Event.addListener(marker, "click", () => onMarkerClickRef.current?.(m.jibunAddress));
+      return marker;
+    });
+
+    return () => {
+      markerRefs.current.forEach((marker) => marker.setMap(null));
+      markerRefs.current = [];
+    };
+  }, [mapReady, markers]);
 
   if (error) {
     return (
