@@ -68,6 +68,13 @@ const inferredFloorSortValue = (label: string) => {
   return 0;
 };
 
+const displayUnitLabel = (label: string) => {
+  if (label.match(/-?\d+\s*층/)) return label;
+  const inferredFloor = inferredFloorSortValue(label);
+  if (inferredFloor === Number.MAX_SAFE_INTEGER) return label;
+  return `${inferredFloor}층 ${label}`;
+};
+
 const searchSchema = z.object({
   q: z.string().optional().catch(""),
   jibun: z.string().optional().catch(""),
@@ -376,7 +383,9 @@ function UnitList({
                   <span>{u.currentStatus}</span>
                 </span>
                 <span className="text-base font-semibold text-navy">
-                  {u.currentStatus === "영업" && u.currentBusinessName ? `${u.label})` : u.label}
+                  {u.currentStatus === "영업" && u.currentBusinessName
+                    ? `${displayUnitLabel(u.label)})`
+                    : displayUnitLabel(u.label)}
                 </span>
                 {u.currentStatus === "영업" && u.currentBusinessName ? (
                   <span className="text-base font-semibold text-navy">
