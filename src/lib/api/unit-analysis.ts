@@ -43,8 +43,7 @@ export interface UnitAnalysis {
   riskLabel: string;
   narrative: string[];
   district: {
-    composition: { category: string; count: number }[];
-    competitionScore: number;
+    composition: { category: string; count: number; ratio: number }[];
     stats: {
       sameCategory: number | null;
       totalStores: number;
@@ -77,9 +76,6 @@ const FALLBACK_COMPOSITION = [
   { category: "기타", count: 17 },
 ];
 const FALLBACK_TOTAL_STORES = 187;
-// Old static demo score, kept only as a fallback when we don't have both
-// real numbers (sameCategoryNearbyCount, totalStoreCount) to compute from.
-const FALLBACK_COMPETITION_SCORE = 74;
 
 export const buildUnitAnalysis = (detail: UnitDetail): UnitAnalysis => {
   const { statistics, timeline } = detail;
@@ -92,15 +88,13 @@ export const buildUnitAnalysis = (detail: UnitDetail): UnitAnalysis => {
   const categoryBreakdown = current?.marketInfo.categoryBreakdown;
   const composition =
     categoryBreakdown && categoryBreakdown.length > 0
-      ? categoryBreakdown.map((c) => ({ category: c.name, count: c.count }))
-      : FALLBACK_COMPOSITION;
+      ? categoryBreakdown.map((c) => ({ category: c.name, count: c.count, ratio: c.ratio }))
+      : FALLBACK_COMPOSITION.map((c) => ({
+          ...c,
+          ratio: FALLBACK_TOTAL_STORES > 0 ? c.count / FALLBACK_TOTAL_STORES : 0,
+        }));
   const totalStores = current?.marketInfo.totalStoreCount ?? FALLBACK_TOTAL_STORES;
   const referenceDate = current?.marketInfo.asOf ?? "-";
-
-  const competitionScore =
-    sameCategoryCount != null && totalStores > 0
-      ? Math.min(100, Math.round((sameCategoryCount / totalStores) * 100))
-      : FALLBACK_COMPETITION_SCORE;
 
   return {
     riskLevel,
@@ -121,7 +115,6 @@ export const buildUnitAnalysis = (detail: UnitDetail): UnitAnalysis => {
     ],
     district: {
       composition,
-      competitionScore,
       stats: {
         sameCategory: sameCategoryCount,
         totalStores,

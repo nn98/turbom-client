@@ -315,8 +315,10 @@ function NarrativeCard({ lines }: { lines: string[] }) {
 }
 
 function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) {
-  const { composition, competitionScore, stats } = district;
+  const { composition, stats } = district;
+  const [selectedCategory, setSelectedCategory] = useState(() => composition[0] ?? null);
   const max = Math.max(...composition.map((c) => c.count));
+  const competitionScore = selectedCategory ? Math.round(selectedCategory.ratio * 100) : 0;
   return (
     <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
       <Card className="rounded-2xl border-border/70 bg-surface p-6 shadow-card">
@@ -326,7 +328,17 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
         </div>
         <div className="mt-5 space-y-3">
           {composition.map((c) => (
-            <div key={c.category}>
+            <button
+              key={c.category}
+              type="button"
+              onClick={() => setSelectedCategory(c)}
+              className={
+                "block w-full rounded-xl p-2 text-left transition " +
+                (selectedCategory?.category === c.category
+                  ? "bg-secondary/60"
+                  : "hover:bg-secondary/30")
+              }
+            >
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">{c.category}</span>
                 <span className="font-medium text-navy">{c.count}</span>
@@ -337,7 +349,7 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
                   style={{ width: `${(c.count / max) * 100}%` }}
                 />
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </Card>
@@ -345,7 +357,9 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
         <Card className="rounded-2xl border-border/70 bg-surface p-6 shadow-card">
           <div className="flex items-baseline justify-between">
             <h3 className="text-base font-semibold text-navy">경쟁도</h3>
-            <span className="text-xs text-muted-foreground">Competition Score</span>
+            <span className="text-xs text-muted-foreground">
+              {selectedCategory?.category ?? "업종 선택"}
+            </span>
           </div>
           <div className="mt-4 flex items-baseline gap-2">
             <span className="text-4xl font-bold text-navy">{competitionScore}</span>
@@ -361,7 +375,7 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
             {competitionCaptionOf(competitionScore)}
           </p>
           <p className="mt-1 text-[11px] text-muted-foreground/70">
-            반경 300m 내 동일 업종 비중으로 계산한 참고 지표입니다.
+            선택한 업종의 반경 300m 내 점포 비중 기준 참고 지표입니다.
           </p>
         </Card>
         <Card className="rounded-2xl border-border/70 bg-surface p-6 shadow-card">
