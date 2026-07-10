@@ -208,7 +208,9 @@ function ReportHeader({ detail, current }: { detail: UnitDetail; current: Tenanc
           <span className="text-muted-foreground">기준일 {disclaimer.dataAsOf}</span>
         </div>
         <h1 className="mt-3 text-3xl font-bold tracking-tight text-navy sm:text-4xl">
-          {current ? `${displayUnitLabel(unit.label)}) ${current.businessName}` : displayUnitLabel(unit.label)}
+          {current
+            ? `${displayUnitLabel(unit.label)}) ${current.businessName}`
+            : displayUnitLabel(unit.label)}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground sm:text-base">{unit.jibunAddress}</p>
       </div>
@@ -263,7 +265,13 @@ function SummaryGrid({
       note: current?.status === "휴업" ? "휴업 중" : undefined,
     },
     { label: "현재 운영기간", value: current ? `${current.survivalMonths}개월` : "-" },
-    { label: "동일 업종", value: `${analysis.district.stats.sameCategory}개` },
+    {
+      label: "동일 업종",
+      value:
+        analysis.district.stats.sameCategory != null
+          ? `${analysis.district.stats.sameCategory}개`
+          : "정보 없음",
+    },
     { label: "반경 내 점포", value: `${analysis.district.stats.totalStores}개` },
   ];
   return (
@@ -349,12 +357,20 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
               style={{ width: `${competitionScore}%` }}
             />
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">경쟁이 다소 치열한 상권입니다.</p>
+          <p className="mt-3 text-xs text-muted-foreground">
+            {competitionCaptionOf(competitionScore)}
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground/70">
+            반경 300m 내 동일 업종 비중으로 계산한 참고 지표입니다.
+          </p>
         </Card>
         <Card className="rounded-2xl border-border/70 bg-surface p-6 shadow-card">
           <h3 className="text-base font-semibold text-navy">상권 통계</h3>
           <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-            <StatRow k="동일 업종" v={String(stats.sameCategory)} />
+            <StatRow
+              k="동일 업종"
+              v={stats.sameCategory != null ? String(stats.sameCategory) : "정보 없음"}
+            />
             <StatRow k="전체 점포" v={String(stats.totalStores)} />
             <StatRow k="집계 기준일" v={stats.referenceDate} />
           </dl>
@@ -362,6 +378,14 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
       </div>
     </div>
   );
+}
+
+// competitionScore(동일 업종/전체 점포 비중)를 사람이 읽는 문구로 매핑.
+// 구간 자체는 임의 설정이지만 입력값(competitionScore)은 실데이터 기반 계산값이다.
+function competitionCaptionOf(score: number): string {
+  if (score >= 20) return "경쟁이 치열한 상권입니다.";
+  if (score >= 10) return "경쟁이 보통 수준인 상권입니다.";
+  return "경쟁이 상대적으로 적은 상권입니다.";
 }
 
 function StatRow({ k, v }: { k: string; v: string }) {
@@ -669,11 +693,12 @@ function StatsBoard({
   ];
   const areaStats = [
     { label: "전체 점포", value: String(analysis.district.stats.totalStores) },
-    { label: "동일 업종", value: String(analysis.district.stats.sameCategory) },
     {
-      label: "최근 개업",
-      value: String(analysis.district.stats.recentOpenings),
-      hint: "최근 3개월",
+      label: "동일 업종",
+      value:
+        analysis.district.stats.sameCategory != null
+          ? String(analysis.district.stats.sameCategory)
+          : "정보 없음",
     },
     { label: "반경", value: "300m" },
     { label: "집계일", value: analysis.district.stats.referenceDate, wide: true },

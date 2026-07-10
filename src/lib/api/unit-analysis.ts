@@ -2,7 +2,7 @@ import { findOccupant } from "./tenancy";
 import type { UnitDetail } from "./types";
 
 // ── Gray zone ──────────────────────────────────────────────────────────
-// riskLevel/narrative/district/insights/checklist have NO equivalent in
+// riskLevel/narrative/district/checklist have NO equivalent in
 // docs/backend-api.md's response contract (SearchResponse/SiteDetail/
 // UnitDetail only cover site/unit/tenancy + statistics). Decision: keep
 // this entirely as a frontend-side computation layered on top of the real
@@ -11,12 +11,21 @@ import type { UnitDetail } from "./types";
 // components. If the backend ever starts returning this analysis natively,
 // this file is the one place to delete.
 //
-// `district.composition`/`totalStores`/`sameCategory` now read real data
-// from marketInfo (categoryBreakdown/totalStoreCount/sameCategoryNearbyCount)
-// when present, falling back to static demo numbers only when it's absent
-// (mock mode, or a vacant unit with no current occupant). `competitionScore`
-// and `tags` remain pure static demo heuristics — the backend has no
-// equivalent field for either yet.
+// `district.composition`/`totalStores`/`sameCategory`/`referenceDate` read
+// real data from marketInfo (categoryBreakdown/totalStoreCount/
+// sameCategoryNearbyCount/asOf) when present, falling back to static demo
+// numbers only when it's absent (mock mode, or a vacant unit with no
+// current occupant to read marketInfo from). Per docs/report-api.md's
+// annotated sample response, categoryBreakdown/totalStoreCount are computed
+// on a 300m radius and each category's `ratio` is explicitly labeled
+// "경쟁률" (competition rate) — `competitionScore` is derived from that
+// (sameCategoryNearbyCount as a share of totalStoreCount), but it's still a
+// formula WE designed, not a field the backend returns directly; the UI
+// caption says so.
+//
+// `tags`/`insights` used to exist here but were never rendered anywhere in
+// report.$storeId.tsx — removed as dead code rather than "fixed" with real
+// data nobody would see.
 // ──────────────────────────────────────────────────────────────────────
 
 export type RiskLevel = 1 | 2 | 3 | 4 | 5;
@@ -37,14 +46,11 @@ export interface UnitAnalysis {
     composition: { category: string; count: number }[];
     competitionScore: number;
     stats: {
-      sameCategory: number;
-      recentOpenings: number;
+      sameCategory: number | null;
       totalStores: number;
       referenceDate: string;
     };
-    tags: string[];
   };
-  insights: { icon: string; title: string; metric: string; description: string }[];
   checklist: { key: string; label: string }[];
 }
 
@@ -71,19 +77,30 @@ const FALLBACK_COMPOSITION = [
   { category: "기타", count: 17 },
 ];
 const FALLBACK_TOTAL_STORES = 187;
+// Old static demo score, kept only as a fallback when we don't have both
+// real numbers (sameCategoryNearbyCount, totalStoreCount) to compute from.
+const FALLBACK_COMPETITION_SCORE = 74;
 
 export const buildUnitAnalysis = (detail: UnitDetail): UnitAnalysis => {
   const { statistics, timeline } = detail;
   // 영업 중이거나 휴업 중인(=아직 폐업하지 않은) 이력을 "현재 점유자"로 본다.
   const current = findOccupant(timeline);
   const riskLevel = riskLevelOf(statistics.closedCount);
-  const sameCategoryCount = current?.marketInfo.sameCategoryNearbyCount ?? 14;
+  // 폴백으로 임의의 숫자(예: 14)를 지어내지 않는다 — 실데이터가 없으면 null로
+  // 두고 화면에서 "정보 없음"으로 정직하게 표시한다.
+  const sameCategoryCount = current?.marketInfo.sameCategoryNearbyCount ?? null;
   const categoryBreakdown = current?.marketInfo.categoryBreakdown;
   const composition =
     categoryBreakdown && categoryBreakdown.length > 0
       ? categoryBreakdown.map((c) => ({ category: c.name, count: c.count }))
       : FALLBACK_COMPOSITION;
   const totalStores = current?.marketInfo.totalStoreCount ?? FALLBACK_TOTAL_STORES;
+  const referenceDate = current?.marketInfo.asOf ?? "-";
+
+  const competitionScore =
+    sameCategoryCount != null && totalStores > 0
+      ? Math.min(100, Math.round((sameCategoryCount / totalStores) * 100))
+      : FALLBACK_COMPETITION_SCORE;
 
   return {
     riskLevel,
@@ -98,53 +115,19 @@ export const buildUnitAnalysis = (detail: UnitDetail): UnitAnalysis => {
           ? `현재 ${current.businessName}(${current.subCategory})은(는) ${current.survivalMonths}개월째 휴업 중입니다.`
           : `현재 ${current.businessName}(${current.subCategory})은(는) ${current.survivalMonths}개월째 운영 중입니다.`
         : `현재는 공실 상태입니다.`,
-      `반경 300m 내 동일 업종은 ${sameCategoryCount}개입니다.`,
+      sameCategoryCount != null
+        ? `반경 300m 내 동일 업종은 ${sameCategoryCount}개입니다.`
+        : `반경 300m 내 동일 업종 수는 집계되지 않았습니다.`,
     ],
     district: {
       composition,
-      competitionScore: 74,
+      competitionScore,
       stats: {
         sameCategory: sameCategoryCount,
-        recentOpenings: 9,
         totalStores,
-        referenceDate: "2026-06-30",
+        referenceDate,
       },
-      tags: ["유동인구가 많은 역세권", "음식 업종 밀집 지역", "저녁 소비가 활발한 상권"],
     },
-    insights: [
-      current
-        ? current.status === "휴업"
-          ? {
-              icon: "trending",
-              title: "현재 휴업 중",
-              metric: `${current.survivalMonths}개월`,
-              description: "폐업은 아니지만 현재 영업을 쉬고 있는 상태입니다.",
-            }
-          : {
-              icon: "trending",
-              title: "현재 업종 장기 운영 중",
-              metric: `${current.survivalMonths}개월`,
-              description: "평균 생존기간의 두 배 이상 운영 중입니다.",
-            }
-        : {
-            icon: "trending",
-            title: "현재 공실",
-            metric: "0개월",
-            description: "현재 이 자리는 비어 있습니다.",
-          },
-      {
-        icon: "users",
-        title: "반경 내 동일 업종",
-        metric: `${sameCategoryCount}개`,
-        description: "반경 300m 이내에서 유사 업종과 경쟁합니다.",
-      },
-      {
-        icon: "clock",
-        title: "저녁 소비 중심 상권",
-        metric: "저녁 68%",
-        description: "저녁 시간대 소비 비중이 높은 상권입니다.",
-      },
-    ],
     checklist: [
       { key: "recentTrend", label: "최근 개·폐업 흐름을 확인했습니다" },
       { key: "competitionDensity", label: "경쟁 점포와 상권 밀도를 확인했습니다" },
