@@ -1,0 +1,60 @@
+name: Spec Drift Check
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  check-drift:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare local spec mirror against turbom-server
+        id: diff
+        run: |
+          set -e
+          UPSTREAM="https://raw.githubusercontent.com/nn98/turbom-server/main/spec"
+          BODY_FILE="$(mktemp)"
+          DRIFT=0
+          for f in api-spec.md frontend-spec.md; do
+            curl -fsSL "$UPSTREAM/$f" -o "/tmp/$f.upstream"
+            if ! diff -u "docs/spec/$f" "/tmp/$f.upstream" > "/tmp/$f.diff"; then
+              DRIFT=1
+              {
+                echo "### \`$f\` changed upstream"
+                echo '```diff'
+                head -c 4000 "/tmp/$f.diff"
+                echo '```'
+              } >> "$BODY_FILE"
+            fi
+          done
+          echo "drift=$DRIFT" >> "$GITHUB_OUTPUT"
+          cp "$BODY_FILE" /tmp/issue-body.md
+
+      - name: Ensure spec-drift label exists
+        if: steps.diff.outputs.drift == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create spec-drift --repo "${{ github.repository }}" \
+            --color FBCA04 --description "turbom-server spec 미러와 실제 내용이 어긋남" || true
+
+      - name: Open or update drift issue
+        if: steps.diff.outputs.drift == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          EXISTING=$(gh issue list --repo "${{ github.repository }}" --label spec-drift --state open --json number --jq '.[0].number')
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --repo "${{ github.repository }}" --body-file /tmp/issue-body.md
+          else
+            gh issue create --repo "${{ github.repository }}" \
+              --title "turbom-server spec 변경 감지됨" \
+              --label spec-drift \
+              --body-file /tmp/issue-body.md
+          fi
