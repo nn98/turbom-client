@@ -273,24 +273,26 @@ function JibunTabs({
   onSelect: (jibun: string) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-2">
-      {candidates.map((c) => {
-        const active = c.jibunAddress === activeJibun;
-        return (
-          <button
-            key={c.pnu}
-            onClick={() => onSelect(c.jibunAddress)}
-            className={
-              "rounded-full px-4 py-2 text-sm transition " +
-              (active
-                ? "bg-navy text-navy-foreground"
-                : "border border-border bg-surface text-navy hover:border-brand/40")
-            }
-          >
-            {extractLotLabel(c.jibunAddress, query)}
-          </button>
-        );
-      })}
+    <div className="max-h-[108px] overflow-y-auto pr-1">
+      <div className="grid grid-cols-5 gap-2">
+        {candidates.map((c) => {
+          const active = c.jibunAddress === activeJibun;
+          return (
+            <button
+              key={c.pnu}
+              onClick={() => onSelect(c.jibunAddress)}
+              className={
+                "rounded-full px-3 py-1.5 text-xs transition " +
+                (active
+                  ? "bg-navy text-navy-foreground"
+                  : "border border-border bg-surface text-navy hover:border-brand/40")
+              }
+            >
+              {extractLotLabel(c.jibunAddress, query)}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
