@@ -268,10 +268,7 @@ function SummaryGrid({
     { label: "현재 운영기간", value: current ? `${current.survivalMonths}개월` : "-" },
     {
       label: "동일 업종",
-      value:
-        analysis.district.stats.sameCategory != null
-          ? `${analysis.district.stats.sameCategory}개`
-          : "정보 없음",
+      value: `${analysis.district.stats.sameCategory ?? 0}개`,
     },
     { label: "반경 내 점포", value: `${analysis.district.stats.totalStores}개` },
   ];
@@ -418,7 +415,7 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
           <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
             <StatRow
               k="동일 업종"
-              v={stats.sameCategory != null ? String(stats.sameCategory) : "정보 없음"}
+              v={String(stats.sameCategory ?? 0)}
             />
             <StatRow k="전체 점포" v={String(stats.totalStores)} />
             <StatRow k="집계 기준일" v={stats.referenceDate} />
@@ -607,9 +604,7 @@ function TimelineCard({ timeline }: { timeline: Tenancy[] }) {
                 <MarketRow
                   k="동일업종 인근"
                   v={
-                    selected.marketInfo.sameCategoryNearbyCount != null
-                      ? `${selected.marketInfo.sameCategoryNearbyCount}개`
-                      : "-"
+                    `${selected.marketInfo.sameCategoryNearbyCount ?? 0}개`
                   }
                   real
                 />
