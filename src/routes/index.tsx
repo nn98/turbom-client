@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   Building2,
@@ -38,25 +38,92 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
+const SECTION_IDS = ["hero", "address-search", "why-turbohm", "analysis-info"] as const;
+
 function LandingPage() {
+  const mainRef = useRef<HTMLElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    const sections = SECTION_IDS.map((id) => document.getElementById(id)).filter(
+      (el): el is HTMLElement => el !== null,
+    );
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const idx = SECTION_IDS.indexOf(entry.target.id as (typeof SECTION_IDS)[number]);
+            if (idx !== -1) setActiveIndex(idx);
+          }
+        }
+      },
+      { root: mainRef.current, threshold: 0.6 },
+    );
+    sections.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+
+  const isLast = activeIndex === SECTION_IDS.length - 1;
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex h-screen flex-col bg-background">
       <SiteHeader />
-      <main>
+      <main ref={mainRef} className="flex-1 snap-y snap-mandatory overflow-y-auto scroll-smooth">
         <Hero />
         <SearchBand />
-        <KeyFeatures />
         <WhyTurbohm />
         <AnalysisInfo />
       </main>
-      <SiteFooter />
+      <ScrollCue
+        targetId={isLast ? SECTION_IDS[0] : SECTION_IDS[activeIndex + 1]}
+        label={isLast ? "맨 위로" : "더 알아보기"}
+        direction={isLast ? "up" : "down"}
+      />
     </div>
+  );
+}
+
+function scrollToId(id: string) {
+  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function ScrollCue({
+  targetId,
+  label,
+  direction,
+}: {
+  targetId: string;
+  label: string;
+  direction: "down" | "up";
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => scrollToId(targetId)}
+      className="fixed bottom-6 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-1 text-xs font-semibold text-muted-foreground transition hover:text-navy"
+    >
+      {label}
+      <svg
+        viewBox="0 0 24 24"
+        className={`h-4 w-4 motion-safe:animate-bounce ${direction === "up" ? "rotate-180" : ""}`}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="m6 9 6 6 6-6" />
+      </svg>
+    </button>
   );
 }
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden">
+    <section
+      id="hero"
+      className="relative flex min-h-full snap-start flex-col justify-center overflow-hidden"
+    >
       <div
         className="pointer-events-none absolute inset-0 -z-10 opacity-70"
         style={{
@@ -64,7 +131,7 @@ function Hero() {
             "radial-gradient(60% 50% at 20% 20%, oklch(0.95 0.04 155 / 0.5), transparent 60%), radial-gradient(50% 50% at 100% 0%, oklch(0.9 0.03 260 / 0.4), transparent 60%)",
         }}
       />
-      <div className="mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:px-8 lg:py-24">
+      <div className="mx-auto grid w-full max-w-7xl gap-12 px-4 py-12 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:px-8 lg:py-16">
         <div className="flex flex-col justify-center">
           <Badge
             variant="outline"
@@ -78,19 +145,16 @@ function Hero() {
             <br />
             창업이 보입니다.
           </h1>
-          <p className="mt-6 max-w-xl text-balance text-base leading-relaxed text-muted-foreground sm:text-lg">
-            좋은 창업은, 좋은 자리를 보는 것에서 시작됩니다. 계약하려는 바로 그 자리의 과거
-            개업·폐업 이력과 생존 통계를 분석하여 계약 전에 필요한 판단 근거를 제공합니다.
-          </p>
+          <span className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+            좋은 창업은, 좋은 자리를 보는 것에서 시작됩니다. <br />
+            계약하려는 바로 그 자리의 과거 개업·폐업 이력과 <br />
+            생존 통계를 분석하여 계약 전에 필요한 판단 근거를 제공합니다.
+          </span>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button
               size="lg"
               className="rounded-full bg-navy px-6 text-navy-foreground hover:bg-navy/90"
-              onClick={() =>
-                document
-                  .getElementById("address-search")
-                  ?.scrollIntoView({ behavior: "smooth", block: "start" })
-              }
+              onClick={() => scrollToId("address-search")}
             >
               자리 분석하기
               <ArrowRight className="ml-1 h-4 w-4" />
@@ -199,10 +263,10 @@ function SearchBand() {
   return (
     <section
       id="address-search"
-      className="scroll-mt-20 border-y border-border/60 bg-surface-muted/60"
+      className="flex min-h-full snap-start flex-col justify-center border-y border-border/60 bg-surface-muted/60"
     >
-      <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="text-center">
+      <div className="mx-auto w-full max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+        <div>
           <p className="text-xs font-medium tracking-wider text-brand uppercase">Address Search</p>
           <h2 className="mt-2 text-2xl font-semibold text-navy sm:text-3xl">
             지번 주소로 시작하세요
@@ -232,7 +296,7 @@ function SearchBand() {
             검색
           </Button>
         </form>
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-xs">
+        <div className="mt-5 flex flex-wrap items-center gap-2 text-xs">
           <span className="text-muted-foreground">데모 지번:</span>
           {DEMO_ADDRESSES.map((addr) => (
             <button
@@ -258,21 +322,19 @@ function KeyFeatures() {
     { label: "운영 이력", value: "폐업·생존 통계", icon: TrendingDown },
   ];
   return (
-    <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {items.map(({ label, value, icon: Icon }) => (
-          <div key={label} className="flex items-start gap-3">
-            <span className="mt-0.5 grid h-9 w-9 place-items-center rounded-lg bg-brand-soft text-brand">
-              <Icon className="h-4 w-4" />
-            </span>
-            <div>
-              <p className="text-sm text-muted-foreground">{label}</p>
-              <p className="mt-1 text-base font-semibold text-navy">{value}</p>
-            </div>
+    <div className="grid gap-6 border-t border-border/60 pt-8 sm:grid-cols-2 lg:grid-cols-4">
+      {items.map(({ label, value, icon: Icon }) => (
+        <div key={label} className="flex items-start gap-3">
+          <span className="mt-0.5 grid h-9 w-9 place-items-center rounded-lg bg-brand-soft text-brand">
+            <Icon className="h-4 w-4" />
+          </span>
+          <div>
+            <p className="text-sm text-muted-foreground">{label}</p>
+            <p className="mt-1 text-base font-semibold text-navy">{value}</p>
           </div>
-        ))}
-      </div>
-    </section>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -295,22 +357,28 @@ function WhyTurbohm() {
     },
   ];
   return (
-    <section className="border-t border-border/60 bg-surface-muted/50">
-      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+    <section
+      id="why-turbohm"
+      className="flex min-h-full snap-start flex-col justify-center border-t border-border/60 bg-surface-muted/50"
+    >
+      <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <p className="text-sm font-medium text-brand">왜 터봄인가</p>
         <h2 className="mt-3 max-w-3xl text-balance text-3xl font-bold tracking-tight text-navy sm:text-4xl">
           상권을 보기 전에, 자리를 봅니다.
         </h2>
-        <div className="mt-12 grid gap-5 md:grid-cols-3">
+        <div className="mt-8 grid gap-5 md:grid-cols-3">
           {cards.map((c) => (
-            <Card key={c.no} className="rounded-2xl border-border/70 bg-surface p-8 shadow-card">
+            <Card key={c.no} className="rounded-2xl border-border/70 bg-surface p-6 shadow-card">
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-secondary text-sm font-semibold text-navy">
                 {c.no}
               </span>
-              <h3 className="mt-6 text-lg font-semibold text-navy">{c.title}</h3>
+              <h3 className="mt-5 text-lg font-semibold text-navy">{c.title}</h3>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{c.desc}</p>
             </Card>
           ))}
+        </div>
+        <div className="mt-8">
+          <KeyFeatures />
         </div>
       </div>
     </section>
@@ -327,24 +395,32 @@ function AnalysisInfo() {
     { k: "계약 체크리스트", v: "계약 전에 반드시 확인할 항목" },
   ];
   return (
-    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-      <p className="text-sm font-medium text-brand">제공하는 분석 정보</p>
-      <h2 className="mt-3 max-w-3xl text-balance text-3xl font-bold tracking-tight text-navy sm:text-4xl">
-        하나의 자리, 여섯 가지 각도.
-      </h2>
-      <Card className="mt-10 overflow-hidden rounded-2xl border-border/70 bg-surface shadow-card">
-        <ul className="divide-y divide-border/70">
-          {rows.map((r) => (
-            <li
-              key={r.k}
-              className="grid grid-cols-1 gap-2 px-6 py-5 sm:grid-cols-[220px_1fr] sm:items-center sm:gap-6"
-            >
-              <span className="text-sm font-semibold text-navy">{r.k}</span>
-              <span className="text-sm text-muted-foreground">{r.v}</span>
-            </li>
-          ))}
-        </ul>
-      </Card>
+    <section
+      id="analysis-info"
+      className="relative flex min-h-full snap-start flex-col justify-center"
+    >
+      <div className="mx-auto w-full max-w-7xl px-4 py-16 pb-20 sm:px-6 lg:px-8">
+        <p className="text-sm font-medium text-brand">제공하는 분석 정보</p>
+        <h2 className="mt-3 max-w-3xl text-balance text-3xl font-bold tracking-tight text-navy sm:text-4xl">
+          하나의 자리, 여섯 가지 각도.
+        </h2>
+        <Card className="mt-10 overflow-hidden rounded-2xl border-border/70 bg-surface shadow-card">
+          <ul className="divide-y divide-border/70">
+            {rows.map((r) => (
+              <li
+                key={r.k}
+                className="grid grid-cols-1 gap-2 px-6 py-5 sm:grid-cols-[220px_1fr] sm:items-center sm:gap-6"
+              >
+                <span className="text-sm font-semibold text-navy">{r.k}</span>
+                <span className="text-sm text-muted-foreground">{r.v}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </div>
+      <div className="absolute inset-x-0 bottom-0">
+        <SiteFooter />
+      </div>
     </section>
   );
 }
