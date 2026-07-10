@@ -207,7 +207,7 @@ function ReportHeader({
             {unit.label}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-            {unit.jibunAddress} · {unit.roadAddress}
+            {unit.jibunAddress}
           </p>
           <div className="mt-5 flex flex-wrap items-center gap-2">
             {current ? (
