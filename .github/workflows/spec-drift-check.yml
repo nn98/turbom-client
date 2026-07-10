@@ -9,6 +9,7 @@ jobs:
   check-drift:
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       issues: write
     steps:
       - uses: actions/checkout@v4
@@ -49,7 +50,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
-          EXISTING=$(gh issue list --repo "${{ github.repository }}" --label spec-drift --state open --json number --jq '.[0].number')
+          EXISTING=$(gh issue list --repo "${{ github.repository }}" --label spec-drift --state open --json number --jq '.[0].number // empty')
           if [ -n "$EXISTING" ]; then
             gh issue comment "$EXISTING" --repo "${{ github.repository }}" --body-file /tmp/issue-body.md
           else
