@@ -476,7 +476,7 @@ function RiskCard({ level, label }: { level: RiskLevel; label: string }) {
   );
 }
 
-// docs/backend-api.md "③ 물건 상세" 화면 규격: 타임라인(가로 바) + tenancyId
+// docs/spec/api-spec.md "③ 물건 상세" 화면 규격: 타임라인(가로 바) + tenancyId
 // 선택 드롭다운 → 좌: 인허가정보 / 우: marketInfo(sameCategoryNearbyCount만
 // 실값, 나머지는 "예시" 뱃지 + 캡션 상시 노출).
 function TimelineCard({ timeline }: { timeline: Tenancy[] }) {

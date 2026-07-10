@@ -2,18 +2,18 @@ import type { Store, StoreHistory } from "@/lib/mock-data";
 import type { LocationSource, MarketInfo, Tenancy } from "./types";
 
 // Bridges the existing demo dataset (src/lib/mock-data.ts) to the
-// docs/backend-api.md response shape, WITHOUT introducing a second/parallel
+// docs/spec/api-spec.md response shape, WITHOUT introducing a second/parallel
 // mock dataset. The app keeps running on the same demo content and the same
 // ids (Store.id === unitId) it always has — only the shape at the service
 // layer boundary is translated.
 //
 // Known gaps to close later, once real backend integration starts (see
-// docs/backend-api.md):
+// docs/spec/api-spec.md):
 // - `pnu` is a placeholder equal to `jibunFull`, not a real 19-digit PNU.
 // - `category`(대분류)/`subCategory` are approximated below; mock-data.ts
 //   only ever tracked one granularity ("치킨집" 등).
 // - `marketInfo` numbers are synthesized (see buildMarketInfo), matching
-//   docs/backend-api.md's "항상 목업(isPlaceholder: true)" contract.
+//   docs/spec/api-spec.md's "항상 목업(isPlaceholder: true)" contract.
 
 // subCategory(mock-data.ts의 기존 category 값) → category(인허가 대분류) 근사치.
 const SUB_TO_CATEGORY: Record<string, string> = {

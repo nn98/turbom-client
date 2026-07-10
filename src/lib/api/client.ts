@@ -3,7 +3,7 @@
 // real-client directly.
 //
 // Mode is decided once by whether VITE_API_BASE_URL is set (see
-// docs/backend-api.md "목/실 전환"). Unset = demo mode, backed by the
+// docs/spec/api-spec.md "목/실 전환"). Unset = demo mode, backed by the
 // existing demo dataset in src/lib/mock-data.ts (see mock-client.ts /
 // legacy-adapter.ts). Set = every call goes to the real backend at that
 // base URL, using the identical request/response contract defined in

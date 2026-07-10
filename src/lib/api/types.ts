@@ -1,4 +1,4 @@
-// Response contract mirrored from docs/backend-api.md.
+// Response contract mirrored from docs/spec/api-spec.md.
 // Both the mock client and the real client must resolve to these exact shapes
 // so route/component code never needs to know which one is active.
 

@@ -9,7 +9,7 @@ export interface StoreHistory {
   brand: string;
   months: number;
   current?: boolean;
-  // 영업/폐업/휴업 3단계 (docs/backend-api.md의 Tenancy.status와 동일).
+  // 영업/폐업/휴업 3단계 (docs/spec/api-spec.md의 Tenancy.status와 동일).
   // 생략 시 current ? "영업" : "폐업"로 유도됨 — "휴업"은 반드시 명시해야 함.
   status?: "영업" | "폐업" | "휴업";
 }

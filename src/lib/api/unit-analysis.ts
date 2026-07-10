@@ -3,7 +3,7 @@ import type { UnitDetail } from "./types";
 
 // ── Gray zone ──────────────────────────────────────────────────────────
 // riskLevel/narrative/district/checklist have NO equivalent in
-// docs/backend-api.md's response contract (SearchResponse/SiteDetail/
+// docs/spec/api-spec.md's response contract (SearchResponse/SiteDetail/
 // UnitDetail only cover site/unit/tenancy + statistics). Decision: keep
 // this entirely as a frontend-side computation layered on top of the real
 // UnitDetail response — not waiting on a backend/Edge Function endpoint —
@@ -15,7 +15,7 @@ import type { UnitDetail } from "./types";
 // real data from marketInfo (categoryBreakdown/totalStoreCount/
 // sameCategoryNearbyCount/asOf) when present, falling back to static demo
 // numbers only when it's absent (mock mode, or a vacant unit with no
-// current occupant to read marketInfo from). Per docs/report-api.md's
+// current occupant to read marketInfo from). Per docs/spec/api-spec.md's
 // annotated sample response, categoryBreakdown/totalStoreCount are computed
 // on a 300m radius and each category's `ratio` is explicitly labeled
 // "경쟁률" (competition rate) — `competitionScore` is derived from that
