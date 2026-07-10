@@ -135,14 +135,17 @@ export const buildUnitAnalysis = (detail: UnitDetail): UnitAnalysis => {
       },
     ],
     checklist: [
-      { key: "closure", label: "최근 폐업 횟수를 확인했습니다" },
-      { key: "survival", label: "평균 생존기간을 확인했습니다" },
-      { key: "sameFail", label: "동일 업종 실패 여부를 확인했습니다" },
-      { key: "currentOp", label: "현재 운영기간을 확인했습니다" },
-      { key: "competition", label: "경쟁 점포 수를 확인했습니다" },
-      { key: "recentOpen", label: "최근 개업 흐름을 확인했습니다" },
-      { key: "composition", label: "업종 분포를 확인했습니다" },
-      { key: "density", label: "상권 밀도를 확인했습니다" },
+      { key: "recentTrend", label: "최근 개·폐업 흐름을 확인했습니다" },
+      { key: "competitionDensity", label: "경쟁 점포와 상권 밀도를 확인했습니다" },
+      { key: "floatingPopulation", label: "유동인구와 주요 고객층을 확인했습니다" },
+      { key: "ownerMatch", label: "임대인과 실제 소유자의 일치 여부를 확인했습니다" },
+      { key: "licenseEligibility", label: "해당 업종의 인허가 가능 여부를 확인했습니다" },
+      { key: "registryDocs", label: "등기부등본과 건축물대장을 확인했습니다" },
+      {
+        key: "marketRentComparison",
+        label: "주변 시세와 임대료·관리비·권리금을 비교했습니다",
+      },
+      { key: "contractTerms", label: "계약 해지·갱신·원상복구 조건을 확인했습니다" },
     ],
   };
 };
