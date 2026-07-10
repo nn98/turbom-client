@@ -29,7 +29,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { ApiRequestError, buildUnitAnalysis, findOccupant } from "@/lib/api";
+import { ApiRequestError, buildUnitAnalysis, findOccupant, isOccupiedStatus } from "@/lib/api";
 import type { RiskLevel, Tenancy, UnitAnalysis, UnitDetail } from "@/lib/api";
 import { useUnitDetail } from "@/hooks/use-sites";
 
@@ -686,7 +686,7 @@ function StatsBoard({ detail, current }: { detail: UnitDetail; current: Tenancy 
   const sameSubCategoryFailures = current
     ? timeline.filter(
         (t) =>
-          t.status === "폐업" &&
+          !isOccupiedStatus(t.status) &&
           t.tenancyId !== current.tenancyId &&
           t.subCategory === current.subCategory,
       ).length

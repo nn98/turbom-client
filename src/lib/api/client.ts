@@ -33,4 +33,4 @@ export { buildUnitAnalysis } from "./unit-analysis";
 export type { RiskLevel, UnitAnalysis } from "./unit-analysis";
 
 // "이 자리를 지금 누가 쓰고 있는가" (영업 또는 휴업 중인 이력) — see tenancy.ts.
-export { findOccupant } from "./tenancy";
+export { findOccupant, isOccupiedStatus } from "./tenancy";

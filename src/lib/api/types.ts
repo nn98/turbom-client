@@ -96,7 +96,13 @@ export interface Tenancy {
   industryDetail: string | null;
   licensedAt: string;
   closedAt: string | null;
-  status: "영업" | "폐업" | "휴업";
+  // api-spec.md는 "영업"|"폐업"|"휴업" 3값만 선언하지만, 실 배포 백엔드는
+  // 인허가 원본 상태값을 그대로 흘려보내는 경우가 있다(예:
+  // "취소/말소/만료/정지/중지", "제외/삭제/전출" — 2026-07-11 실측, CLAUDE.md
+  // "알려진 스펙-실측 차이" 참고). "영업"/"휴업"만 코드가 실제로 분기하는
+  // 값이라 리터럴로 남기고, 나머지(폐업 포함)는 string으로 수용한다 —
+  // isOccupiedStatus()로 판정할 것.
+  status: "영업" | "휴업" | (string & {});
   survivalMonths: number | null;
   closedAtEstimated: boolean;
   enrichmentSource: EnrichmentSource;
