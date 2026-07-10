@@ -17,6 +17,26 @@ import { MapView } from "@/components/map-view";
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
 
+// jibunAddress는 "시/도 시/군/구 동 지번 [건물명] [층·호]" 형태로 건물명·층·호까지
+// 이어붙어 있어서 마지막 토큰이 지번이라는 보장이 없다. 검색어에서 동/읍/면/리로
+// 끝나는 토큰(행정동 이름)을 찾아 jibunAddress 안에서 그 위치를 앵커로 삼고,
+// 바로 다음 토큰(지번)만 탭 라벨로 쓴다. 앵커를 못 찾으면 기존 방식(마지막 토큰)으로 폴백.
+const DONG_SUFFIX = /(동|읍|면|리|가)$/;
+
+const extractLotLabel = (jibunAddress: string, query: string): string => {
+  const tokens = jibunAddress.trim().split(/\s+/);
+  const queryTokens = query.trim().split(/\s+/).filter(Boolean);
+  const dongToken = queryTokens
+    .slice()
+    .reverse()
+    .find((t) => DONG_SUFFIX.test(t));
+  if (dongToken) {
+    const idx = tokens.findIndex((t) => t === dongToken);
+    if (idx !== -1 && idx + 1 < tokens.length) return tokens[idx + 1];
+  }
+  return tokens[tokens.length - 1] ?? jibunAddress;
+};
+
 const searchSchema = z.object({
   q: z.string().optional().catch(""),
   jibun: z.string().optional().catch(""),
@@ -101,6 +121,7 @@ function SearchPage() {
               <JibunTabs
                 candidates={candidates}
                 activeJibun={activeCandidate?.jibunAddress ?? ""}
+                query={q}
                 onSelect={(j) => navigate({ to: "/search", search: { q, jibun: j } })}
               />
               {activeCandidate && <ActiveJibunSummary candidate={activeCandidate} />}
@@ -221,10 +242,12 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 function JibunTabs({
   candidates,
   activeJibun,
+  query,
   onSelect,
 }: {
   candidates: Candidate[];
   activeJibun: string;
+  query: string;
   onSelect: (jibun: string) => void;
 }) {
   return (
@@ -242,7 +265,7 @@ function JibunTabs({
                 : "border border-border bg-surface text-navy hover:border-brand/40")
             }
           >
-            {c.jibunAddress.split(" ").slice(-1)[0]}
+            {extractLotLabel(c.jibunAddress, query)}
           </button>
         );
       })}
