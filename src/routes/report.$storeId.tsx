@@ -35,6 +35,25 @@ const jibunBaseOf = (jibunAddress: string) => jibunAddress.replace(/-\d+$/, "");
 const formatKrw = (n: number) => `${n.toLocaleString("ko-KR")}원`;
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
+const floorSortValue = (label: string) => {
+  const floorMatch = label.match(/(-?\d+)\s*층/);
+  if (!floorMatch) return Number.MAX_SAFE_INTEGER;
+  return Number(floorMatch[1]);
+};
+const unitSortValue = (label: string) => {
+  const unitMatch = label.match(/(\d+)\s*호/);
+  if (!unitMatch) return Number.MAX_SAFE_INTEGER;
+  return Number(unitMatch[1]);
+};
+const displayUnitLabel = (label: string) => {
+  if (label.match(/-?\d+\s*층/)) return label;
+  const explicitFloor = floorSortValue(label);
+  if (explicitFloor !== Number.MAX_SAFE_INTEGER) return label;
+  const unit = unitSortValue(label);
+  if (unit === Number.MAX_SAFE_INTEGER) return label;
+  const inferredFloor = unit >= 100 ? Math.floor(unit / 100) : 0;
+  return `${inferredFloor}층 ${label}`;
+};
 
 export const Route = createFileRoute("/report/$storeId")({
   head: () => ({
@@ -189,33 +208,9 @@ function ReportHeader({ detail, current }: { detail: UnitDetail; current: Tenanc
           <span className="text-muted-foreground">기준일 {disclaimer.dataAsOf}</span>
         </div>
         <h1 className="mt-3 text-3xl font-bold tracking-tight text-navy sm:text-4xl">
-          {unit.label}
+          {current ? `${displayUnitLabel(unit.label)}) ${current.businessName}` : displayUnitLabel(unit.label)}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground sm:text-base">{unit.jibunAddress}</p>
-        <div className="mt-5 flex flex-wrap items-center gap-2">
-          {current ? (
-            <>
-              <Badge
-                className={
-                  "rounded-full " +
-                  (current.status === "휴업"
-                    ? "bg-warn-soft text-warn hover:bg-warn-soft"
-                    : "bg-brand-soft text-navy hover:bg-brand-soft")
-                }
-              >
-                현재 {current.businessName}
-                {current.status === "휴업" ? " · 휴업 중" : ""}
-              </Badge>
-              <Badge variant="outline" className="rounded-full border-border text-muted-foreground">
-                {current.survivalMonths}개월 {current.status === "휴업" ? "입점" : "운영"}
-              </Badge>
-            </>
-          ) : (
-            <Badge variant="secondary" className="rounded-full">
-              현재 공실
-            </Badge>
-          )}
-        </div>
       </div>
     </Card>
   );
