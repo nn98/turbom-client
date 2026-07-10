@@ -176,7 +176,6 @@ function SearchPage() {
                   jibunAddress={activeCandidate?.jibunAddress ?? ""}
                 />
               )}
-
             </div>
             <div className="lg:sticky lg:top-24 lg:self-start">
               {activeCandidate &&
@@ -311,13 +310,7 @@ function JibunTabs({
   );
 }
 
-function UnitList({
-  units,
-  jibunAddress,
-}: {
-  units: UnitSummary[];
-  jibunAddress: string;
-}) {
+function UnitList({ units, jibunAddress }: { units: UnitSummary[]; jibunAddress: string }) {
   const [statusFilter, setStatusFilter] = useState<"all" | "영업" | "공실">("all");
   if (!units.length) return null;
   const sortedUnits = [...units]
@@ -388,9 +381,7 @@ function UnitList({
                     : displayUnitLabel(u.label)}
                 </span>
                 {u.currentStatus === "영업" && u.currentBusinessName ? (
-                  <span className="text-base font-semibold text-navy">
-                    {u.currentBusinessName}
-                  </span>
+                  <span className="text-base font-semibold text-navy">{u.currentBusinessName}</span>
                 ) : null}
               </div>
               <p className="mt-1.5 line-clamp-1 text-sm text-muted-foreground">{jibunAddress}</p>

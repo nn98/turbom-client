@@ -86,6 +86,11 @@ export const mockGetUnitDetail = async (unitId: string): Promise<UnitDetail> => 
       label: `${store.floor} ${store.unit}`,
       jibunAddress: store.jibunFull,
       roadAddress: store.roadAddress,
+      // mock-data.ts는 이미 floor/unit이 분리되어 있어 백엔드의 파싱 단계가
+      // 필요 없다 — 실 백엔드 전용 필드라 항상 null.
+      parsedFloor: null,
+      parsedUnitNo: null,
+      parseConfidence: null,
     },
     statistics: {
       totalTenancyCount: timeline.length,

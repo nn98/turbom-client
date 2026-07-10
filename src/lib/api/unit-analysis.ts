@@ -8,11 +8,15 @@ import type { UnitDetail } from "./types";
 // this entirely as a frontend-side computation layered on top of the real
 // UnitDetail response — not waiting on a backend/Edge Function endpoint —
 // so it lives here in the service layer rather than scattered across route
-// components. `district`'s composition/competitionScore/tags are static
-// demo heuristics (same as the pre-migration report), not derived from any
-// per-unit data; only `sameCategory` borrows the one real market field
-// (marketInfo.sameCategoryNearbyCount). If the backend ever starts
-// returning this analysis natively, this file is the one place to delete.
+// components. If the backend ever starts returning this analysis natively,
+// this file is the one place to delete.
+//
+// `district.composition`/`totalStores`/`sameCategory` now read real data
+// from marketInfo (categoryBreakdown/totalStoreCount/sameCategoryNearbyCount)
+// when present, falling back to static demo numbers only when it's absent
+// (mock mode, or a vacant unit with no current occupant). `competitionScore`
+// and `tags` remain pure static demo heuristics — the backend has no
+// equivalent field for either yet.
 // ──────────────────────────────────────────────────────────────────────
 
 export type RiskLevel = 1 | 2 | 3 | 4 | 5;
@@ -52,12 +56,34 @@ const riskLevelOf = (closedCount: number): RiskLevel => {
   return 1;
 };
 
+// district.composition/totalStores used to be 100% static demo numbers
+// (same on every report). The backend's marketInfo now includes real
+// categoryBreakdown/totalStoreCount (confirmed 2026-07-10), so those are
+// used when present. Falls back to the old static demo numbers only when
+// absent — mock mode (legacy-adapter.ts never sets these) or a vacant unit
+// with no current occupant to read marketInfo from.
+const FALLBACK_COMPOSITION = [
+  { category: "음식점", count: 62 },
+  { category: "카페", count: 34 },
+  { category: "주점", count: 21 },
+  { category: "편의/생활", count: 28 },
+  { category: "서비스", count: 25 },
+  { category: "기타", count: 17 },
+];
+const FALLBACK_TOTAL_STORES = 187;
+
 export const buildUnitAnalysis = (detail: UnitDetail): UnitAnalysis => {
   const { statistics, timeline } = detail;
   // 영업 중이거나 휴업 중인(=아직 폐업하지 않은) 이력을 "현재 점유자"로 본다.
   const current = findOccupant(timeline);
   const riskLevel = riskLevelOf(statistics.closedCount);
   const sameCategoryCount = current?.marketInfo.sameCategoryNearbyCount ?? 14;
+  const categoryBreakdown = current?.marketInfo.categoryBreakdown;
+  const composition =
+    categoryBreakdown && categoryBreakdown.length > 0
+      ? categoryBreakdown.map((c) => ({ category: c.name, count: c.count }))
+      : FALLBACK_COMPOSITION;
+  const totalStores = current?.marketInfo.totalStoreCount ?? FALLBACK_TOTAL_STORES;
 
   return {
     riskLevel,
@@ -73,23 +99,14 @@ export const buildUnitAnalysis = (detail: UnitDetail): UnitAnalysis => {
           : `현재 ${current.businessName}(${current.subCategory})은(는) ${current.survivalMonths}개월째 운영 중입니다.`
         : `현재는 공실 상태입니다.`,
       `반경 300m 내 동일 업종은 ${sameCategoryCount}개입니다.`,
-      `최근 창업 활동은 꾸준히 이어지고 있습니다.`,
-      `경쟁이 치열한 업종은 운영 이력과 경쟁도를 함께 고려하는 것이 좋습니다.`,
     ],
     district: {
-      composition: [
-        { category: "음식점", count: 62 },
-        { category: "카페", count: 34 },
-        { category: "주점", count: 21 },
-        { category: "편의/생활", count: 28 },
-        { category: "서비스", count: 25 },
-        { category: "기타", count: 17 },
-      ],
+      composition,
       competitionScore: 74,
       stats: {
         sameCategory: sameCategoryCount,
         recentOpenings: 9,
-        totalStores: 187,
+        totalStores,
         referenceDate: "2026-06-30",
       },
       tags: ["유동인구가 많은 역세권", "음식 업종 밀집 지역", "저녁 소비가 활발한 상권"],
@@ -120,12 +137,6 @@ export const buildUnitAnalysis = (detail: UnitDetail): UnitAnalysis => {
         title: "반경 내 동일 업종",
         metric: `${sameCategoryCount}개`,
         description: "반경 300m 이내에서 유사 업종과 경쟁합니다.",
-      },
-      {
-        icon: "sparkles",
-        title: "최근 6개월 신규 개업",
-        metric: "9개",
-        description: "상권은 활발하지만 경쟁 강도가 함께 상승 중입니다.",
       },
       {
         icon: "clock",

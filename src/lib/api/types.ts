@@ -65,6 +65,13 @@ export interface Statistics {
   shortestSurvivalMonths: number | null;
 }
 
+export interface CategoryBreakdownItem {
+  code: string;
+  name: string;
+  count: number;
+  ratio: number;
+}
+
 export interface MarketInfo {
   isPlaceholder: boolean;
   leaseAreaSqm: number | null;
@@ -75,6 +82,10 @@ export interface MarketInfo {
   sameCategoryNearbyCount: number | null;
   vacancyRatePercent: number | null;
   asOf: string;
+  // Real (non-placeholder) 상권 데이터 — 관측된 응답에선 항상 채워져 있었지만
+  // 이전 응답 캐시나 데이터 없는 지역 대비 nullable로 취급.
+  totalStoreCount: number | null;
+  categoryBreakdown: CategoryBreakdownItem[] | null;
 }
 
 export interface Tenancy {
@@ -98,6 +109,11 @@ export interface UnitDetail {
     label: string;
     jibunAddress: string;
     roadAddress: string;
+    // 백엔드가 label 문자열에서 층/호수를 파싱한 결과. 전체 enum은 미확인 —
+    // 지금까지 관측된 값은 "HIGH" 뿐이라 느슨하게 string으로 둔다.
+    parsedFloor: string | null;
+    parsedUnitNo: string | null;
+    parseConfidence: string | null;
   };
   statistics: Statistics;
   timeline: Tenancy[];

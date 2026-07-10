@@ -61,6 +61,10 @@ export const buildMarketInfo = (tenancyId: string, isCurrent: boolean): MarketIn
   sameCategoryNearbyCount: isCurrent ? Math.round(4 + seededUnit(tenancyId, 6) * 20) : null,
   vacancyRatePercent: Math.round(seededUnit(tenancyId, 7) * 25 * 10) / 10,
   asOf: "2026-06-30",
+  // mock-data.ts에는 상권 업종 구성 데이터가 없다 — unit-analysis.ts가 null일
+  // 때 데모용 고정값으로 폴백한다.
+  totalStoreCount: null,
+  categoryBreakdown: null,
 });
 
 export const matchedToLocationSource = (matched: Store["matched"]): LocationSource => {

@@ -8,8 +8,6 @@ import {
   ChevronRight,
   Circle,
   Clock,
-  MapPin,
-  Sparkles,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -111,7 +109,7 @@ function ReportPage() {
       <SiteHeader />
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <Breadcrumbs detail={detail} />
-        <ReportHeader detail={detail} analysis={analysis} current={current} />
+        <ReportHeader detail={detail} current={current} />
 
         <div className="mt-10 space-y-16">
           <Section index="01" title="핵심 요약" subtitle="가장 먼저 확인할 판단 지표">
@@ -138,20 +136,16 @@ function ReportPage() {
             <RiskCard level={analysis.riskLevel} label={analysis.riskLabel} />
           </Section>
 
-          <Section index="05" title="핵심 인사이트" subtitle="판단에 도움이 되는 핵심 내용">
-            <InsightGrid insights={analysis.insights} />
-          </Section>
-
-          <Section index="06" title="운영 이력" subtitle="이 자리를 거쳐간 업종의 시간 흐름입니다.">
+          <Section index="05" title="운영 이력" subtitle="이 자리를 거쳐간 업종의 시간 흐름입니다.">
             <TimelineCard timeline={detail.timeline} />
           </Section>
 
-          <Section index="07" title="통계" subtitle="자리 운영과 주변 상권의 숫자">
+          <Section index="06" title="통계" subtitle="자리 운영과 주변 상권의 숫자">
             <StatsBoard detail={detail} analysis={analysis} current={current} />
           </Section>
 
           <Section
-            index="08"
+            index="07"
             title="계약 체크리스트"
             subtitle="계약 전에 반드시 확인해야 하는 항목"
           >
@@ -183,85 +177,47 @@ function Breadcrumbs({ detail }: { detail: UnitDetail }) {
   );
 }
 
-function ReportHeader({
-  detail,
-  analysis,
-  current,
-}: {
-  detail: UnitDetail;
-  analysis: UnitAnalysis;
-  current: Tenancy | null;
-}) {
+function ReportHeader({ detail, current }: { detail: UnitDetail; current: Tenancy | null }) {
   const { unit, disclaimer } = detail;
   return (
     <Card className="rounded-2xl border-border/70 bg-surface p-6 shadow-elevated sm:p-8">
-      <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-start">
-        <div>
-          <div className="flex items-center gap-2 text-xs">
-            <Badge variant="outline" className="rounded-full border-border text-muted-foreground">
-              <Building2 className="mr-1 h-3 w-3" /> 자리 리포트
-            </Badge>
-            <span className="text-muted-foreground">기준일 {disclaimer.dataAsOf}</span>
-          </div>
-          <h1 className="mt-3 text-3xl font-bold tracking-tight text-navy sm:text-4xl">
-            {unit.label}
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-            {unit.jibunAddress}
-          </p>
-          <div className="mt-5 flex flex-wrap items-center gap-2">
-            {current ? (
-              <>
-                <Badge
-                  className={
-                    "rounded-full " +
-                    (current.status === "휴업"
-                      ? "bg-warn-soft text-warn hover:bg-warn-soft"
-                      : "bg-brand-soft text-navy hover:bg-brand-soft")
-                  }
-                >
-                  현재 {current.businessName}
-                  {current.status === "휴업" ? " · 휴업 중" : ""}
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className="rounded-full border-border text-muted-foreground"
-                >
-                  {current.survivalMonths}개월 {current.status === "휴업" ? "입점" : "운영"}
-                </Badge>
-              </>
-            ) : (
-              <Badge variant="secondary" className="rounded-full">
-                현재 공실
-              </Badge>
-            )}
-          </div>
+      <div>
+        <div className="flex items-center gap-2 text-xs">
+          <Badge variant="outline" className="rounded-full border-border text-muted-foreground">
+            <Building2 className="mr-1 h-3 w-3" /> 자리 리포트
+          </Badge>
+          <span className="text-muted-foreground">기준일 {disclaimer.dataAsOf}</span>
         </div>
-        <RiskBadge level={analysis.riskLevel} label={analysis.riskLabel} />
+        <h1 className="mt-3 text-3xl font-bold tracking-tight text-navy sm:text-4xl">
+          {unit.label}
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground sm:text-base">{unit.jibunAddress}</p>
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          {current ? (
+            <>
+              <Badge
+                className={
+                  "rounded-full " +
+                  (current.status === "휴업"
+                    ? "bg-warn-soft text-warn hover:bg-warn-soft"
+                    : "bg-brand-soft text-navy hover:bg-brand-soft")
+                }
+              >
+                현재 {current.businessName}
+                {current.status === "휴업" ? " · 휴업 중" : ""}
+              </Badge>
+              <Badge variant="outline" className="rounded-full border-border text-muted-foreground">
+                {current.survivalMonths}개월 {current.status === "휴업" ? "입점" : "운영"}
+              </Badge>
+            </>
+          ) : (
+            <Badge variant="secondary" className="rounded-full">
+              현재 공실
+            </Badge>
+          )}
+        </div>
       </div>
     </Card>
-  );
-}
-
-function RiskBadge({ level, label }: { level: RiskLevel; label: string }) {
-  const isRisk = level >= 4;
-  return (
-    <div className="min-w-[220px] rounded-xl border border-border/70 bg-background p-5 text-center">
-      <p className="text-xs text-muted-foreground">종합 위험도</p>
-      <div className="mt-2 flex justify-center gap-1 text-xl">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <span
-            key={i}
-            className={i <= level ? (isRisk ? "text-danger" : "text-warn") : "text-border"}
-          >
-            ★
-          </span>
-        ))}
-      </div>
-      <p className={"mt-2 text-lg font-semibold " + (isRisk ? "text-danger" : "text-navy")}>
-        {label}
-      </p>
-    </div>
   );
 }
 
@@ -356,7 +312,7 @@ function NarrativeCard({ lines }: { lines: string[] }) {
 }
 
 function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) {
-  const { composition, competitionScore, stats, tags } = district;
+  const { composition, competitionScore, stats } = district;
   const max = Math.max(...composition.map((c) => c.count));
   return (
     <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
@@ -404,21 +360,9 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
           <h3 className="text-base font-semibold text-navy">상권 통계</h3>
           <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
             <StatRow k="동일 업종" v={String(stats.sameCategory)} />
-            <StatRow k="최근 개업" v={String(stats.recentOpenings)} />
             <StatRow k="전체 점포" v={String(stats.totalStores)} />
             <StatRow k="집계 기준일" v={stats.referenceDate} />
           </dl>
-        </Card>
-        <Card className="rounded-2xl border-border/70 bg-surface p-6 shadow-card">
-          <h3 className="text-base font-semibold text-navy">상권 특징</h3>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {tags.map((t) => (
-              <Badge key={t} variant="secondary" className="rounded-full bg-brand-soft text-navy">
-                <MapPin className="mr-1 h-3 w-3 text-brand" />
-                {t}
-              </Badge>
-            ))}
-          </div>
         </Card>
       </div>
     </div>
@@ -476,37 +420,6 @@ function RiskCard({ level, label }: { level: RiskLevel; label: string }) {
   );
 }
 
-const INSIGHT_ICONS = {
-  trending: TrendingUp,
-  users: Users,
-  sparkles: Sparkles,
-  clock: Clock,
-} as const;
-
-function InsightGrid({ insights }: { insights: UnitAnalysis["insights"] }) {
-  return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      {insights.map((it) => {
-        const Icon = INSIGHT_ICONS[it.icon as keyof typeof INSIGHT_ICONS] ?? Sparkles;
-        return (
-          <Card key={it.title} className="rounded-2xl border-border/70 bg-surface p-6 shadow-card">
-            <div className="flex items-start gap-4">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-brand-soft text-brand">
-                <Icon className="h-5 w-5" />
-              </span>
-              <div className="flex-1">
-                <h3 className="text-sm font-semibold text-navy">{it.title}</h3>
-                <p className="mt-1 text-2xl font-bold text-navy">{it.metric}</p>
-                <p className="mt-2 text-sm text-muted-foreground">{it.description}</p>
-              </div>
-            </div>
-          </Card>
-        );
-      })}
-    </div>
-  );
-}
-
 // docs/backend-api.md "③ 물건 상세" 화면 규격: 타임라인(가로 바) + tenancyId
 // 선택 드롭다운 → 좌: 인허가정보 / 우: marketInfo(sameCategoryNearbyCount만
 // 실값, 나머지는 "예시" 뱃지 + 캡션 상시 노출).
@@ -531,7 +444,7 @@ function TimelineCard({ timeline }: { timeline: Tenancy[] }) {
                   type="button"
                   onClick={() => setSelectedId(t.tenancyId)}
                   className={
-                    "-m-2 min-w-[180px] flex-1 rounded-lg p-2 text-left transition hover:bg-secondary/50 " +
+                    "min-w-[180px] flex-1 rounded-lg p-2 text-left transition hover:bg-secondary/50 " +
                     (t.tenancyId === selectedId ? "bg-secondary/60" : "")
                   }
                 >
