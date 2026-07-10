@@ -1,14 +1,12 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   ArrowRight,
   Building2,
-  ClipboardCheck,
   Database,
   Layers,
   MapPin,
   Search,
-  Sparkles,
   TrendingDown,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -50,7 +48,6 @@ function LandingPage() {
         <KeyFeatures />
         <WhyTurbohm />
         <AnalysisInfo />
-        <ClosingCta />
       </main>
       <SiteFooter />
     </div>
@@ -82,29 +79,21 @@ function Hero() {
             창업이 보입니다.
           </h1>
           <p className="mt-6 max-w-xl text-balance text-base leading-relaxed text-muted-foreground sm:text-lg">
-            좋은 창업은, 좋은 자리를 보는 것에서 시작됩니다. 계약하려는 바로 그 자리의 과거 개업·폐업 이력과
-            생존 통계를 분석하여 계약 전에 필요한 판단 근거를 제공합니다.
+            좋은 창업은, 좋은 자리를 보는 것에서 시작됩니다. 계약하려는 바로 그 자리의 과거
+            개업·폐업 이력과 생존 통계를 분석하여 계약 전에 필요한 판단 근거를 제공합니다.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button
-              asChild
               size="lg"
               className="rounded-full bg-navy px-6 text-navy-foreground hover:bg-navy/90"
+              onClick={() =>
+                document
+                  .getElementById("address-search")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" })
+              }
             >
-              <Link to="/search">
-                자리 분석하기
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              size="lg"
-              className="rounded-full border-border bg-surface px-6"
-            >
-              <Link to="/search" search={{ q: "성남시 수정구 신흥동 123", demo: true }}>
-                데모 분석 보기
-              </Link>
+              자리 분석하기
+              <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
           </div>
           <p className="mt-5 text-xs text-muted-foreground">
@@ -128,7 +117,10 @@ function PreviewReportCard() {
           <span className="h-2 w-2 rounded-full bg-brand" />
           <span className="text-xs font-medium text-muted-foreground">분석 리포트 · 미리보기</span>
         </div>
-        <Badge variant="outline" className="rounded-full border-border text-[10px] tracking-wider text-muted-foreground">
+        <Badge
+          variant="outline"
+          className="rounded-full border-border text-[10px] tracking-wider text-muted-foreground"
+        >
           SAMPLE
         </Badge>
       </div>
@@ -140,15 +132,27 @@ function PreviewReportCard() {
 
       <div className="mt-6 grid grid-cols-2 gap-3">
         <MiniMetric label="위험도" value={<StarRow filled={4} />} note="위험" />
-        <MiniMetric label="최근 9년 폐업" value={<span className="text-2xl font-bold text-navy">4회</span>} />
-        <MiniMetric label="평균 생존기간" value={<span className="text-2xl font-bold text-navy">21개월</span>} />
-        <MiniMetric label="현재 업종" value={<span className="text-lg font-semibold text-navy">치킨집 · 41개월</span>} />
+        <MiniMetric
+          label="최근 9년 폐업"
+          value={<span className="text-2xl font-bold text-navy">4회</span>}
+        />
+        <MiniMetric
+          label="평균 생존기간"
+          value={<span className="text-2xl font-bold text-navy">21개월</span>}
+        />
+        <MiniMetric
+          label="현재 업종"
+          value={<span className="text-lg font-semibold text-navy">치킨집 · 41개월</span>}
+        />
       </div>
 
       <div className="mt-5 rounded-xl border border-warn/30 bg-warn-soft/60 p-4">
         <p className="text-sm text-navy">
           <span className="font-semibold">카페 업종 반복 폐업</span>
-          <span className="text-muted-foreground"> — 이 자리에서 카페는 최근 5년간 3회 폐업했습니다. 카페 창업은 신중한 검토가 필요합니다.</span>
+          <span className="text-muted-foreground">
+            {" "}
+            — 이 자리에서 카페는 최근 5년간 3회 폐업했습니다. 카페 창업은 신중한 검토가 필요합니다.
+          </span>
         </p>
       </div>
     </Card>
@@ -177,11 +181,7 @@ function StarRow({ filled }: { filled: number }) {
   return (
     <div className="flex items-center gap-1">
       {[1, 2, 3, 4, 5].map((i) => (
-        <span
-          key={i}
-          className={i <= filled ? "text-danger" : "text-border"}
-          aria-hidden
-        >
+        <span key={i} className={i <= filled ? "text-danger" : "text-border"} aria-hidden>
           ★
         </span>
       ))}
@@ -197,11 +197,16 @@ function SearchBand() {
     navigate({ to: "/search", search: { q: query.trim(), demo: false } });
   };
   return (
-    <section className="border-y border-border/60 bg-surface-muted/60">
+    <section
+      id="address-search"
+      className="scroll-mt-20 border-y border-border/60 bg-surface-muted/60"
+    >
       <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="text-center">
           <p className="text-xs font-medium tracking-wider text-brand uppercase">Address Search</p>
-          <h2 className="mt-2 text-2xl font-semibold text-navy sm:text-3xl">지번 주소로 시작하세요</h2>
+          <h2 className="mt-2 text-2xl font-semibold text-navy sm:text-3xl">
+            지번 주소로 시작하세요
+          </h2>
         </div>
         <form
           className="mt-6 flex flex-col gap-2 sm:flex-row"
@@ -340,53 +345,6 @@ function AnalysisInfo() {
           ))}
         </ul>
       </Card>
-    </section>
-  );
-}
-
-function ClosingCta() {
-  return (
-    <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
-      <div className="relative overflow-hidden rounded-3xl bg-navy p-10 text-navy-foreground sm:p-14">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-40"
-          style={{
-            background:
-              "radial-gradient(60% 60% at 100% 0%, oklch(0.62 0.14 155 / 0.35), transparent 60%)",
-          }}
-        />
-        <div className="relative flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-end">
-          <div className="max-w-2xl">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">계약 전에, 자리를 먼저 보세요.</h2>
-            <p className="mt-3 text-sm text-navy-foreground/70 sm:text-base">
-              지번 주소 하나로 시작합니다. 층·호 단위 상가별 리포트를 확인하세요.
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <Button
-              asChild
-              size="lg"
-              className="rounded-full bg-background text-navy hover:bg-background/90"
-            >
-              <Link to="/search">
-                <ClipboardCheck className="mr-1 h-4 w-4" />
-                자리 분석하기
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="rounded-full border-navy-foreground/30 bg-transparent text-navy-foreground hover:bg-navy-foreground/10 hover:text-navy-foreground"
-            >
-              <Link to="/search" search={{ q: "성남시 수정구 신흥동 123", demo: true }}>
-                <Sparkles className="mr-1 h-4 w-4" />
-                데모 보기
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </div>
     </section>
   );
 }
