@@ -16,6 +16,11 @@ import { isDemoMode } from "@/lib/api";
 import type { UnitSummary } from "@/lib/api";
 import { useSiteDetail, useSiteSearch } from "@/hooks/use-sites";
 import { MapView } from "@/components/map-view";
+import { withinRadius } from "@/lib/geo";
+
+// 넓은 동/읍 이름만으로 검색하면 후보가 실제 관심 범위 밖까지 잡힐 수 있다 —
+// 매칭된 후보들 좌표의 근사 중심점(withinRadius 참고) 기준 반경 300m로 좁힌다.
+const SEARCH_RADIUS_METERS = 300;
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
@@ -103,7 +108,7 @@ function SearchPage() {
   useEffect(() => setInput(q), [q]);
 
   const searchQuery = useSiteSearch(q);
-  const candidates = searchQuery.data?.candidates ?? [];
+  const candidates = withinRadius(searchQuery.data?.candidates ?? [], SEARCH_RADIUS_METERS);
   const activeJibun = jibun || candidates[0]?.jibunAddress || "";
   const activeCandidate = candidates.find((c) => c.jibunAddress === activeJibun) ?? candidates[0];
   const siteDetailQuery = useSiteDetail(activeCandidate?.pnu);
@@ -384,40 +389,46 @@ function SegmentedTabs({
   }, [activeId, items.length, expanded]);
 
   return (
-    <div
-      ref={containerRef}
-      role="radiogroup"
-      className="relative flex flex-wrap gap-1 rounded-full bg-secondary p-1"
-    >
-      {thumb && (
-        <span
-          aria-hidden
-          className="absolute inset-y-1 rounded-full bg-navy transition-[left,width] duration-300 ease-out"
-          style={{ left: thumb.left, width: thumb.width }}
-        />
-      )}
-      {visibleItems.map((it) => (
-        <button
-          key={it.id}
-          data-id={it.id}
-          role="radio"
-          aria-checked={it.id === activeId}
-          onClick={() => onChange(it.id)}
-          className={
-            "relative z-10 shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors " +
-            (it.id === activeId ? "text-navy-foreground" : "text-muted-foreground hover:text-navy")
-          }
-        >
-          {it.label}
-        </button>
-      ))}
+    <div className="flex items-center gap-1.5">
+      <div
+        ref={containerRef}
+        role="radiogroup"
+        className="relative flex min-w-0 flex-1 gap-1 overflow-x-auto rounded-full bg-secondary p-1"
+      >
+        {thumb && (
+          <span
+            aria-hidden
+            className="absolute inset-y-1 rounded-full bg-navy transition-[left,width] duration-300 ease-out"
+            style={{ left: thumb.left, width: thumb.width }}
+          />
+        )}
+        {visibleItems.map((it) => (
+          <button
+            key={it.id}
+            data-id={it.id}
+            role="radio"
+            aria-checked={it.id === activeId}
+            onClick={() => onChange(it.id)}
+            className={
+              "relative z-10 shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors " +
+              (it.id === activeId
+                ? "text-navy-foreground"
+                : "text-muted-foreground hover:text-navy")
+            }
+          >
+            {it.label}
+          </button>
+        ))}
+      </div>
+      {/* 스크롤 트랙 안에 같이 두면 스크롤해야만 보여서 존재를 알아채기 어렵다
+          — 항상 보이는 자리에 별도로 둔다. */}
       {hiddenCount > 0 && (
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="relative z-10 shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold text-brand hover:text-navy"
+          className="shrink-0 whitespace-nowrap rounded-full bg-secondary px-3 py-1.5 text-sm font-semibold text-brand hover:text-navy"
         >
-          +{hiddenCount}개 더
+          +{hiddenCount}
         </button>
       )}
     </div>
