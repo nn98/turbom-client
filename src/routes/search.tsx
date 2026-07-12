@@ -160,7 +160,7 @@ function SearchPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="지번 주소로 검색"
-              className="w-full min-w-0 bg-transparent py-1.5 text-sm text-navy outline-none placeholder:text-muted-foreground"
+              className="w-full min-w-0 bg-transparent py-1.5 text-sm text-navy placeholder:text-muted-foreground"
             />
             <button
               type="submit"
