@@ -261,7 +261,7 @@ function SearchPage() {
         {collapsed && (
           <button
             onClick={() => setCollapsed(false)}
-            className="pointer-events-auto absolute bottom-6 left-4 flex items-center gap-2 rounded-full bg-navy px-4 py-2.5 text-sm font-semibold text-navy-foreground shadow-xl transition hover:bg-navy/90 sm:left-5"
+            className="pointer-events-auto absolute bottom-6 left-4 flex items-center gap-2 rounded-full bg-navy px-4 py-2.5 text-sm font-bold text-navy-foreground shadow-xl transition hover:bg-navy/90 sm:left-5"
           >
             <List className="h-4 w-4" />
             점포 목록
@@ -478,7 +478,7 @@ function UnitList({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3 px-2">
-        <p className="text-xs font-medium text-muted-foreground">
+        <p className="text-xs font-semibold text-muted-foreground">
           궁금한 점포를 누르면 보고서가 생성돼요
         </p>
         <Select
@@ -510,9 +510,7 @@ function UnitList({
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-extrabold text-navy">
-                    {displayUnitLabel(u.label)}
-                  </span>
+                  <span className="text-sm font-bold text-navy">{displayUnitLabel(u.label)}</span>
                   <StatusBadge status={u.currentStatus} />
                   {u.currentStatus === "영업" && u.currentBusinessName ? (
                     <span className="text-sm font-semibold text-navy">{u.currentBusinessName}</span>
