@@ -8,9 +8,6 @@ import {
   ChevronDown,
   ChevronRight,
   Circle,
-  Clock,
-  TrendingUp,
-  Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,6 +26,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { RiskBadge, riskToneOf } from "@/components/risk-badge";
 import { ApiRequestError, buildUnitAnalysis, findOccupant, isOccupiedStatus } from "@/lib/api";
 import type { RiskLevel, Tenancy, UnitAnalysis, UnitDetail } from "@/lib/api";
 import { useUnitDetail } from "@/hooks/use-sites";
@@ -130,45 +128,33 @@ function ReportPage() {
       <SiteHeader />
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <Breadcrumbs detail={detail} />
-        <ReportHeader detail={detail} current={current} />
+        <ReportHeader detail={detail} current={current} riskLevel={analysis.riskLevel} />
 
         <div className="mt-10 space-y-16">
-          <Section index="01" title="통계" subtitle="이 자리에서 먼저 확인할 핵심 지표">
+          <Section title="통계" subtitle="이 자리에서 먼저 확인할 핵심 지표">
             <SummaryGrid detail={detail} analysis={analysis} current={current} />
             <div className="mt-6">
               <StatsBoard detail={detail} current={current} />
             </div>
           </Section>
 
-          <Section
-            index="02"
-            title="종합 분석"
-            subtitle="운영 이력과 상권 데이터를 함께 해석했습니다"
-          >
+          <Section title="종합 분석" subtitle="운영 이력과 상권 데이터를 함께 해석했습니다">
             <NarrativeCard lines={analysis.narrative} />
           </Section>
 
-          <Section
-            index="03"
-            title="주변 상권 분석"
-            subtitle="주변 경쟁 환경을 시각적으로 정리했습니다"
-          >
+          <Section title="주변 상권 분석" subtitle="주변 경쟁 환경을 시각적으로 정리했습니다">
             <DistrictAnalysis district={analysis.district} />
           </Section>
 
-          <Section index="04" title="위험도" subtitle="여러 신호를 종합한 참고용 등급">
+          <Section title="위험도" subtitle="여러 신호를 종합한 참고용 등급">
             <RiskCard level={analysis.riskLevel} label={analysis.riskLabel} />
           </Section>
 
-          <Section index="05" title="운영 이력" subtitle="이 자리를 거쳐간 업종의 시간 흐름입니다.">
+          <Section title="운영 이력" subtitle="이 자리를 거쳐간 업종의 시간 흐름입니다.">
             <TimelineCard timeline={detail.timeline} />
           </Section>
 
-          <Section
-            index="06"
-            title="계약 체크리스트"
-            subtitle="계약 전에 반드시 확인해야 하는 항목"
-          >
+          <Section title="계약 체크리스트" subtitle="계약 전에 반드시 확인해야 하는 항목">
             <ChecklistCard items={analysis.checklist} />
           </Section>
         </div>
@@ -197,10 +183,27 @@ function Breadcrumbs({ detail }: { detail: UnitDetail }) {
   );
 }
 
-function ReportHeader({ detail, current }: { detail: UnitDetail; current: Tenancy | null }) {
+// 카드 좌측의 얇은 강조선 하나로만 위험도를 알린다 — 별점/그라데이션 같은
+// 장식 대신, 이미 익숙한 "상태 표시줄" 패턴 하나로 절제.
+function ReportHeader({
+  detail,
+  current,
+  riskLevel,
+}: {
+  detail: UnitDetail;
+  current: Tenancy | null;
+  riskLevel: RiskLevel;
+}) {
   const { unit, disclaimer } = detail;
+  const accentClass =
+    riskLevel >= 4 ? "before:bg-danger" : riskLevel === 3 ? "before:bg-warn" : "before:bg-brand";
   return (
-    <Card className="rounded-2xl border-border/70 bg-surface p-6 shadow-elevated sm:p-8">
+    <Card
+      className={
+        "relative overflow-hidden rounded-2xl border-border/70 bg-surface p-6 shadow-elevated before:absolute before:inset-y-0 before:left-0 before:w-1 sm:p-8 " +
+        accentClass
+      }
+    >
       <div>
         <div className="flex items-center gap-2 text-xs">
           <Badge variant="outline" className="rounded-full border-border text-muted-foreground">
@@ -220,21 +223,16 @@ function ReportHeader({ detail, current }: { detail: UnitDetail; current: Tenanc
 }
 
 function Section({
-  index,
   title,
   subtitle,
   children,
 }: {
-  index: string;
   title: string;
   subtitle?: string;
   children: React.ReactNode;
 }) {
   return (
     <section>
-      <div className="mb-5 flex items-baseline gap-3">
-        <span className="text-xs font-medium tracking-wider text-brand">SECTION {index}</span>
-      </div>
       <h2 className="text-2xl font-bold tracking-tight text-navy sm:text-3xl">{title}</h2>
       {subtitle ? <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p> : null}
       <div className="mt-6">{children}</div>
@@ -253,7 +251,7 @@ function SummaryGrid({
 }) {
   const { statistics } = detail;
   const items = [
-    { label: "위험도", value: <StarValue level={analysis.riskLevel} />, note: analysis.riskLabel },
+    { label: "위험도", value: <RiskBadge level={analysis.riskLevel} label={analysis.riskLabel} /> },
     {
       label: "평균 생존기간",
       value:
@@ -271,21 +269,9 @@ function SummaryGrid({
       {items.map((it) => (
         <Card key={it.label} className="rounded-xl border-border/70 bg-surface p-5 shadow-card">
           <p className="text-xs text-muted-foreground">{it.label}</p>
-          <div className="mt-2 text-2xl font-bold text-navy">{it.value}</div>
+          <div className="mt-2 text-2xl font-bold tabular-nums text-navy">{it.value}</div>
           {it.note ? <p className="mt-1 text-xs text-muted-foreground">{it.note}</p> : null}
         </Card>
-      ))}
-    </div>
-  );
-}
-
-function StarValue({ level }: { level: RiskLevel }) {
-  return (
-    <div className="flex gap-0.5 text-xl">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <span key={i} className={i <= level ? "text-danger" : "text-border"}>
-          ★
-        </span>
       ))}
     </div>
   );
@@ -333,7 +319,7 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
             >
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">{c.category}</span>
-                <span className="font-medium text-navy">{c.count}</span>
+                <span className="font-medium tabular-nums text-navy">{c.count}</span>
               </div>
               <div className="mt-1 h-2 overflow-hidden rounded-full bg-secondary">
                 <div
@@ -388,7 +374,7 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
             </Popover>
           </div>
           <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-4xl font-bold text-navy">{competitionScore}</span>
+            <span className="text-4xl font-bold tabular-nums text-navy">{competitionScore}</span>
             <span className="text-sm text-muted-foreground">/ 100</span>
           </div>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
@@ -429,42 +415,36 @@ function StatRow({ k, v }: { k: string; v: string }) {
   return (
     <div>
       <dt className="text-xs text-muted-foreground">{k}</dt>
-      <dd className="mt-0.5 text-base font-semibold text-navy">{v}</dd>
+      <dd className="mt-0.5 text-base font-semibold tabular-nums text-navy">{v}</dd>
     </div>
   );
 }
 
+const RISK_BAR_CLASS: Record<"danger" | "warn" | "brand", string> = {
+  danger: "bg-danger",
+  warn: "bg-warn",
+  brand: "bg-brand",
+};
+
 function RiskCard({ level, label }: { level: RiskLevel; label: string }) {
   const pct = (level / 5) * 100;
-  const isRisk = level >= 4;
   return (
     <Card className="rounded-2xl border-border/70 bg-surface p-8 shadow-card">
       <div className="grid gap-8 lg:grid-cols-[auto_1fr] lg:items-center">
         <div className="text-center">
-          <StarValue level={level} />
-          <p className={"mt-3 text-2xl font-bold " + (isRisk ? "text-danger" : "text-navy")}>
-            {label}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">Level {level} / 5</p>
+          <RiskBadge level={level} label={label} />
+          <p className="mt-3 text-xs tabular-nums text-muted-foreground">Level {level} / 5</p>
         </div>
         <div>
-          <div className="h-3 overflow-hidden rounded-full bg-secondary">
+          <div className="h-2 overflow-hidden rounded-full bg-secondary">
             <div
-              className="h-full rounded-full transition-all"
-              style={{
-                width: `${pct}%`,
-                background: isRisk
-                  ? "linear-gradient(90deg, var(--warn), var(--danger))"
-                  : "linear-gradient(90deg, var(--brand), var(--warn))",
-              }}
+              className={"h-full rounded-full transition-all " + RISK_BAR_CLASS[riskToneOf(level)]}
+              style={{ width: `${pct}%` }}
             />
           </div>
-          <div className="mt-2 flex justify-between text-[10px] text-muted-foreground">
-            <span>매우 안정</span>
+          <div className="mt-2 flex justify-between text-[11px] text-muted-foreground">
             <span>안정</span>
-            <span>보통</span>
             <span>위험</span>
-            <span>매우 위험</span>
           </div>
           <p className="mt-6 text-sm leading-relaxed text-foreground">
             이 자리에서 관측된 폐업 횟수, 평균 생존기간, 반복 실패 신호를 종합한 참고용 등급입니다.
@@ -488,63 +468,45 @@ function TimelineCard({ timeline }: { timeline: Tenancy[] }) {
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-2xl border-border/70 bg-surface p-6 shadow-card sm:p-8">
-        <div className="relative">
-          <div className="absolute left-0 right-0 top-6 h-px bg-border" />
-          <div className="relative flex gap-6 overflow-x-auto pb-2">
-            {timeline.map((t) => {
-              const displayCategory = t.industryDetail ?? t.subCategory;
-              return (
+      <Card className="rounded-2xl border-border/70 bg-surface p-2 shadow-card sm:p-3">
+        <ul className="divide-y divide-border">
+          {timeline.map((t) => {
+            const displayCategory = t.industryDetail ?? t.subCategory;
+            return (
+              <li key={t.tenancyId}>
                 <button
-                  key={t.tenancyId}
                   type="button"
                   onClick={() => setSelectedId(t.tenancyId)}
                   className={
-                    "min-w-[180px] flex-1 rounded-lg p-2 text-left transition hover:bg-secondary/50 " +
-                    (t.tenancyId === selectedId ? "bg-secondary/60" : "")
+                    "flex w-full items-start gap-3 rounded-lg px-4 py-3 text-left transition hover:bg-secondary/40 " +
+                    (t.tenancyId === selectedId ? "bg-secondary/50" : "")
                   }
                 >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={
-                        "grid h-3 w-3 place-items-center rounded-full ring-4 " +
-                        (t.status === "영업"
-                          ? "bg-brand ring-brand-soft"
-                          : t.status === "휴업"
-                            ? "bg-warn ring-warn-soft"
-                            : "bg-muted-foreground/50 ring-secondary")
-                      }
-                    />
-                    <span className="text-[11px] text-muted-foreground">
-                      {t.licensedAt.slice(0, 7)} — {t.closedAt ? t.closedAt.slice(0, 7) : "현재"}
+                  <span className="mt-1.5 shrink-0">
+                    <StatusDot status={t.status} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-baseline justify-between gap-3">
+                      <span className="truncate text-sm font-semibold text-navy">
+                        {t.businessName}
+                      </span>
+                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                        {t.survivalMonths}개월
+                      </span>
                     </span>
-                  </div>
-                  <div className="mt-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="min-w-0 flex-1 text-base font-semibold text-navy">
-                        {displayCategory}
-                      </p>
-                      {t.status === "영업" && (
-                        <Badge className="shrink-0 rounded-full bg-brand text-[10px] text-brand-foreground hover:bg-brand">
-                          운영 중
-                        </Badge>
-                      )}
-                      {t.status === "휴업" && (
-                        <Badge className="shrink-0 rounded-full bg-warn-soft text-[10px] text-warn hover:bg-warn-soft">
-                          휴업 중
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="mt-1 break-words text-sm text-muted-foreground">
-                      {t.businessName}
-                    </p>
-                    <p className="mt-2 text-xs text-muted-foreground">{t.survivalMonths}개월</p>
-                  </div>
+                    <span className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                      <span>{t.status}</span>
+                      <span className="tabular-nums">
+                        {t.licensedAt.slice(0, 7)} — {t.closedAt ? t.closedAt.slice(0, 7) : "현재"}
+                      </span>
+                      <span>{displayCategory}</span>
+                    </span>
+                  </span>
                 </button>
-              );
-            })}
-          </div>
-        </div>
+              </li>
+            );
+          })}
+        </ul>
       </Card>
 
       {selected && (
@@ -663,6 +625,22 @@ function TimelineCard({ timeline }: { timeline: Tenancy[] }) {
   );
 }
 
+// 폐업/취소/말소 등 영업·휴업이 아닌 모든 상태는 빈 원(○)으로 통일 —
+// isOccupiedStatus()와 같은 기준(CLAUDE.md "알려진 스펙-실측 차이" 참고).
+// inline-block이 필수 — 이 span은 flex 컨테이너의 직접 자식이 아니라(래퍼
+// span 안에 있어) blockify가 안 되고 display:inline으로 남는데, inline
+// 요소엔 width/height가 아예 적용되지 않아 원이 아니라 얇은 세로선으로
+// 찌그러진다.
+function StatusDot({ status }: { status: Tenancy["status"] }) {
+  if (status === "영업")
+    return <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-brand" />;
+  if (status === "휴업")
+    return <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-warn" />;
+  return (
+    <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full border-2 border-muted-foreground" />
+  );
+}
+
 function MarketRow({ k, v, real }: { k: string; v: string; real?: boolean }) {
   return (
     <div>
@@ -674,7 +652,7 @@ function MarketRow({ k, v, real }: { k: string; v: string; real?: boolean }) {
           </span>
         )}
       </dt>
-      <dd className="mt-0.5 text-sm font-semibold text-navy">{v}</dd>
+      <dd className="mt-0.5 text-sm font-semibold tabular-nums text-navy">{v}</dd>
     </div>
   );
 }
@@ -719,7 +697,7 @@ function StatsBoard({ detail, current }: { detail: UnitDetail; current: Tenancy 
       {selfStats.map((it) => (
         <Card key={it.label} className={"rounded-xl border-border/70 bg-surface p-5 shadow-card"}>
           <p className="text-xs text-muted-foreground">{it.label}</p>
-          <p className="mt-2 text-2xl font-bold text-navy">{it.value}</p>
+          <p className="mt-2 text-2xl font-bold tabular-nums text-navy">{it.value}</p>
           {it.hint ? <p className="mt-1 text-xs text-muted-foreground">{it.hint}</p> : null}
         </Card>
       ))}
