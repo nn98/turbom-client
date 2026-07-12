@@ -13,7 +13,7 @@ export function SiteHeader({ floating = false }: { floating?: boolean }) {
       }
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link to="/" className="flex items-center gap-2.5">
+        <Link to="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-navy text-navy-foreground text-sm font-semibold">
             터
           </span>

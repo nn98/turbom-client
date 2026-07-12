@@ -197,3 +197,14 @@
 .cover-slide {
   animation: cover-slide-up 0.34s cubic-bezier(0.33, 0, 0.15, 1) both;
 }
+
+/* 전역 키보드 포커스 링. 랜딩/검색/리포트 페이지의 커스텀 버튼·링크·인풋
+   다수(shadcn Button/Input이 아닌 raw 요소)가 개별적으로 focus-visible
+   스타일이 빠져 있어 Tab 이동 시 포커스 위치가 전혀 보이지 않았다(검색
+   페이지 인풋은 outline-none까지 명시돼 있어 더 심함). 요소마다 고치는
+   대신 근본 원인(누락)을 한 곳에서 해소한다. @layer 밖에 둬야
+   outline-none 유틸리티(레이어 우선순위상 항상 이김)보다 우선한다. */
+:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}

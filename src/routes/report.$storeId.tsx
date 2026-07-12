@@ -386,7 +386,9 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
           <p className="mt-3 text-xs text-muted-foreground">
             {competitionCaptionOf(competitionScore)}
           </p>
-          <p className="mt-1 text-[11px] text-muted-foreground/70">
+          {/* muted-foreground/70은 11px에서 대비 3.3:1로 WCAG AA(4.5:1) 미달 —
+              불투명 muted-foreground(6.5:1)로 낮춤. */}
+          <p className="mt-1 text-[11px] text-muted-foreground">
             선택한 업종의 반경 300m 내 점포 비중 기준 참고 지표입니다.
           </p>
         </Card>
