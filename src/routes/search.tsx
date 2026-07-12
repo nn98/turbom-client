@@ -131,7 +131,7 @@ function SearchPage() {
 
       {/* 플로팅 UI — 지도 위에 겹치는 부분만 pointer-events-auto로 클릭 가능하게 한다 */}
       <div className="pointer-events-none absolute inset-0 z-[1000] flex flex-col p-4 sm:p-5">
-        <div className="pointer-events-auto flex w-full max-w-[360px] items-center gap-3 transition-all duration-300 focus-within:max-w-[640px]">
+        <div className="pointer-events-auto flex w-full max-w-[420px] items-center gap-3 transition-all duration-300 focus-within:max-w-[640px]">
           <Link
             to="/"
             className="flex shrink-0 items-center gap-2.5 rounded-2xl bg-surface/90 px-3 py-2 shadow-lg backdrop-blur transition hover:shadow-xl"
@@ -143,7 +143,7 @@ function SearchPage() {
               <span className="block text-[15px] font-extrabold tracking-tight text-navy">
                 터봄
               </span>
-              <span className="block text-[10px] font-bold tracking-[0.22em] text-muted-foreground">
+              <span className="block text-[11px] font-extrabold tracking-[0.18em] text-muted-foreground">
                 TURBOHM
               </span>
             </span>
@@ -249,8 +249,10 @@ function SearchPage() {
 
                 {siteDetailQuery.data && (
                   <div className="border-t border-border/60 px-5 py-3 text-xs text-muted-foreground">
-                    기준일 {siteDetailQuery.data.disclaimer.dataAsOf} ·{" "}
-                    {siteDetailQuery.data.disclaimer.note}
+                    <p className="font-semibold text-navy">
+                      기준일 {siteDetailQuery.data.disclaimer.dataAsOf}
+                    </p>
+                    <p className="mt-0.5">{siteDetailQuery.data.disclaimer.note}</p>
                   </div>
                 )}
               </>
@@ -509,13 +511,18 @@ function UnitList({
               className="grid w-full grid-cols-[1fr_auto] items-center gap-3 rounded-xl border border-border/70 border-l-4 bg-surface p-3.5 text-left transition hover:shadow-elevated"
             >
               <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-navy">{displayUnitLabel(u.label)}</span>
                   <StatusBadge status={u.currentStatus} />
-                  {u.currentStatus === "영업" && u.currentBusinessName ? (
-                    <span className="text-sm font-semibold text-navy">{u.currentBusinessName}</span>
-                  ) : null}
                 </div>
+                {/* 영업 정보(라벨+상태)와 점포명을 한 줄에 같이 넣으면 점포명 유무에 따라
+                    줄바꿈 여부가 카드마다 달라져 카드 높이가 들쭉날쭉해진다 — 점포명은
+                    항상 자기 줄을 갖게 분리해서 카드 높이를 예측 가능하게 만든다. */}
+                {u.currentStatus === "영업" && u.currentBusinessName ? (
+                  <p className="mt-1 truncate text-sm font-semibold text-navy">
+                    {u.currentBusinessName}
+                  </p>
+                ) : null}
                 <p className="mt-1.5 line-clamp-1 text-xs text-muted-foreground">{jibunAddress}</p>
               </div>
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />

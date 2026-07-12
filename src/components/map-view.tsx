@@ -120,6 +120,11 @@ export function MapView({
   const ref = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<NaverMap | null>(null);
   const markerRefs = useRef<NaverMarker[]>([]);
+  // 마커 좌표 "집합"이 실제로 바뀔 때만 지도를 재센터/재맞춤한다 — 그러지
+  // 않으면 마커를 고르거나(active만 바뀜) 검색 순서가 달라져도(같은 후보들)
+  // 매번 화면이 움직여서, 어떤 클릭은 화면이 안 움직이고 어떤 클릭은 움직이는
+  // 것처럼 보이는 비일관성이 생긴다.
+  const lastPositionsKeyRef = useRef<string | null>(null);
   const onMarkerClickRef = useRef(onMarkerClick);
   const onBackgroundClickRef = useRef(onBackgroundClick);
   const initialCenterRef = useRef<{ lat: number; lng: number } | null>(
@@ -190,15 +195,22 @@ export function MapView({
       return marker;
     });
 
-    if (markers.length === 1) {
-      mapRef.current!.setCenter(new maps.LatLng(markers[0].lat, markers[0].lng));
-    } else if (markers.length > 1) {
-      const bounds = new maps.LatLngBounds(
-        new maps.LatLng(markers[0].lat, markers[0].lng),
-        new maps.LatLng(markers[0].lat, markers[0].lng),
-      );
-      markers.forEach((m) => bounds.extend(new maps.LatLng(m.lat, m.lng)));
-      mapRef.current!.fitBounds(bounds);
+    const positionsKey = markers
+      .map((m) => `${m.lat},${m.lng}`)
+      .sort()
+      .join("|");
+    if (positionsKey !== lastPositionsKeyRef.current) {
+      lastPositionsKeyRef.current = positionsKey;
+      if (markers.length === 1) {
+        mapRef.current!.setCenter(new maps.LatLng(markers[0].lat, markers[0].lng));
+      } else if (markers.length > 1) {
+        const bounds = new maps.LatLngBounds(
+          new maps.LatLng(markers[0].lat, markers[0].lng),
+          new maps.LatLng(markers[0].lat, markers[0].lng),
+        );
+        markers.forEach((m) => bounds.extend(new maps.LatLng(m.lat, m.lng)));
+        mapRef.current!.fitBounds(bounds);
+      }
     }
 
     return () => {
