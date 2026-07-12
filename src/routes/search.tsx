@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { AlertTriangle, ChevronRight, List, MapPin, Search as SearchIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import type { UnitSummary } from "@/lib/api";
 import { useSiteDetail, useSiteSearch } from "@/hooks/use-sites";
 import { MapView } from "@/components/map-view";
 import { withinRadius } from "@/lib/geo";
+import { buildSiteMarkers, extractLotLabel } from "@/lib/site-markers";
 
 // 넓은 동/읍 이름만으로 검색하면 후보가 실제 관심 범위 밖까지 잡힐 수 있다 —
 // 매칭된 후보들 좌표의 근사 중심점(withinRadius 참고) 기준 반경 300m로 좁힌다.
@@ -24,26 +25,6 @@ const SEARCH_RADIUS_METERS = 300;
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
-
-// jibunAddress는 "시/도 시/군/구 동 지번 [건물명] [층·호]" 형태로 건물명·층·호까지
-// 이어붙어 있어서 마지막 토큰이 지번이라는 보장이 없다. 검색어에서 동/읍/면/리로
-// 끝나는 토큰(행정동 이름)을 찾아 jibunAddress 안에서 그 위치를 앵커로 삼고,
-// 바로 다음 토큰(지번)만 탭 라벨로 쓴다. 앵커를 못 찾으면 기존 방식(마지막 토큰)으로 폴백.
-const DONG_SUFFIX = /(동|읍|면|리|가)$/;
-
-const extractLotLabel = (jibunAddress: string, query: string): string => {
-  const tokens = jibunAddress.trim().split(/\s+/);
-  const queryTokens = query.trim().split(/\s+/).filter(Boolean);
-  const dongToken = queryTokens
-    .slice()
-    .reverse()
-    .find((t) => DONG_SUFFIX.test(t));
-  if (dongToken) {
-    const idx = tokens.findIndex((t) => t === dongToken);
-    if (idx !== -1 && idx + 1 < tokens.length) return tokens[idx + 1];
-  }
-  return tokens[tokens.length - 1] ?? jibunAddress;
-};
 
 const floorSortValue = (label: string) => {
   const floorMatch = label.match(/(-?\d+)\s*층/);
@@ -108,10 +89,21 @@ function SearchPage() {
   useEffect(() => setInput(q), [q]);
 
   const searchQuery = useSiteSearch(q);
-  const candidates = withinRadius(searchQuery.data?.candidates ?? [], SEARCH_RADIUS_METERS);
+  // searchQuery.data는 react-query가 쿼리키(q)당 캐싱하는 안정적인 참조라, 타이핑
+  // 중(input state 변화)에는 바뀌지 않는다 — candidates/markers를 이 값에 대해서만
+  // useMemo로 묶어야 SearchPage가 리렌더될 때마다 MapView의 마커 이펙트가
+  // 불필요하게(마커 전부 재생성 + fitBounds 재계산) 재실행되는 걸 막을 수 있다.
+  const candidates = useMemo(
+    () => withinRadius(searchQuery.data?.candidates ?? [], SEARCH_RADIUS_METERS),
+    [searchQuery.data],
+  );
   const activeJibun = jibun || candidates[0]?.jibunAddress || "";
   const activeCandidate = candidates.find((c) => c.jibunAddress === activeJibun) ?? candidates[0];
   const siteDetailQuery = useSiteDetail(activeCandidate?.pnu);
+  const markers = useMemo(
+    () => buildSiteMarkers(candidates, q, activeCandidate?.jibunAddress),
+    [candidates, q, activeCandidate?.jibunAddress],
+  );
 
   const submit = (query: string) => {
     if (!query.trim()) return;
@@ -134,16 +126,7 @@ function SearchPage() {
         className="h-full w-full"
         onMarkerClick={selectJibun}
         onBackgroundClick={() => setCollapsed(true)}
-        markers={candidates
-          .filter((c) => c.latitude != null && c.longitude != null)
-          .map((c) => ({
-            id: c.pnu,
-            lat: c.latitude as number,
-            lng: c.longitude as number,
-            label: extractLotLabel(c.jibunAddress, q),
-            jibunAddress: c.jibunAddress,
-            active: c.jibunAddress === activeCandidate?.jibunAddress,
-          }))}
+        markers={markers}
       />
 
       {/* 플로팅 UI — 지도 위에 겹치는 부분만 pointer-events-auto로 클릭 가능하게 한다 */}
