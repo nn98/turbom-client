@@ -172,3 +172,28 @@
     translate: 0 0;
   }
 }
+
+/* 지도 페이지에서 상세 화면으로 넘어갈 때 잠깐 덮는 커버 전환. */
+@keyframes cover-veil {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.cover-expand {
+  animation: cover-veil 0.32s ease-out both;
+}
+
+@keyframes cover-slide-up {
+  from {
+    translate: 0 100%;
+  }
+  to {
+    translate: 0 0;
+  }
+}
+.cover-slide {
+  animation: cover-slide-up 0.34s cubic-bezier(0.33, 0, 0.15, 1) both;
+}

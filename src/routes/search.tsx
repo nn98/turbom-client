@@ -1,11 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { AlertTriangle, ChevronRight, MapPin, Search as SearchIcon, Sparkles } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { AlertTriangle, ChevronRight, List, MapPin, Search as SearchIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -14,7 +11,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SiteHeader } from "@/components/site-header";
 import { DEMO_ADDRESSES } from "@/lib/mock-data";
 import { isDemoMode } from "@/lib/api";
 import type { Candidate, UnitSummary } from "@/lib/api";
@@ -99,6 +95,10 @@ function SearchPage() {
   const { q = "", jibun = "" } = Route.useSearch();
   const navigate = useNavigate();
   const [input, setInput] = useState(q);
+  const [collapsed, setCollapsed] = useState(false);
+  // 상세 화면으로 넘어갈 때 잠깐 덮는 커버(고정된 지도 레이아웃을 깨지 않도록
+  // opacity/translate만 쓴다). 커버가 화면을 덮은 뒤에 실제 라우트를 이동한다.
+  const [cover, setCover] = useState(false);
 
   useEffect(() => setInput(q), [q]);
 
@@ -113,115 +113,173 @@ function SearchPage() {
     navigate({ to: "/search", search: { q: query.trim() } });
   };
 
+  const selectJibun = (j: string) => {
+    navigate({ to: "/search", search: { q, jibun: j } });
+    setCollapsed(false);
+  };
+
+  const goToReport = (storeId: string) => {
+    setCover(true);
+    setTimeout(() => navigate({ to: "/report/$storeId", params: { storeId } }), 300);
+  };
+
   return (
-    <div className="min-h-screen bg-background">
-      <SiteHeader />
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            submit(input);
-          }}
-          className="flex flex-col gap-2 sm:flex-row"
-        >
-          <div className="relative flex-1">
+    <div className="fixed inset-0">
+      <MapView
+        className="h-full w-full"
+        onMarkerClick={selectJibun}
+        onBackgroundClick={() => setCollapsed(true)}
+        markers={candidates
+          .filter((c) => c.latitude != null && c.longitude != null)
+          .map((c) => ({
+            id: c.pnu,
+            lat: c.latitude as number,
+            lng: c.longitude as number,
+            label: extractLotLabel(c.jibunAddress, q),
+            jibunAddress: c.jibunAddress,
+            active: c.jibunAddress === activeCandidate?.jibunAddress,
+          }))}
+      />
+
+      {/* 플로팅 UI — 지도 위에 겹치는 부분만 pointer-events-auto로 클릭 가능하게 한다 */}
+      <div className="pointer-events-none absolute inset-0 z-[1000] flex flex-col p-4 sm:p-5">
+        <div className="pointer-events-auto flex w-full max-w-[330px] items-center gap-3 transition-all duration-300 focus-within:max-w-[620px]">
+          <Link
+            to="/"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-navy text-navy-foreground shadow-lg transition hover:brightness-110"
+          >
+            <span className="text-sm font-semibold">터</span>
+          </Link>
+          <form
+            className="relative min-w-0 flex-1"
+            onSubmit={(e) => {
+              e.preventDefault();
+              submit(input);
+            }}
+          >
             <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
+            <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="예: 성남시 수정구 신흥동 123"
-              className="h-12 rounded-full border-border bg-surface pl-11 pr-4 text-base focus-visible:ring-brand"
+              placeholder="지번 주소로 검색"
+              className="h-11 w-full rounded-2xl border border-border/70 bg-surface/95 pl-11 pr-4 text-sm shadow-lg backdrop-blur outline-none focus-visible:ring-2 focus-visible:ring-brand"
             />
-          </div>
-          <Button
-            type="submit"
-            size="lg"
-            className="h-12 rounded-full bg-navy px-8 text-navy-foreground hover:bg-navy/90"
+          </form>
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col sm:mt-4">
+          <aside
+            onClickCapture={
+              collapsed
+                ? (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setCollapsed(false);
+                  }
+                : undefined
+            }
+            className={
+              "pointer-events-auto mt-auto flex max-h-[58dvh] w-full flex-col overflow-hidden rounded-2xl border border-border/70 bg-surface/95 shadow-2xl backdrop-blur transition-transform duration-300 ease-out sm:mt-0 sm:max-h-full sm:w-[420px] " +
+              (collapsed
+                ? "translate-y-[calc(100%-18px)] cursor-pointer sm:-translate-x-[calc(100%-18px)] sm:translate-y-0"
+                : "")
+            }
           >
-            검색
-          </Button>
-        </form>
-
-        {!q ? (
-          <EmptyState onDemo={(addr) => submit(addr)} />
-        ) : searchQuery.isLoading ? (
-          <SearchSkeleton />
-        ) : searchQuery.isError ? (
-          <ErrorState
-            message={errorMessage(searchQuery.error)}
-            onRetry={() => searchQuery.refetch()}
-          />
-        ) : candidates.length === 0 ? (
-          <NoResults query={q} />
-        ) : (
-          <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,420px)_1fr]">
-            <div className="space-y-6">
-              <JibunTabs
-                candidates={candidates}
-                activeJibun={activeCandidate?.jibunAddress ?? ""}
-                query={q}
-                onSelect={(j) => navigate({ to: "/search", search: { q, jibun: j } })}
+            {!q ? (
+              <EmptyState onDemo={(addr) => submit(addr)} />
+            ) : searchQuery.isLoading ? (
+              <SearchSkeleton />
+            ) : searchQuery.isError ? (
+              <ErrorState
+                message={errorMessage(searchQuery.error)}
+                onRetry={() => searchQuery.refetch()}
               />
+            ) : candidates.length === 0 ? (
+              <NoResults query={q} />
+            ) : (
+              <>
+                {candidates.length > 1 && (
+                  <div className="border-b border-border/60 p-3">
+                    <JibunTabs
+                      candidates={candidates}
+                      activeJibun={activeCandidate?.jibunAddress ?? ""}
+                      query={q}
+                      onSelect={selectJibun}
+                    />
+                  </div>
+                )}
 
-              {siteDetailQuery.isLoading ? (
-                <UnitListSkeleton />
-              ) : siteDetailQuery.isError ? (
-                <ErrorState
-                  message={errorMessage(siteDetailQuery.error)}
-                  onRetry={() => siteDetailQuery.refetch()}
-                />
-              ) : (
-                <UnitList
-                  units={siteDetailQuery.data?.units ?? []}
-                  jibunAddress={activeCandidate?.jibunAddress ?? ""}
-                />
-              )}
-            </div>
-            <div className="lg:sticky lg:top-24 lg:self-start">
-              {activeCandidate &&
-              (activeCandidate.latitude == null || activeCandidate.longitude == null) ? (
-                <Card className="flex h-[420px] flex-col items-center justify-center gap-2 rounded-2xl border-border/70 p-6 text-center shadow-card lg:h-[640px]">
-                  <MapPin className="h-6 w-6 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">이 자리는 위치 정보가 없습니다.</p>
-                </Card>
-              ) : (
-                <Card className="overflow-hidden rounded-2xl border-border/70 p-0 shadow-card">
-                  <MapView
-                    onMarkerClick={(j) => navigate({ to: "/search", search: { q, jibun: j } })}
-                    markers={candidates
-                      .filter((c) => c.latitude != null && c.longitude != null)
-                      .map((c) => ({
-                        id: c.pnu,
-                        lat: c.latitude as number,
-                        lng: c.longitude as number,
-                        label: extractLotLabel(c.jibunAddress, q),
-                        jibunAddress: c.jibunAddress,
-                        active: c.jibunAddress === activeCandidate?.jibunAddress,
-                      }))}
-                  />
-                </Card>
-              )}
-            </div>
-          </div>
+                <div className="border-b border-border/60 px-5 py-4">
+                  <p className="text-xs font-medium text-muted-foreground">지금 보고 있는 자리</p>
+                  <p className="mt-1 truncate text-lg font-semibold text-navy">
+                    {activeCandidate?.jibunAddress}
+                  </p>
+                  <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                    {activeCandidate?.roadAddress}
+                  </p>
+                  <div className="mt-2.5 flex gap-2 text-xs font-medium">
+                    <span className="rounded-full bg-secondary px-2.5 py-1 text-navy">
+                      점포 {activeCandidate?.unitCount}개
+                    </span>
+                    <span className="rounded-full bg-warn-soft px-2.5 py-1 text-warn">
+                      폐업 이력 {activeCandidate?.closedCount}건
+                    </span>
+                  </div>
+                </div>
+
+                <div className="min-h-0 flex-1 overflow-y-auto p-3">
+                  {siteDetailQuery.isLoading ? (
+                    <UnitListSkeleton />
+                  ) : siteDetailQuery.isError ? (
+                    <ErrorState
+                      message={errorMessage(siteDetailQuery.error)}
+                      onRetry={() => siteDetailQuery.refetch()}
+                    />
+                  ) : (
+                    <UnitList
+                      units={siteDetailQuery.data?.units ?? []}
+                      jibunAddress={activeCandidate?.jibunAddress ?? ""}
+                      onSelect={goToReport}
+                    />
+                  )}
+                </div>
+
+                {siteDetailQuery.data && (
+                  <div className="border-t border-border/60 px-5 py-3 text-xs text-muted-foreground">
+                    기준일 {siteDetailQuery.data.disclaimer.dataAsOf} ·{" "}
+                    {siteDetailQuery.data.disclaimer.note}
+                  </div>
+                )}
+              </>
+            )}
+          </aside>
+        </div>
+
+        {collapsed && (
+          <button
+            onClick={() => setCollapsed(false)}
+            className="pointer-events-auto absolute bottom-6 left-4 flex items-center gap-2 rounded-full bg-navy px-4 py-2.5 text-sm font-semibold text-navy-foreground shadow-xl transition hover:bg-navy/90 sm:left-5"
+          >
+            <List className="h-4 w-4" />
+            점포 목록
+          </button>
         )}
       </div>
+
+      {cover && <div className="cover-slide fixed inset-0 z-[2000] bg-navy" />}
     </div>
   );
 }
 
 function EmptyState({ onDemo }: { onDemo: (addr: string) => void }) {
   return (
-    <Card className="mt-10 rounded-2xl border-dashed border-border bg-surface-muted/40 p-10 text-center shadow-none">
+    <div className="p-8 text-center">
       <MapPin className="mx-auto h-8 w-8 text-brand" />
-      <h2 className="mt-4 text-xl font-semibold text-navy">지번 주소로 검색을 시작하세요</h2>
-      <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+      <h2 className="mt-4 text-lg font-semibold text-navy">지번 주소로 검색을 시작하세요</h2>
+      <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">
         본번까지 입력하시면 해당 지번의 모든 상가와 층·호수를 보여드립니다.
       </p>
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-        <Sparkles className="h-3.5 w-3.5 text-brand" />
-        <span className="text-xs text-muted-foreground">데모 지번 바로가기</span>
-      </div>
-      <div className="mt-3 flex flex-wrap justify-center gap-2">
+      <div className="mt-5 flex flex-wrap justify-center gap-2">
         {DEMO_ADDRESSES.map((a) => (
           <button
             key={a}
@@ -232,20 +290,20 @@ function EmptyState({ onDemo }: { onDemo: (addr: string) => void }) {
           </button>
         ))}
       </div>
-    </Card>
+    </div>
   );
 }
 
 function NoResults({ query }: { query: string }) {
   return (
-    <Card className="mt-10 rounded-2xl border-border bg-surface p-10 text-center shadow-card">
-      <h2 className="text-xl font-semibold text-navy">"{query}" 결과가 없습니다</h2>
+    <div className="p-8 text-center">
+      <h2 className="text-lg font-semibold text-navy">"{query}" 결과가 없습니다</h2>
       <p className="mt-2 text-sm text-muted-foreground">
         {isDemoMode
           ? "데모 모드에서는 아래 세 개 지번만 지원합니다."
           : "다른 지번 주소로 다시 검색해보세요."}
       </p>
-      <div className="mt-6 flex flex-wrap justify-center gap-2">
+      <div className="mt-5 flex flex-wrap justify-center gap-2">
         {DEMO_ADDRESSES.map((a) => (
           <Link
             key={a}
@@ -257,20 +315,20 @@ function NoResults({ query }: { query: string }) {
           </Link>
         ))}
       </div>
-    </Card>
+    </div>
   );
 }
 
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <Card className="mt-10 rounded-2xl border-danger/30 bg-surface p-10 text-center shadow-card">
+    <div className="p-8 text-center">
       <AlertTriangle className="mx-auto h-8 w-8 text-danger" />
-      <h2 className="mt-4 text-lg font-semibold text-navy">불러오는 중 문제가 발생했습니다</h2>
+      <h2 className="mt-4 text-base font-semibold text-navy">불러오는 중 문제가 발생했습니다</h2>
       <p className="mt-2 text-sm text-muted-foreground">{message}</p>
-      <Button variant="outline" className="mt-6 rounded-full" onClick={onRetry}>
+      <Button variant="outline" className="mt-5 rounded-full" onClick={onRetry}>
         다시 시도
       </Button>
-    </Card>
+    </div>
   );
 }
 
@@ -310,7 +368,15 @@ function JibunTabs({
   );
 }
 
-function UnitList({ units, jibunAddress }: { units: UnitSummary[]; jibunAddress: string }) {
+function UnitList({
+  units,
+  jibunAddress,
+  onSelect,
+}: {
+  units: UnitSummary[];
+  jibunAddress: string;
+  onSelect: (storeId: string) => void;
+}) {
   const [statusFilter, setStatusFilter] = useState<"all" | "영업" | "공실">("all");
   if (!units.length) return null;
   const sortedUnits = [...units]
@@ -325,9 +391,9 @@ function UnitList({ units, jibunAddress }: { units: UnitSummary[]; jibunAddress:
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-base text-muted-foreground">
-          📢 궁금한 점포를 누르면 보고서가 생성되요!
+      <div className="flex flex-wrap items-center justify-between gap-3 px-2">
+        <p className="text-xs font-medium text-muted-foreground">
+          궁금한 점포를 누르면 보고서가 생성돼요
         </p>
         <Select
           value={statusFilter}
@@ -335,7 +401,7 @@ function UnitList({ units, jibunAddress }: { units: UnitSummary[]; jibunAddress:
             if (value === "all" || value === "영업" || value === "공실") setStatusFilter(value);
           }}
         >
-          <SelectTrigger className="h-9 w-[110px] rounded-full border-border bg-surface text-xs text-navy shadow-none">
+          <SelectTrigger className="h-8 w-[100px] rounded-full border-border bg-surface text-xs text-navy shadow-none">
             <SelectValue placeholder="필터" />
           </SelectTrigger>
           <SelectContent>
@@ -345,74 +411,64 @@ function UnitList({ units, jibunAddress }: { units: UnitSummary[]; jibunAddress:
           </SelectContent>
         </Select>
       </div>
-      {sortedUnits.map((u) => (
-        <Link
-          key={u.unitId}
-          to="/report/$storeId"
-          params={{ storeId: u.unitId }}
-          className="group block"
-        >
-          <Card
-            className={
-              "flex items-center gap-3 rounded-xl border border-border/70 bg-surface p-4 shadow-card transition hover:bg-surface-muted/60 hover:shadow-elevated"
-            }
-          >
-            <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={
-                    "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium " +
-                    (u.currentStatus === "영업"
-                      ? "bg-brand-soft text-navy"
-                      : "bg-secondary text-muted-foreground")
-                  }
-                >
+      <ul className="space-y-2">
+        {sortedUnits.map((u) => (
+          <li key={u.unitId}>
+            <button
+              onClick={() => onSelect(u.unitId)}
+              className="flex w-full items-center gap-3 rounded-xl border border-border/70 bg-surface p-3.5 text-left shadow-card transition hover:bg-surface-muted/60 hover:shadow-elevated"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
                   <span
                     className={
-                      "mr-1.5 h-1.5 w-1.5 rounded-full " +
-                      (u.currentStatus === "영업" ? "bg-brand" : "bg-muted-foreground/50")
+                      "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium " +
+                      (u.currentStatus === "영업"
+                        ? "bg-brand-soft text-navy"
+                        : "bg-secondary text-muted-foreground")
                     }
-                  />
-                  <span>{u.currentStatus}</span>
-                </span>
-                <span className="text-base font-semibold text-navy">
-                  {u.currentStatus === "영업" && u.currentBusinessName
-                    ? `${displayUnitLabel(u.label)})`
-                    : displayUnitLabel(u.label)}
-                </span>
-                {u.currentStatus === "영업" && u.currentBusinessName ? (
-                  <span className="text-base font-semibold text-navy">{u.currentBusinessName}</span>
-                ) : null}
+                  >
+                    <span
+                      className={
+                        "mr-1.5 h-1.5 w-1.5 rounded-full " +
+                        (u.currentStatus === "영업" ? "bg-brand" : "bg-muted-foreground/50")
+                      }
+                    />
+                    <span>{u.currentStatus}</span>
+                  </span>
+                  <span className="text-sm font-semibold text-navy">
+                    {displayUnitLabel(u.label)}
+                  </span>
+                  {u.currentStatus === "영업" && u.currentBusinessName ? (
+                    <span className="text-sm font-semibold text-navy">{u.currentBusinessName}</span>
+                  ) : null}
+                </div>
+                <p className="mt-1.5 line-clamp-1 text-xs text-muted-foreground">{jibunAddress}</p>
               </div>
-              <p className="mt-1.5 line-clamp-1 text-sm text-muted-foreground">{jibunAddress}</p>
-            </div>
-            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-navy" />
-          </Card>
-        </Link>
-      ))}
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
 
 function SearchSkeleton() {
   return (
-    <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,420px)_1fr]">
-      <div className="space-y-4">
-        <Skeleton className="h-9 w-40 rounded-full" />
-        <Skeleton className="h-32 rounded-2xl" />
-        <Skeleton className="h-20 rounded-xl" />
-        <Skeleton className="h-20 rounded-xl" />
-      </div>
-      <Skeleton className="h-[500px] rounded-2xl" />
+    <div className="space-y-3 p-3">
+      <Skeleton className="h-9 w-40 rounded-full" />
+      <Skeleton className="h-20 rounded-xl" />
+      <Skeleton className="h-20 rounded-xl" />
     </div>
   );
 }
 
 function UnitListSkeleton() {
   return (
-    <div className="space-y-3">
-      <Skeleton className="h-20 rounded-xl" />
-      <Skeleton className="h-20 rounded-xl" />
+    <div className="space-y-2">
+      <Skeleton className="h-16 rounded-xl" />
+      <Skeleton className="h-16 rounded-xl" />
     </div>
   );
 }

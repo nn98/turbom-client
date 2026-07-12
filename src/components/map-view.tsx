@@ -15,8 +15,12 @@ export interface MapMarker {
 // LatLng/Marker instances are opaque to us — we only ever construct and
 // pass them through, never read properties off them.
 type NaverLatLng = object;
+interface NaverLatLngBounds {
+  extend(latlng: NaverLatLng): void;
+}
 interface NaverMap {
   setCenter(latlng: NaverLatLng): void;
+  fitBounds(bounds: NaverLatLngBounds): void;
   destroy(): void;
 }
 interface NaverMarker {
@@ -24,6 +28,7 @@ interface NaverMarker {
 }
 interface NaverMapsNamespace {
   LatLng: new (lat: number, lng: number) => NaverLatLng;
+  LatLngBounds: new (sw: NaverLatLng, ne: NaverLatLng) => NaverLatLngBounds;
   Map: new (
     el: HTMLElement,
     options: { center: NaverLatLng; zoom: number; zoomControl?: boolean },
@@ -36,7 +41,7 @@ interface NaverMapsNamespace {
     zIndex?: number;
   }) => NaverMarker;
   Event: {
-    addListener(target: NaverMarker, eventName: string, handler: () => void): void;
+    addListener(target: NaverMarker | NaverMap, eventName: string, handler: () => void): void;
   };
 }
 
@@ -104,14 +109,19 @@ const pinHtml = (label: string, active?: boolean) => `
 export function MapView({
   markers,
   onMarkerClick,
+  onBackgroundClick,
+  className = "h-[420px] w-full lg:h-[640px]",
 }: {
   markers: MapMarker[];
   onMarkerClick?: (jibunAddress: string) => void;
+  onBackgroundClick?: () => void;
+  className?: string;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<NaverMap | null>(null);
   const markerRefs = useRef<NaverMarker[]>([]);
   const onMarkerClickRef = useRef(onMarkerClick);
+  const onBackgroundClickRef = useRef(onBackgroundClick);
   const initialCenterRef = useRef<{ lat: number; lng: number } | null>(
     markers.length ? { lat: markers[0].lat, lng: markers[0].lng } : null,
   );
@@ -121,6 +131,10 @@ export function MapView({
   useEffect(() => {
     onMarkerClickRef.current = onMarkerClick;
   }, [onMarkerClick]);
+
+  useEffect(() => {
+    onBackgroundClickRef.current = onBackgroundClick;
+  }, [onBackgroundClick]);
 
   useEffect(() => {
     if (!ref.current || typeof window === "undefined") return;
@@ -142,6 +156,7 @@ export function MapView({
           ? new maps.LatLng(initialCenter.lat, initialCenter.lng)
           : new maps.LatLng(37.5665, 126.978);
         mapRef.current = new maps.Map(ref.current, { center, zoom: 17, zoomControl: true });
+        maps.Event.addListener(mapRef.current, "click", () => onBackgroundClickRef.current?.());
         setMapReady(true);
       })
       .catch((e: unknown) => {
@@ -175,6 +190,17 @@ export function MapView({
       return marker;
     });
 
+    if (markers.length === 1) {
+      mapRef.current!.setCenter(new maps.LatLng(markers[0].lat, markers[0].lng));
+    } else if (markers.length > 1) {
+      const bounds = new maps.LatLngBounds(
+        new maps.LatLng(markers[0].lat, markers[0].lng),
+        new maps.LatLng(markers[0].lat, markers[0].lng),
+      );
+      markers.forEach((m) => bounds.extend(new maps.LatLng(m.lat, m.lng)));
+      mapRef.current!.fitBounds(bounds);
+    }
+
     return () => {
       markerRefs.current.forEach((marker) => marker.setMap(null));
       markerRefs.current = [];
@@ -183,11 +209,16 @@ export function MapView({
 
   if (error) {
     return (
-      <div className="flex h-[420px] w-full flex-col items-center justify-center gap-1 bg-secondary/30 px-6 text-center lg:h-[640px]">
+      <div
+        className={
+          "flex flex-col items-center justify-center gap-1 bg-secondary/30 px-6 text-center " +
+          className
+        }
+      >
         <p className="text-sm text-muted-foreground">{error}</p>
       </div>
     );
   }
 
-  return <div ref={ref} className="h-[420px] w-full lg:h-[640px]" />;
+  return <div ref={ref} className={className} />;
 }
