@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { AlertTriangle, ChevronRight, List, MapPin, Search as SearchIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { DEMO_ADDRESSES } from "@/lib/mock-data";
 import { isDemoMode } from "@/lib/api";
-import type { Candidate, UnitSummary } from "@/lib/api";
+import type { UnitSummary } from "@/lib/api";
 import { useSiteDetail, useSiteSearch } from "@/hooks/use-sites";
 import { MapView } from "@/components/map-view";
 
@@ -143,27 +143,43 @@ function SearchPage() {
 
       {/* 플로팅 UI — 지도 위에 겹치는 부분만 pointer-events-auto로 클릭 가능하게 한다 */}
       <div className="pointer-events-none absolute inset-0 z-[1000] flex flex-col p-4 sm:p-5">
-        <div className="pointer-events-auto flex w-full max-w-[330px] items-center gap-3 transition-all duration-300 focus-within:max-w-[620px]">
+        <div className="pointer-events-auto flex w-full max-w-[360px] items-center gap-3 transition-all duration-300 focus-within:max-w-[640px]">
           <Link
             to="/"
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-navy text-navy-foreground shadow-lg transition hover:brightness-110"
+            className="flex shrink-0 items-center gap-2.5 rounded-2xl bg-surface/90 px-3 py-2 shadow-lg backdrop-blur transition hover:shadow-xl"
           >
-            <span className="text-sm font-semibold">터</span>
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand text-sm font-black text-brand-foreground">
+              터
+            </span>
+            <span className="hidden leading-tight sm:block">
+              <span className="block text-[15px] font-extrabold tracking-tight text-navy">
+                터봄
+              </span>
+              <span className="block text-[10px] font-bold tracking-[0.22em] text-muted-foreground">
+                TURBOHM
+              </span>
+            </span>
           </Link>
           <form
-            className="relative min-w-0 flex-1"
+            className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl border border-border/70 bg-surface/95 p-1.5 shadow-lg backdrop-blur"
             onSubmit={(e) => {
               e.preventDefault();
               submit(input);
             }}
           >
-            <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <SearchIcon className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="지번 주소로 검색"
-              className="h-11 w-full rounded-2xl border border-border/70 bg-surface/95 pl-11 pr-4 text-sm shadow-lg backdrop-blur outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              className="w-full min-w-0 bg-transparent py-1.5 text-sm text-navy outline-none placeholder:text-muted-foreground"
             />
+            <button
+              type="submit"
+              className="shrink-0 rounded-xl bg-navy px-3.5 py-1.5 text-sm font-bold text-navy-foreground transition hover:brightness-110"
+            >
+              검색
+            </button>
           </form>
         </div>
 
@@ -200,30 +216,29 @@ function SearchPage() {
               <>
                 {candidates.length > 1 && (
                   <div className="border-b border-border/60 p-3">
-                    <JibunTabs
-                      candidates={candidates}
-                      activeJibun={activeCandidate?.jibunAddress ?? ""}
-                      query={q}
-                      onSelect={selectJibun}
+                    <SegmentedTabs
+                      key={q}
+                      items={candidates.map((c) => ({
+                        id: c.jibunAddress,
+                        label: extractLotLabel(c.jibunAddress, q),
+                      }))}
+                      activeId={activeCandidate?.jibunAddress ?? ""}
+                      onChange={selectJibun}
                     />
                   </div>
                 )}
 
                 <div className="border-b border-border/60 px-5 py-4">
-                  <p className="text-xs font-medium text-muted-foreground">지금 보고 있는 자리</p>
-                  <p className="mt-1 truncate text-lg font-semibold text-navy">
+                  <p className="text-xs font-semibold text-muted-foreground">지금 보고 있는 자리</p>
+                  <p className="mt-1 truncate text-lg font-extrabold text-navy">
                     {activeCandidate?.jibunAddress}
                   </p>
                   <p className="mt-0.5 truncate text-sm text-muted-foreground">
                     {activeCandidate?.roadAddress}
                   </p>
-                  <div className="mt-2.5 flex gap-2 text-xs font-medium">
-                    <span className="rounded-full bg-secondary px-2.5 py-1 text-navy">
-                      점포 {activeCandidate?.unitCount}개
-                    </span>
-                    <span className="rounded-full bg-warn-soft px-2.5 py-1 text-warn">
-                      폐업 이력 {activeCandidate?.closedCount}건
-                    </span>
+                  <div className="mt-2.5 flex gap-2">
+                    <Pill>점포 {activeCandidate?.unitCount}개</Pill>
+                    <Pill tone="danger">폐업 이력 {activeCandidate?.closedCount}건</Pill>
                   </div>
                 </div>
 
@@ -332,39 +347,116 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
   );
 }
 
-function JibunTabs({
-  candidates,
-  activeJibun,
-  query,
-  onSelect,
+// 자리 후보 선택 — 고정 배경색 스왑 대신 라디오그룹처럼 슬라이딩 하이라이트가
+// 활성 탭을 따라가게 한다(참고 저장소 지도 페이지의 SegmentedTabs 이식).
+// 검색어가 넓으면(예: 동 이름만) 후보가 수십~수백 개로 불어날 수 있다 — 탭을
+// 전부 늘어놓지 않고 처음엔 적당한 개수만 보여준 뒤 "+N개 더"로 펼친다.
+const MAX_VISIBLE_TABS = 8;
+
+function SegmentedTabs({
+  items,
+  activeId,
+  onChange,
 }: {
-  candidates: Candidate[];
-  activeJibun: string;
-  query: string;
-  onSelect: (jibun: string) => void;
+  items: { id: string; label: string }[];
+  activeId: string;
+  onChange: (id: string) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [thumb, setThumb] = useState<{ left: number; width: number } | null>(null);
+  const [expanded, setExpanded] = useState(false);
+
+  const showAll = expanded || items.length <= MAX_VISIBLE_TABS;
+  const visibleItems = showAll ? items : items.slice(0, MAX_VISIBLE_TABS);
+  // 현재 선택된 후보가 잘려나간 뒤쪽에 있으면(예: 지도에서 직접 마커 클릭)
+  // 마지막 자리를 양보해서라도 항상 보이게 한다.
+  if (!showAll && !visibleItems.some((it) => it.id === activeId)) {
+    const active = items.find((it) => it.id === activeId);
+    if (active) visibleItems.splice(-1, 1, active);
+  }
+  const hiddenCount = items.length - visibleItems.length;
+
+  useEffect(() => {
+    const el = containerRef.current?.querySelector<HTMLElement>(
+      `[data-id="${CSS.escape(activeId)}"]`,
+    );
+    if (el) setThumb({ left: el.offsetLeft, width: el.offsetWidth });
+  }, [activeId, items.length, expanded]);
+
+  return (
+    <div
+      ref={containerRef}
+      role="radiogroup"
+      className="relative flex flex-wrap gap-1 rounded-full bg-secondary p-1"
+    >
+      {thumb && (
+        <span
+          aria-hidden
+          className="absolute inset-y-1 rounded-full bg-navy transition-[left,width] duration-300 ease-out"
+          style={{ left: thumb.left, width: thumb.width }}
+        />
+      )}
+      {visibleItems.map((it) => (
+        <button
+          key={it.id}
+          data-id={it.id}
+          role="radio"
+          aria-checked={it.id === activeId}
+          onClick={() => onChange(it.id)}
+          className={
+            "relative z-10 shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors " +
+            (it.id === activeId ? "text-navy-foreground" : "text-muted-foreground hover:text-navy")
+          }
+        >
+          {it.label}
+        </button>
+      ))}
+      {hiddenCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="relative z-10 shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold text-brand hover:text-navy"
+        >
+          +{hiddenCount}개 더
+        </button>
+      )}
+    </div>
+  );
+}
+
+// 채워진 배지 대신 흰 배경 + 테두리의 옅은 필 — 데이터 칩이 너무 튀지 않게.
+function Pill({
+  children,
+  tone = "neutral",
+}: {
+  children: React.ReactNode;
+  tone?: "neutral" | "danger";
 }) {
   return (
-    <div className="max-h-[108px] overflow-y-auto pr-1">
-      <div className="grid grid-cols-5 gap-2">
-        {candidates.map((c) => {
-          const active = c.jibunAddress === activeJibun;
-          return (
-            <button
-              key={c.pnu}
-              onClick={() => onSelect(c.jibunAddress)}
-              className={
-                "rounded-full px-3 py-1.5 text-xs transition " +
-                (active
-                  ? "bg-navy text-navy-foreground"
-                  : "border border-border bg-surface text-navy hover:border-brand/40")
-              }
-            >
-              {extractLotLabel(c.jibunAddress, query)}
-            </button>
-          );
-        })}
-      </div>
-    </div>
+    <span
+      className={
+        "inline-flex items-center gap-1.5 rounded-full border bg-surface px-2.5 py-1 text-xs font-semibold shadow-card " +
+        (tone === "danger" ? "border-danger/25 text-danger" : "border-border text-navy")
+      }
+    >
+      {children}
+    </span>
+  );
+}
+
+// 상태 표기 — 채워진 배지 대신 색 점 + 텍스트만(색으로만 구분하지 않도록 항상
+// 텍스트를 함께 노출).
+const STATUS_DOT_CLASS: Record<UnitSummary["currentStatus"], string> = {
+  영업: "bg-brand",
+  공실: "bg-muted-foreground/50",
+};
+
+function StatusBadge({ status }: { status: UnitSummary["currentStatus"] }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-navy/80">
+      <span className={"h-1.5 w-1.5 shrink-0 rounded-full " + STATUS_DOT_CLASS[status]} />
+      {status}
+    </span>
   );
 }
 
@@ -416,29 +508,18 @@ function UnitList({
           <li key={u.unitId}>
             <button
               onClick={() => onSelect(u.unitId)}
-              className="flex w-full items-center gap-3 rounded-xl border border-border/70 bg-surface p-3.5 text-left shadow-card transition hover:bg-surface-muted/60 hover:shadow-elevated"
+              style={{
+                borderLeftColor:
+                  u.currentStatus === "영업" ? "var(--color-brand)" : "var(--color-border)",
+              }}
+              className="grid w-full grid-cols-[1fr_auto] items-center gap-3 rounded-xl border border-border/70 border-l-4 bg-surface p-3.5 text-left transition hover:shadow-elevated"
             >
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span
-                    className={
-                      "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium " +
-                      (u.currentStatus === "영업"
-                        ? "bg-brand-soft text-navy"
-                        : "bg-secondary text-muted-foreground")
-                    }
-                  >
-                    <span
-                      className={
-                        "mr-1.5 h-1.5 w-1.5 rounded-full " +
-                        (u.currentStatus === "영업" ? "bg-brand" : "bg-muted-foreground/50")
-                      }
-                    />
-                    <span>{u.currentStatus}</span>
-                  </span>
-                  <span className="text-sm font-semibold text-navy">
+                  <span className="text-sm font-extrabold text-navy">
                     {displayUnitLabel(u.label)}
                   </span>
+                  <StatusBadge status={u.currentStatus} />
                   {u.currentStatus === "영업" && u.currentBusinessName ? (
                     <span className="text-sm font-semibold text-navy">{u.currentBusinessName}</span>
                   ) : null}
