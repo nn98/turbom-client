@@ -149,3 +149,26 @@
 @utility text-balance {
   text-wrap: balance;
 }
+
+/* 풀페이지 스크롤 섹션 진입 애니메이션. 미지원 브라우저는 @supports가
+   걸러내 최종 상태(불투명 1)로만 보이므로 폴백이 필요 없다. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .section-enter {
+      animation: section-enter-fade linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+  }
+}
+
+@keyframes section-enter-fade {
+  from {
+    opacity: 0;
+    translate: 0 28px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}

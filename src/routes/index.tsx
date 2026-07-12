@@ -1,12 +1,16 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useRef, useState } from "react";
 import {
+  Activity,
   ArrowRight,
-  Building2,
+  Clock,
   Database,
+  History,
   Layers,
+  ListChecks,
   MapPin,
   Search,
+  ShieldCheck,
   TrendingDown,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +19,17 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { RiskBadge } from "@/components/risk-badge";
+import {
+  ChecklistGraphic,
+  LayersGraphic,
+  PinPulseGraphic,
+  SkylineGraphic,
+} from "@/components/landing-graphics";
 import { DEMO_ADDRESSES } from "@/lib/mock-data";
+import { useEasedSnapScroll } from "@/hooks/use-eased-snap-scroll";
+
+const SLIDE_SELECTOR = "main > section";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -38,10 +52,28 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
+// 5개 섹션을 한 화면씩 스크롤 스냅으로 넘긴다. dvh(동적 뷰포트 높이)를 쓰는
+// 이유: vh/min-h-screen은 모바일 브라우저 주소창이 접히고 펴질 때 실제 보이는
+// 영역보다 커서 스냅 위치가 어긋난다 — 이게 100dvh가 표준으로 자리잡은 이유.
+// 헤더/푸터는 둘 다 문서 흐름에서 완전히 빼서(position: fixed) 오버레이로
+// 띄운다 — 흐름에 남아 있으면 그만큼 섹션이 100dvh보다 짧아지거나(헤더가
+// 첫 페이지를 밀어냄), 푸터처럼 아주 짧은 여분 콘텐츠가 자기 몫의 "6번째
+// 페이지"를 만들어서 그 페이지만 대부분 빈 공간으로 남는 문제가 생긴다.
+//
+// CSS scroll-snap만으로는 휠 한 틱에도 관성 때문에 섹션 경계를 살짝 넘나들며
+// 미세한 잔여 스크롤이 남는다. 휠 이벤트만 자체 이징으로 가로채(터치·키보드는
+// 네이티브 snap 그대로) 슬라이드 단위로 딱 떨어지게 고정한다.
 function LandingPage() {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEasedSnapScroll(scrollRef, SLIDE_SELECTOR);
+
   return (
-    <div className="min-h-screen bg-background">
-      <SiteHeader />
+    <div
+      ref={scrollRef}
+      className="relative isolate h-dvh snap-y snap-mandatory overflow-y-scroll scroll-smooth bg-background"
+    >
+      <SkylineGraphic className="pointer-events-none fixed inset-x-0 bottom-0 -z-10 h-24 w-full text-navy/10 sm:h-32" />
+      <SiteHeader floating />
       <main>
         <Hero />
         <SearchBand />
@@ -49,14 +81,50 @@ function LandingPage() {
         <WhyTurbohm />
         <AnalysisInfo />
       </main>
-      <SiteFooter />
+      <SiteFooter floating />
     </div>
+  );
+}
+
+// 다음/이전(마지막 슬라이드에서는 맨 위로) 섹션으로 유도하는 하단 힌트.
+// <a href="#id">가 아니라 scrollIntoView를 직접 호출한다 — TanStack Router가
+// 순수 해시 앵커의 기본 스크롤 동작을 가로채 무효화해서(location.hash는
+// 바뀌지만 실제 스크롤은 발생하지 않음), 히어로의 "자리 분석하기" 버튼과
+// 같은 방식으로 우회했다.
+function ScrollHint({ target, isLast = false }: { target: string; isLast?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" })
+      }
+      className="group relative z-10 mt-6 mb-10 flex flex-col items-center gap-1 text-xs font-semibold text-muted-foreground transition hover:text-navy"
+    >
+      {isLast ? "맨 위로" : "더 알아보기"}
+      <svg
+        viewBox="0 0 24 24"
+        className={
+          "h-4 w-4 transition group-hover:translate-y-0.5 " +
+          (isLast ? "rotate-180 group-hover:-translate-y-0.5" : "motion-safe:animate-bounce")
+        }
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="m6 9 6 6 6-6" />
+      </svg>
+    </button>
   );
 }
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden">
+    <section
+      id="hero-section"
+      className="relative isolate flex min-h-dvh scroll-mt-16 snap-start [scroll-snap-stop:always] flex-col overflow-hidden"
+    >
       <div
         className="pointer-events-none absolute inset-0 -z-10 opacity-70"
         style={{
@@ -64,7 +132,7 @@ function Hero() {
             "radial-gradient(60% 50% at 20% 20%, oklch(0.95 0.04 155 / 0.5), transparent 60%), radial-gradient(50% 50% at 100% 0%, oklch(0.9 0.03 260 / 0.4), transparent 60%)",
         }}
       />
-      <div className="mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:px-8 lg:py-24">
+      <div className="section-enter my-auto mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:gap-14 sm:px-6 sm:py-20 lg:grid-cols-[1.05fr_1fr] lg:gap-20 lg:px-8">
         <div className="flex flex-col justify-center">
           <Badge
             variant="outline"
@@ -73,16 +141,16 @@ function Hero() {
             <span className="h-1.5 w-1.5 rounded-full bg-brand" />
             <span className="text-navy">창업자를 위한 입지 실사 리포트</span>
           </Badge>
-          <h1 className="mt-6 text-balance text-5xl font-bold leading-[1.1] tracking-tight text-navy sm:text-6xl lg:text-[68px]">
+          <h1 className="mt-5 text-balance text-4xl font-bold leading-[1.15] tracking-tight text-navy sm:mt-6 sm:text-5xl lg:text-6xl">
             자리를 보면,
             <br />
-            창업이 보입니다.
+            <span className="text-brand">창업</span>이 보입니다.
           </h1>
-          <p className="mt-6 max-w-xl text-balance text-base leading-relaxed text-muted-foreground sm:text-lg">
+          <p className="mt-5 max-w-xl text-balance text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
             좋은 창업은, 좋은 자리를 보는 것에서 시작됩니다. 계약하려는 바로 그 자리의 과거
             개업·폐업 이력과 생존 통계를 분석하여 계약 전에 필요한 판단 근거를 제공합니다.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-7 flex flex-wrap gap-3 sm:mt-8">
             <Button
               size="lg"
               className="rounded-full bg-navy px-6 text-navy-foreground hover:bg-navy/90"
@@ -101,10 +169,11 @@ function Hero() {
           </p>
         </div>
 
-        <div className="relative lg:pl-4">
+        <div className="relative hidden lg:block lg:pl-4">
           <PreviewReportCard />
         </div>
       </div>
+      <ScrollHint target="address-search" />
     </section>
   );
 }
@@ -131,18 +200,18 @@ function PreviewReportCard() {
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-3">
-        <MiniMetric label="위험도" value={<StarRow filled={4} />} note="위험" />
+        <MiniMetric label="위험도" value={<RiskBadge level={4} label="위험" />} />
         <MiniMetric
           label="최근 9년 폐업"
-          value={<span className="text-2xl font-bold text-navy">4회</span>}
+          value={<span className="text-2xl font-bold tabular-nums text-danger">4회</span>}
         />
         <MiniMetric
           label="평균 생존기간"
-          value={<span className="text-2xl font-bold text-navy">21개월</span>}
+          value={<span className="text-2xl font-bold tabular-nums text-navy">21개월</span>}
         />
         <MiniMetric
           label="현재 업종"
-          value={<span className="text-lg font-semibold text-navy">치킨집 · 41개월</span>}
+          value={<span className="text-lg font-semibold text-brand">치킨집 · 41개월</span>}
         />
       </div>
 
@@ -159,32 +228,11 @@ function PreviewReportCard() {
   );
 }
 
-function MiniMetric({
-  label,
-  value,
-  note,
-}: {
-  label: string;
-  value: React.ReactNode;
-  note?: string;
-}) {
+function MiniMetric({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-border/70 bg-background p-4">
       <p className="text-xs text-muted-foreground">{label}</p>
       <div className="mt-2">{value}</div>
-      {note ? <p className="mt-1 text-xs text-muted-foreground">{note}</p> : null}
-    </div>
-  );
-}
-
-function StarRow({ filled }: { filled: number }) {
-  return (
-    <div className="flex items-center gap-1">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <span key={i} className={i <= filled ? "text-danger" : "text-border"} aria-hidden>
-          ★
-        </span>
-      ))}
     </div>
   );
 }
@@ -199,17 +247,20 @@ function SearchBand() {
   return (
     <section
       id="address-search"
-      className="scroll-mt-20 border-y border-border/60 bg-surface-muted/60"
+      className="flex min-h-dvh scroll-mt-16 snap-start [scroll-snap-stop:always] flex-col border-y border-border/60 bg-surface-muted/60"
     >
-      <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="section-enter my-auto mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
         <div className="text-center">
-          <p className="text-xs font-medium tracking-wider text-brand uppercase">Address Search</p>
-          <h2 className="mt-2 text-2xl font-semibold text-navy sm:text-3xl">
-            지번 주소로 시작하세요
+          <PinPulseGraphic className="mx-auto h-16 w-16 text-brand" />
+          <p className="mt-4 text-xs font-medium tracking-wider text-brand uppercase">
+            Address Search
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold text-navy sm:mt-3 sm:text-3xl">
+            <span className="text-brand">지번 주소</span>로 시작하세요
           </h2>
         </div>
         <form
-          className="mt-6 flex flex-col gap-2 sm:flex-row"
+          className="mt-6 flex flex-col gap-2 sm:mt-8 sm:flex-row"
           onSubmit={(e) => {
             e.preventDefault();
             submit(q);
@@ -246,6 +297,7 @@ function SearchBand() {
           ))}
         </div>
       </div>
+      <ScrollHint target="key-features-section" />
     </section>
   );
 }
@@ -258,20 +310,27 @@ function KeyFeatures() {
     { label: "운영 이력", value: "폐업·생존 통계", icon: TrendingDown },
   ];
   return (
-    <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {items.map(({ label, value, icon: Icon }) => (
-          <div key={label} className="flex items-start gap-3">
-            <span className="mt-0.5 grid h-9 w-9 place-items-center rounded-lg bg-brand-soft text-brand">
-              <Icon className="h-4 w-4" />
-            </span>
-            <div>
-              <p className="text-sm text-muted-foreground">{label}</p>
-              <p className="mt-1 text-base font-semibold text-navy">{value}</p>
+    <section
+      id="key-features-section"
+      className="flex min-h-dvh scroll-mt-16 snap-start [scroll-snap-stop:always] flex-col"
+    >
+      <div className="section-enter my-auto mx-auto grid max-w-7xl items-center gap-12 px-4 py-16 sm:gap-16 sm:px-6 lg:grid-cols-[1fr_1.2fr] lg:px-8">
+        <LayersGraphic className="mx-auto h-40 w-full max-w-sm text-navy/80 lg:mx-0" />
+        <div className="grid gap-6 sm:grid-cols-2 sm:gap-8">
+          {items.map(({ label, value, icon: Icon }) => (
+            <div key={label} className="flex items-start gap-3">
+              <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brand-soft text-brand">
+                <Icon className="h-4 w-4" />
+              </span>
+              <div>
+                <p className="text-sm text-muted-foreground">{label}</p>
+                <p className="mt-1 text-base font-semibold text-navy">{value}</p>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
+      <ScrollHint target="why-section" />
     </section>
   );
 }
@@ -295,59 +354,111 @@ function WhyTurbohm() {
     },
   ];
   return (
-    <section className="border-t border-border/60 bg-surface-muted/50">
-      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+    <section
+      id="why-section"
+      className="flex min-h-dvh scroll-mt-16 snap-start [scroll-snap-stop:always] flex-col border-t border-border/60 bg-surface-muted/50"
+    >
+      <div className="section-enter my-auto mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-20 lg:px-8">
         <p className="text-sm font-medium text-brand">왜 터봄인가</p>
         <h2 className="mt-3 max-w-3xl text-balance text-3xl font-bold tracking-tight text-navy sm:text-4xl">
           상권을 보기 전에, 자리를 봅니다.
         </h2>
-        <div className="mt-12 grid gap-5 md:grid-cols-3">
+        <div className="mt-4 grid gap-3 sm:mt-12 sm:gap-6 md:grid-cols-3">
           {cards.map((c) => (
-            <Card key={c.no} className="rounded-2xl border-border/70 bg-surface p-8 shadow-card">
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-secondary text-sm font-semibold text-navy">
+            <Card
+              key={c.no}
+              className="rounded-2xl border-border/70 bg-surface p-4 shadow-card sm:p-8"
+            >
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-soft text-sm font-semibold text-brand">
                 {c.no}
               </span>
-              <h3 className="mt-6 text-lg font-semibold text-navy">{c.title}</h3>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{c.desc}</p>
+              <h3 className="mt-4 text-lg font-semibold text-navy sm:mt-6">{c.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:mt-3">{c.desc}</p>
             </Card>
           ))}
         </div>
       </div>
+      <ScrollHint target="analysis-section" />
     </section>
   );
 }
 
 function AnalysisInfo() {
   const rows = [
-    { k: "운영 이력", v: "지번 내 해당 상가에서 운영된 모든 업종과 상호" },
-    { k: "운영 기간", v: "각 업종이 얼마나 오래 운영되었는지" },
-    { k: "폐업 통계", v: "몇 번의 폐업이 있었는지, 어떤 업종에서 반복되었는지" },
-    { k: "업종 적합성", v: "지금 창업하려는 업종이 이 자리에서 반복 실패한 업종인지" },
-    { k: "현재 상태", v: "현재 어떤 업종이, 얼마나 오래 운영되고 있는지" },
-    { k: "계약 체크리스트", v: "계약 전에 반드시 확인할 항목" },
+    { k: "운영 이력", v: "지번 내 해당 상가에서 운영된 모든 업종과 상호", icon: History },
+    { k: "운영 기간", v: "각 업종이 얼마나 오래 운영되었는지", icon: Clock },
+    {
+      k: "폐업 통계",
+      v: "몇 번의 폐업이 있었는지, 어떤 업종에서 반복되었는지",
+      icon: TrendingDown,
+    },
+    {
+      k: "업종 적합성",
+      v: "지금 창업하려는 업종이 이 자리에서 반복 실패한 업종인지",
+      icon: ShieldCheck,
+    },
+    { k: "현재 상태", v: "현재 어떤 업종이, 얼마나 오래 운영되고 있는지", icon: Activity },
+    { k: "계약 체크리스트", v: "계약 전에 반드시 확인할 항목", icon: ListChecks },
   ];
   return (
-    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-      <p className="text-sm font-medium text-brand">제공하는 분석 정보</p>
-      <h2 className="mt-3 max-w-3xl text-balance text-3xl font-bold tracking-tight text-navy sm:text-4xl">
-        하나의 자리, 여섯 가지 각도.
-      </h2>
-      <Card className="mt-10 overflow-hidden rounded-2xl border-border/70 bg-surface shadow-card">
-        <ul className="divide-y divide-border/70">
-          {rows.map((r) => (
-            <li
-              key={r.k}
-              className="grid grid-cols-1 gap-2 px-6 py-5 sm:grid-cols-[220px_1fr] sm:items-center sm:gap-6"
+    <section
+      id="analysis-section"
+      className="flex min-h-dvh scroll-mt-16 snap-start [scroll-snap-stop:always] flex-col"
+    >
+      <div className="section-enter my-auto mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-16 lg:px-8">
+        <div className="flex items-start justify-between gap-8">
+          <div>
+            <p className="text-sm font-medium text-brand">제공하는 분석 정보</p>
+            <h2 className="mt-3 max-w-2xl text-balance text-2xl font-bold tracking-tight text-navy sm:text-3xl">
+              하나의 자리, <span className="text-brand">여섯 가지</span> 각도.
+            </h2>
+          </div>
+          <ChecklistGraphic className="hidden h-28 w-24 shrink-0 text-navy/70 lg:block" />
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-10 sm:gap-5 lg:grid-cols-3">
+          {rows.map(({ k, v, icon: Icon }) => (
+            <Card
+              key={k}
+              className="rounded-2xl border-border/70 bg-surface p-3 shadow-card sm:p-5"
             >
-              <span className="text-sm font-semibold text-navy">{r.k}</span>
-              <span className="text-sm text-muted-foreground">{r.v}</span>
-            </li>
+              <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-soft text-brand">
+                <Icon className="h-4 w-4" />
+              </span>
+              <h3 className="mt-4 text-sm font-semibold text-navy">{k}</h3>
+              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{v}</p>
+            </Card>
           ))}
-        </ul>
-      </Card>
+        </div>
+
+        <div className="mt-3 flex flex-col items-start gap-3 rounded-2xl bg-navy p-3 text-navy-foreground sm:mt-6 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+          <div>
+            <p className="font-semibold">계약 전에, 자리를 먼저 보세요.</p>
+            <p className="mt-1 hidden text-sm text-navy-foreground/70 sm:block">
+              지번 주소 하나로 시작합니다. 층·호 단위 상가별 리포트를 확인하세요.
+            </p>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                document
+                  .getElementById("address-search")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" })
+              }
+              className="rounded-full bg-navy-foreground px-4 py-2 text-sm font-semibold text-navy transition hover:brightness-95"
+            >
+              자리 분석하기
+            </button>
+            <Link
+              to="/search"
+              className="rounded-full border border-navy-foreground/30 px-4 py-2 text-sm font-semibold text-navy-foreground transition hover:bg-navy-foreground/10"
+            >
+              지도 둘러보기
+            </Link>
+          </div>
+        </div>
+      </div>
+      <ScrollHint target="hero-section" isLast />
     </section>
   );
 }
-
-// suppress unused imports (kept for reference in header nav)
-void Building2;
