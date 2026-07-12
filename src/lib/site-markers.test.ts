@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildSiteMarkers, extractLotLabel } from "./site-markers";
+import {
+  buildSiteMarkers,
+  dongCandidateCounts,
+  extractDongToken,
+  extractLotLabel,
+} from "./site-markers";
 import type { Candidate } from "./api";
 
 const candidate = (overrides: Partial<Candidate>): Candidate => ({
@@ -20,6 +25,36 @@ describe("extractLotLabel", () => {
 
   it("falls back to the last token when no dong suffix is found in the query", () => {
     expect(extractLotLabel("성남시 수정구 신흥동 123-4", "123-4")).toBe("123-4");
+  });
+});
+
+describe("extractDongToken", () => {
+  it("finds the dong token between the 구 token and the lot number", () => {
+    expect(extractDongToken("경기도 성남시 수정구 신흥동 123-4")).toBe("신흥동");
+  });
+
+  it("works without a leading 시/도 prefix", () => {
+    expect(extractDongToken("성남시 수정구 창곡동 559-4")).toBe("창곡동");
+  });
+
+  it("returns null when there is no dong-suffix token before the lot number", () => {
+    expect(extractDongToken("경기도 성남시 수정구 100")).toBeNull();
+  });
+
+  it("returns null for an address with no recognizable suffix at all", () => {
+    expect(extractDongToken("알수없는주소형식")).toBeNull();
+  });
+});
+
+describe("dongCandidateCounts", () => {
+  it("counts candidates per distinct dong token", () => {
+    const a = candidate({ pnu: "1", jibunAddress: "경기도 성남시 수정구 신흥동 123-4" });
+    const b = candidate({ pnu: "2", jibunAddress: "경기도 성남시 수정구 신흥동 123-1" });
+    const c = candidate({ pnu: "3", jibunAddress: "경기도 성남시 수정구 창곡동 559-4" });
+    const counts = dongCandidateCounts([a, b, c]);
+    expect(counts.get("신흥동")).toBe(2);
+    expect(counts.get("창곡동")).toBe(1);
+    expect(counts.size).toBe(2);
   });
 });
 

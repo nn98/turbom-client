@@ -17,7 +17,7 @@ import type { UnitSummary } from "@/lib/api";
 import { useSiteDetail, useSiteSearch } from "@/hooks/use-sites";
 import { MapView, type ViewportBounds } from "@/components/map-view";
 import { capToNearest, withinRadius } from "@/lib/geo";
-import { buildSiteMarkers, extractLotLabel } from "@/lib/site-markers";
+import { buildSiteMarkers, dongCandidateCounts, extractLotLabel } from "@/lib/site-markers";
 
 // 넓은 동/읍 이름만으로 검색하면 후보가 실제 관심 범위 밖까지 잡힐 수 있다 —
 // 매칭된 후보들 좌표의 근사 중심점(withinRadius 참고) 기준 반경 300m로 좁힌다.
@@ -106,6 +106,12 @@ function SearchPage() {
       ),
     [searchQuery.data],
   );
+  // `구` 단위처럼 넓은 검색어로 결과가 여러 동에 걸치면(distinct 동 2개 이상)
+  // 지번 탭/패널 대신 동 선택 화면을 먼저 보여준다 — Task 2의 뷰포트 필터보다
+  // 앞선 게이트라 candidates(전체) 기준으로만 판단한다.
+  const dongCounts = useMemo(() => dongCandidateCounts(candidates), [candidates]);
+  const needsDongSelection = dongCounts.size >= 2;
+
   const activeJibun = jibun || candidates[0]?.jibunAddress || "";
   const activeCandidate = candidates.find((c) => c.jibunAddress === activeJibun) ?? candidates[0];
   const siteDetailQuery = useSiteDetail(activeCandidate?.pnu);
@@ -232,6 +238,12 @@ function SearchPage() {
               />
             ) : candidates.length === 0 ? (
               <NoResults query={q} />
+            ) : needsDongSelection ? (
+              <DongPicker
+                query={q}
+                counts={dongCounts}
+                onSelect={(dong) => submit(`${q} ${dong}`)}
+              />
             ) : (
               <>
                 {candidates.length > 1 && (
@@ -358,6 +370,41 @@ function NoResults({ query }: { query: string }) {
           </Link>
         ))}
       </div>
+    </div>
+  );
+}
+
+// "구" 단위 검색처럼 결과가 여러 동에 걸칠 때 지번 탭/패널 대신 먼저 보여주는
+// 화면 — 동을 고르면 기존 submit과 동일하게 `${q} ${동}`으로 좁혀 재검색한다.
+function DongPicker({
+  query,
+  counts,
+  onSelect,
+}: {
+  query: string;
+  counts: Map<string, number>;
+  onSelect: (dong: string) => void;
+}) {
+  return (
+    <div className="p-6 text-center">
+      <MapPin className="mx-auto h-8 w-8 text-brand" />
+      <h2 className="mt-4 text-lg font-semibold text-navy">"{query}"에 여러 동의 결과가 있어요</h2>
+      <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">
+        동을 선택하면 해당 동으로 좁혀 다시 검색합니다.
+      </p>
+      <ul className="mt-5 space-y-2">
+        {[...counts.entries()].map(([dong, count]) => (
+          <li key={dong}>
+            <button
+              onClick={() => onSelect(dong)}
+              className="flex w-full items-center justify-between rounded-xl border border-border bg-background px-4 py-3 text-left text-sm font-semibold text-navy transition hover:border-brand/50 hover:bg-brand-soft"
+            >
+              <span>{dong}</span>
+              <span className="text-xs font-normal text-muted-foreground">{count}개 자리</span>
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

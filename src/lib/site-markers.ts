@@ -7,6 +7,33 @@ import type { Candidate } from "@/lib/api";
 // 바로 다음 토큰(지번)만 탭 라벨로 쓴다. 앵커를 못 찾으면 기존 방식(마지막 토큰)으로 폴백.
 const DONG_SUFFIX = /(동|읍|면|리|가)$/;
 
+// extractLotLabel과 달리 검색어(query)에 기대지 않고 jibunAddress 문자열
+// 자체에서 동 이름을 뽑는다 — "구"로 끝나는 토큰(있으면) 다음, 지번 숫자
+// 토큰 앞까지 훑어 DONG_SUFFIX에 매칭되는 첫 토큰을 반환한다. 못 찾으면 null.
+export const extractDongToken = (jibunAddress: string): string | null => {
+  const tokens = jibunAddress.trim().split(/\s+/).filter(Boolean);
+  const guIdx = tokens.findIndex((t) => t.endsWith("구"));
+  const searchFrom = guIdx !== -1 ? guIdx + 1 : 0;
+  for (let i = searchFrom; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (/^-?\d/.test(token)) break; // 지번 숫자 토큰에 닿으면 중단
+    if (DONG_SUFFIX.test(token)) return token;
+  }
+  return null;
+};
+
+// search.tsx의 동 선택 게이트(candidates의 distinct 동 개수 판정)와 동 선택
+// 버튼의 "N개" 표시가 같은 집계를 필요로 해서 한 번만 순회하도록 묶었다.
+export function dongCandidateCounts(candidates: Candidate[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const c of candidates) {
+    const dong = extractDongToken(c.jibunAddress);
+    if (!dong) continue;
+    counts.set(dong, (counts.get(dong) ?? 0) + 1);
+  }
+  return counts;
+}
+
 export const extractLotLabel = (jibunAddress: string, query: string): string => {
   const tokens = jibunAddress.trim().split(/\s+/);
   const queryTokens = query.trim().split(/\s+/).filter(Boolean);
