@@ -49,3 +49,30 @@ export function withinRadius<T extends { latitude: number | null; longitude: num
   // 보여주는 게 안전하다.
   return filtered.length > 0 ? filtered : items;
 }
+
+// withinRadius를 통과하고도 넓은 동/읍 검색어라 반경 안에 수십 개가 남을 수 있다
+// (예: 근사 중심점 300m 안에 우연히 몰린 경우) — 중심점에서 가까운 순으로 정렬해
+// 상위 N개만 남긴다. 중심점은 withinRadius와 같은 근사(매칭 좌표 평균)를
+// centroidOf로 다시 구하되(같은 함수 재사용, 새 계산 로직 없음), 순수 함수로 두어
+// withinRadius의 반경 필터와 독립적으로 쓸 수 있게 한다.
+export function capToNearest<T extends { latitude: number | null; longitude: number | null }>(
+  items: T[],
+  maxCount: number,
+): T[] {
+  if (items.length <= maxCount) return items;
+
+  const locatedPoints = items
+    .filter((i) => i.latitude != null && i.longitude != null)
+    .map((i) => ({ lat: i.latitude as number, lng: i.longitude as number }));
+  const center = centroidOf(locatedPoints);
+  if (!center) return items.slice(0, maxCount);
+
+  // 좌표 없는 항목은 거리를 알 수 없으니 무한대 취급 — 정렬 시 맨 뒤로 밀려
+  // 캡을 넘길 때 가장 먼저 잘린다(개수에는 포함되되 우선순위는 최하).
+  const distanceOf = (i: T) =>
+    i.latitude != null && i.longitude != null
+      ? haversineMeters(center, { lat: i.latitude, lng: i.longitude })
+      : Number.POSITIVE_INFINITY;
+
+  return [...items].sort((a, b) => distanceOf(a) - distanceOf(b)).slice(0, maxCount);
+}

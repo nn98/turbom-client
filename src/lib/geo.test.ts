@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { centroidOf, haversineMeters, withinRadius } from "./geo";
+import { capToNearest, centroidOf, haversineMeters, withinRadius } from "./geo";
 
 describe("haversineMeters", () => {
   it("returns 0 for the same point", () => {
@@ -64,5 +64,35 @@ describe("withinRadius", () => {
   it("returns the original list unfiltered when nothing has coordinates", () => {
     const items = [{ latitude: null, longitude: null }];
     expect(withinRadius(items, 300)).toEqual(items);
+  });
+});
+
+describe("capToNearest", () => {
+  // 위도만 다르고 경도는 고정 — 중심점(centroid)에서 각 점까지의 거리 순서가
+  // 위도 차이만으로 뚜렷하게 갈리도록 구성(동률 없이 정렬 순서를 명확히 검증하기 위함).
+  const p1 = { latitude: 37.0, longitude: 127.0 }; // centroid까지 0.004
+  const p2 = { latitude: 37.001, longitude: 127.0 }; // 0.003
+  const p3 = { latitude: 37.003, longitude: 127.0 }; // 0.001 (가장 가까움)
+  const p4 = { latitude: 37.006, longitude: 127.0 }; // 0.002
+  const p5 = { latitude: 37.01, longitude: 127.0 }; // 0.006 (가장 멂)
+  // centroid lat = (37.000+37.001+37.003+37.006+37.010)/5 = 37.004
+
+  it("returns the list unchanged when it is already at or under the cap", () => {
+    const items = [p1, p2];
+    expect(capToNearest(items, 5)).toEqual(items);
+  });
+
+  it("sorts by distance to the centroid and keeps only the nearest N", () => {
+    const result = capToNearest([p1, p2, p3, p4, p5], 3);
+    expect(result).toEqual([p3, p4, p2]);
+  });
+
+  it("pushes coordinate-less items to the back, so they're dropped first when over the cap", () => {
+    const noCoordsA = { latitude: null, longitude: null };
+    const noCoordsB = { latitude: null, longitude: null };
+    // 좌표 있는 3개(p2,p3,p5) + 좌표 없는 2개 = 5개, 캡 4 →
+    // 좌표 없는 두 항목 중 먼저 나온 하나만 개수 안에 들고, 나머지 하나는 잘린다.
+    const result = capToNearest([p2, p3, p5, noCoordsA, noCoordsB], 4);
+    expect(result).toEqual([p3, p2, p5, noCoordsA]);
   });
 });

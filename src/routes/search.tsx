@@ -16,12 +16,17 @@ import { isDemoMode } from "@/lib/api";
 import type { UnitSummary } from "@/lib/api";
 import { useSiteDetail, useSiteSearch } from "@/hooks/use-sites";
 import { MapView } from "@/components/map-view";
-import { withinRadius } from "@/lib/geo";
+import { capToNearest, withinRadius } from "@/lib/geo";
 import { buildSiteMarkers, extractLotLabel } from "@/lib/site-markers";
 
 // 넓은 동/읍 이름만으로 검색하면 후보가 실제 관심 범위 밖까지 잡힐 수 있다 —
 // 매칭된 후보들 좌표의 근사 중심점(withinRadius 참고) 기준 반경 300m로 좁힌다.
 const SEARCH_RADIUS_METERS = 300;
+// 반경 필터만으로는 부족할 때(넓은 동에서 우연히 반경 안에 몰린 경우) 지도 핀이
+// 수십 개씩 찍히면 클러터·성능 문제가 생긴다 — 중심점에서 가까운 순 상위 20개로
+// 한 번 더 자른다. 아래 탭 펼치기(MAX_VISIBLE_TABS=8)보다 넉넉하게 잡아야 "더보기"
+// 탭 펼치기가 실제로 의미 있는 개수를 보여준다.
+const MAX_CANDIDATES = 20;
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
@@ -94,7 +99,11 @@ function SearchPage() {
   // useMemo로 묶어야 SearchPage가 리렌더될 때마다 MapView의 마커 이펙트가
   // 불필요하게(마커 전부 재생성 + fitBounds 재계산) 재실행되는 걸 막을 수 있다.
   const candidates = useMemo(
-    () => withinRadius(searchQuery.data?.candidates ?? [], SEARCH_RADIUS_METERS),
+    () =>
+      capToNearest(
+        withinRadius(searchQuery.data?.candidates ?? [], SEARCH_RADIUS_METERS),
+        MAX_CANDIDATES,
+      ),
     [searchQuery.data],
   );
   const activeJibun = jibun || candidates[0]?.jibunAddress || "";
