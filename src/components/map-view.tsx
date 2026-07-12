@@ -12,15 +12,21 @@ export interface MapMarker {
 // Minimal ambient types for the slice of the Naver Maps JS SDK this file
 // uses. No official npm type package is installed — the SDK itself is
 // loaded at runtime via a <script> tag (see loadNaverMaps below), not npm.
-// LatLng/Marker instances are opaque to us — we only ever construct and
-// pass them through, never read properties off them.
-type NaverLatLng = object;
+// LatLng instances used to be fully opaque (construct/pass only) — now we
+// also read lat()/lng() off getBounds() results to report the viewport.
+interface NaverLatLng {
+  lat(): number;
+  lng(): number;
+}
 interface NaverLatLngBounds {
   extend(latlng: NaverLatLng): void;
+  getSW(): NaverLatLng;
+  getNE(): NaverLatLng;
 }
 interface NaverMap {
   setCenter(latlng: NaverLatLng): void;
   fitBounds(bounds: NaverLatLngBounds): void;
+  getBounds(): NaverLatLngBounds;
   destroy(): void;
 }
 interface NaverMarker {
@@ -106,15 +112,24 @@ const pinHtml = (label: string, active?: boolean) => `
     </div>
   </div>`;
 
+export interface ViewportBounds {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+}
+
 export function MapView({
   markers,
   onMarkerClick,
   onBackgroundClick,
+  onViewportChange,
   className = "h-[420px] w-full lg:h-[640px]",
 }: {
   markers: MapMarker[];
   onMarkerClick?: (jibunAddress: string) => void;
   onBackgroundClick?: () => void;
+  onViewportChange?: (bounds: ViewportBounds) => void;
   className?: string;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -127,6 +142,7 @@ export function MapView({
   const lastPositionsKeyRef = useRef<string | null>(null);
   const onMarkerClickRef = useRef(onMarkerClick);
   const onBackgroundClickRef = useRef(onBackgroundClick);
+  const onViewportChangeRef = useRef(onViewportChange);
   const initialCenterRef = useRef<{ lat: number; lng: number } | null>(
     markers.length ? { lat: markers[0].lat, lng: markers[0].lng } : null,
   );
@@ -140,6 +156,10 @@ export function MapView({
   useEffect(() => {
     onBackgroundClickRef.current = onBackgroundClick;
   }, [onBackgroundClick]);
+
+  useEffect(() => {
+    onViewportChangeRef.current = onViewportChange;
+  }, [onViewportChange]);
 
   useEffect(() => {
     if (!ref.current || typeof window === "undefined") return;
@@ -162,6 +182,22 @@ export function MapView({
           : new maps.LatLng(37.5665, 126.978);
         mapRef.current = new maps.Map(ref.current, { center, zoom: 17, zoomControl: true });
         maps.Event.addListener(mapRef.current, "click", () => onBackgroundClickRef.current?.());
+        // "idle" fires once after pan/zoom settles (not on every drag frame like
+        // "drag"/"zoom_changed" would) — this is a one-way report to the parent,
+        // the map's own center/zoom must never be moved in reaction to it (see
+        // positionsKey comment above for why: that would create a feedback loop).
+        maps.Event.addListener(mapRef.current, "idle", () => {
+          const bounds = mapRef.current?.getBounds();
+          if (!bounds) return;
+          const sw = bounds.getSW();
+          const ne = bounds.getNE();
+          onViewportChangeRef.current?.({
+            south: sw.lat(),
+            west: sw.lng(),
+            north: ne.lat(),
+            east: ne.lng(),
+          });
+        });
         setMapReady(true);
       })
       .catch((e: unknown) => {

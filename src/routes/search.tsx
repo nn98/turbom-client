@@ -15,7 +15,7 @@ import { DEMO_ADDRESSES } from "@/lib/mock-data";
 import { isDemoMode } from "@/lib/api";
 import type { UnitSummary } from "@/lib/api";
 import { useSiteDetail, useSiteSearch } from "@/hooks/use-sites";
-import { MapView } from "@/components/map-view";
+import { MapView, type ViewportBounds } from "@/components/map-view";
 import { capToNearest, withinRadius } from "@/lib/geo";
 import { buildSiteMarkers, extractLotLabel } from "@/lib/site-markers";
 
@@ -114,6 +114,28 @@ function SearchPage() {
     [candidates, q, activeCandidate?.jibunAddress],
   );
 
+  // 지도→패널 단방향 흐름: 지도가 idle에서 보고하는 화면 범위를 패널의 지번
+  // 탭 목록에만 한 겹 더 걸러 쓴다. 마커/activeCandidate는 계속 candidates
+  // 그대로라 이 state가 바뀌어도 지도의 센터/줌은 다시 움직이지 않는다(무한
+  // 루프 방지 — 상세 설계는 map-view.tsx의 idle 리스너 주석 참고).
+  const [viewportBounds, setViewportBounds] = useState<ViewportBounds | null>(null);
+  // 새 검색 결과가 오면(q 변경) 지도가 아직 안 움직였을 수 있으니 필터 없이
+  // 시작한다 — 그러지 않으면 이전 검색의 뷰포트가 새 후보에 그대로 적용돼
+  // 패널이 비어 보일 수 있다.
+  useEffect(() => setViewportBounds(null), [q]);
+  const visibleCandidates = useMemo(() => {
+    if (!viewportBounds) return candidates;
+    return candidates.filter((c) => {
+      if (c.latitude == null || c.longitude == null) return true; // 좌표 없으면 판단 불가 — 통과
+      return (
+        c.latitude >= viewportBounds.south &&
+        c.latitude <= viewportBounds.north &&
+        c.longitude >= viewportBounds.west &&
+        c.longitude <= viewportBounds.east
+      );
+    });
+  }, [candidates, viewportBounds]);
+
   const submit = (query: string) => {
     if (!query.trim()) return;
     navigate({ to: "/search", search: { q: query.trim() } });
@@ -135,6 +157,7 @@ function SearchPage() {
         className="h-full w-full"
         onMarkerClick={selectJibun}
         onBackgroundClick={() => setCollapsed(true)}
+        onViewportChange={setViewportBounds}
         markers={markers}
       />
 
@@ -213,15 +236,21 @@ function SearchPage() {
               <>
                 {candidates.length > 1 && (
                   <div className="border-b border-border/60 p-3">
-                    <SegmentedTabs
-                      key={q}
-                      items={candidates.map((c) => ({
-                        id: c.jibunAddress,
-                        label: extractLotLabel(c.jibunAddress, q),
-                      }))}
-                      activeId={activeCandidate?.jibunAddress ?? ""}
-                      onChange={selectJibun}
-                    />
+                    {visibleCandidates.length > 0 ? (
+                      <SegmentedTabs
+                        key={q}
+                        items={visibleCandidates.map((c) => ({
+                          id: c.jibunAddress,
+                          label: extractLotLabel(c.jibunAddress, q),
+                        }))}
+                        activeId={activeCandidate?.jibunAddress ?? ""}
+                        onChange={selectJibun}
+                      />
+                    ) : (
+                      <p className="px-1 py-1.5 text-xs text-muted-foreground">
+                        지도를 움직이면 이 지역의 다른 자리를 확인할 수 있습니다.
+                      </p>
+                    )}
                   </div>
                 )}
 
