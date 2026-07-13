@@ -461,7 +461,11 @@ function SegmentedTabs({
 
   return (
     <div className="flex items-center gap-1.5">
-      <EdgeScroller scrollRef={containerRef} deps={[visibleItems.length]} fadeClassName="from-secondary">
+      <EdgeScroller
+        scrollRef={containerRef}
+        deps={[visibleItems.length]}
+        fadeClassName="from-secondary"
+      >
         <div
           ref={containerRef}
           role="radiogroup"
