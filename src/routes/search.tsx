@@ -1,8 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { AlertTriangle, ChevronRight, MapPin, Search as SearchIcon, Sparkles } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import {
+  AlertTriangle,
+  ChevronRight,
+  List,
+  MapPin,
+  Search as SearchIcon,
+  Sparkles,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SiteHeader } from "@/components/site-header";
+import { cn } from "@/lib/utils";
 import { DEMO_ADDRESSES } from "@/lib/mock-data";
 import { isDemoMode } from "@/lib/api";
 import type { Candidate, UnitSummary } from "@/lib/api";
@@ -99,6 +105,8 @@ function SearchPage() {
   const { q = "", jibun = "" } = Route.useSearch();
   const navigate = useNavigate();
   const [input, setInput] = useState(q);
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [searchFocused, setSearchFocused] = useState(false);
 
   useEffect(() => setInput(q), [q]);
 
@@ -113,55 +121,118 @@ function SearchPage() {
     navigate({ to: "/search", search: { q: query.trim() } });
   };
 
+  const disclaimer = siteDetailQuery.data?.disclaimer;
+
   return (
-    <div className="min-h-screen bg-background">
-      <SiteHeader />
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="fixed inset-0 overflow-hidden bg-secondary/30">
+      {/* 지도: 화면 전체 배경. 빈 곳 클릭 시 결과 패널을 접고/펴서 지도에 집중 */}
+      <MapView
+        className="absolute inset-0 h-full w-full"
+        onMapClick={() => setPanelOpen((open) => !open)}
+        onMarkerClick={(j) => navigate({ to: "/search", search: { q, jibun: j } })}
+        markers={candidates
+          .filter((c) => c.latitude != null && c.longitude != null)
+          .map((c) => ({
+            id: c.pnu,
+            lat: c.latitude as number,
+            lng: c.longitude as number,
+            label: extractLotLabel(c.jibunAddress, q),
+            jibunAddress: c.jibunAddress,
+            active: c.jibunAddress === activeCandidate?.jibunAddress,
+          }))}
+      />
+
+      {/* 상단 플로팅 바: 로고 pill + 검색 pill(포커스 시 확장) */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center gap-3 p-4">
+        <Link
+          to="/"
+          className="pointer-events-auto flex h-[52px] shrink-0 items-center gap-2.5 rounded-full bg-background px-4 shadow-elevated"
+        >
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-navy text-sm font-semibold text-navy-foreground">
+            터
+          </span>
+          <span className="text-[15px] font-semibold tracking-tight text-foreground">터봄</span>
+        </Link>
         <form
           onSubmit={(e) => {
             e.preventDefault();
             submit(input);
           }}
-          className="flex flex-col gap-2 sm:flex-row"
+          className={cn(
+            "pointer-events-auto flex h-[52px] items-center gap-2 rounded-full bg-background py-1.5 pl-4 pr-1.5 shadow-elevated transition-all duration-300 ease-out",
+            searchFocused ? "w-full max-w-3xl" : "w-[240px] sm:w-[340px]",
+          )}
         >
-          <div className="relative flex-1">
-            <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="예: 성남시 수정구 신흥동 123"
-              className="h-12 rounded-full border-border bg-surface pl-11 pr-4 text-base focus-visible:ring-brand"
-            />
-          </div>
+          <SearchIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            placeholder="예: 금토동 405"
+            className="h-9 flex-1 border-0 bg-transparent px-2 text-base shadow-none focus-visible:ring-0"
+          />
           <Button
             type="submit"
-            size="lg"
-            className="h-12 rounded-full bg-navy px-8 text-navy-foreground hover:bg-navy/90"
+            className="h-10 shrink-0 rounded-full bg-navy px-6 text-navy-foreground hover:bg-navy/90"
           >
             검색
           </Button>
         </form>
+      </div>
 
-        {!q ? (
-          <EmptyState onDemo={(addr) => submit(addr)} />
-        ) : searchQuery.isLoading ? (
-          <SearchSkeleton />
-        ) : searchQuery.isError ? (
-          <ErrorState
-            message={errorMessage(searchQuery.error)}
-            onRetry={() => searchQuery.refetch()}
-          />
-        ) : candidates.length === 0 ? (
-          <NoResults query={q} />
-        ) : (
-          <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,420px)_1fr]">
-            <div className="space-y-6">
+      {/* 왼쪽 플로팅 결과 패널: 지도 클릭 시 왼쪽으로 슬라이드 아웃 */}
+      <aside
+        className={cn(
+          "absolute left-4 top-[84px] z-10 flex max-h-[calc(100%-104px)] w-[min(420px,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl bg-background shadow-elevated transition-transform duration-300 ease-out",
+          panelOpen ? "translate-x-0" : "-translate-x-[calc(100%+1.5rem)]",
+        )}
+        aria-hidden={!panelOpen}
+      >
+        <div className="overflow-y-auto p-5">
+          {!q ? (
+            <EmptyState onDemo={submit} />
+          ) : searchQuery.isLoading ? (
+            <PanelSkeleton />
+          ) : searchQuery.isError ? (
+            <ErrorState
+              message={errorMessage(searchQuery.error)}
+              onRetry={() => searchQuery.refetch()}
+            />
+          ) : candidates.length === 0 ? (
+            <NoResults query={q} />
+          ) : (
+            <div className="space-y-5">
               <JibunTabs
                 candidates={candidates}
                 activeJibun={activeCandidate?.jibunAddress ?? ""}
                 query={q}
                 onSelect={(j) => navigate({ to: "/search", search: { q, jibun: j } })}
               />
+
+              <div>
+                <p className="text-xs text-muted-foreground">지금 보고 있는 자리</p>
+                <h2 className="mt-1.5 text-xl font-bold tracking-tight text-navy">
+                  {activeCandidate?.jibunAddress}
+                </h2>
+                {activeCandidate?.roadAddress ? (
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {activeCandidate.roadAddress}
+                  </p>
+                ) : null}
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <span className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-medium text-navy">
+                    점포 {activeCandidate?.unitCount ?? 0}개
+                  </span>
+                  {activeCandidate?.closedCount ? (
+                    <span className="rounded-lg border border-warn/30 bg-warn-soft px-2.5 py-1 text-xs font-medium text-navy">
+                      폐업 이력 {activeCandidate.closedCount}건
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+
+              <hr className="border-border/60" />
 
               {siteDetailQuery.isLoading ? (
                 <UnitListSkeleton />
@@ -171,53 +242,47 @@ function SearchPage() {
                   onRetry={() => siteDetailQuery.refetch()}
                 />
               ) : (
-                <UnitList
-                  units={siteDetailQuery.data?.units ?? []}
-                  jibunAddress={activeCandidate?.jibunAddress ?? ""}
-                />
+                <UnitList units={siteDetailQuery.data?.units ?? []} />
               )}
+
+              {disclaimer ? (
+                <>
+                  <hr className="border-border/60" />
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    기준일 {disclaimer.dataAsOf} · {disclaimer.note}
+                  </p>
+                </>
+              ) : null}
             </div>
-            <div className="lg:sticky lg:top-24 lg:self-start">
-              {activeCandidate &&
-              (activeCandidate.latitude == null || activeCandidate.longitude == null) ? (
-                <Card className="flex h-[420px] flex-col items-center justify-center gap-2 rounded-2xl border-border/70 p-6 text-center shadow-card lg:h-[640px]">
-                  <MapPin className="h-6 w-6 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">이 자리는 위치 정보가 없습니다.</p>
-                </Card>
-              ) : (
-                <Card className="overflow-hidden rounded-2xl border-border/70 p-0 shadow-card">
-                  <MapView
-                    onMarkerClick={(j) => navigate({ to: "/search", search: { q, jibun: j } })}
-                    markers={candidates
-                      .filter((c) => c.latitude != null && c.longitude != null)
-                      .map((c) => ({
-                        id: c.pnu,
-                        lat: c.latitude as number,
-                        lng: c.longitude as number,
-                        label: extractLotLabel(c.jibunAddress, q),
-                        jibunAddress: c.jibunAddress,
-                        active: c.jibunAddress === activeCandidate?.jibunAddress,
-                      }))}
-                  />
-                </Card>
-              )}
-            </div>
-          </div>
+          )}
+        </div>
+      </aside>
+
+      {/* 패널이 접혀 있을 때 다시 여는 버튼 */}
+      <button
+        type="button"
+        onClick={() => setPanelOpen(true)}
+        className={cn(
+          "absolute bottom-6 left-6 z-10 flex items-center gap-2 rounded-full bg-navy px-5 py-3.5 text-sm font-semibold text-navy-foreground shadow-elevated transition-all duration-300 hover:bg-navy/90",
+          panelOpen ? "pointer-events-none translate-y-2 opacity-0" : "translate-y-0 opacity-100",
         )}
-      </div>
+      >
+        <List className="h-4 w-4" />
+        점포 목록
+      </button>
     </div>
   );
 }
 
 function EmptyState({ onDemo }: { onDemo: (addr: string) => void }) {
   return (
-    <Card className="mt-10 rounded-2xl border-dashed border-border bg-surface-muted/40 p-10 text-center shadow-none">
-      <MapPin className="mx-auto h-8 w-8 text-brand" />
-      <h2 className="mt-4 text-xl font-semibold text-navy">지번 주소로 검색을 시작하세요</h2>
-      <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+    <div className="rounded-2xl border border-dashed border-border bg-surface-muted/40 p-6 text-center">
+      <MapPin className="mx-auto h-7 w-7 text-brand" />
+      <h2 className="mt-3 text-base font-semibold text-navy">지번 주소로 검색을 시작하세요</h2>
+      <p className="mt-1.5 text-sm text-muted-foreground">
         본번까지 입력하시면 해당 지번의 모든 상가와 층·호수를 보여드립니다.
       </p>
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
         <Sparkles className="h-3.5 w-3.5 text-brand" />
         <span className="text-xs text-muted-foreground">데모 지번 바로가기</span>
       </div>
@@ -232,20 +297,20 @@ function EmptyState({ onDemo }: { onDemo: (addr: string) => void }) {
           </button>
         ))}
       </div>
-    </Card>
+    </div>
   );
 }
 
 function NoResults({ query }: { query: string }) {
   return (
-    <Card className="mt-10 rounded-2xl border-border bg-surface p-10 text-center shadow-card">
-      <h2 className="text-xl font-semibold text-navy">"{query}" 결과가 없습니다</h2>
-      <p className="mt-2 text-sm text-muted-foreground">
+    <div className="rounded-2xl border border-border bg-surface p-6 text-center">
+      <h2 className="text-base font-semibold text-navy">"{query}" 결과가 없습니다</h2>
+      <p className="mt-1.5 text-sm text-muted-foreground">
         {isDemoMode
           ? "데모 모드에서는 아래 세 개 지번만 지원합니다."
           : "다른 지번 주소로 다시 검색해보세요."}
       </p>
-      <div className="mt-6 flex flex-wrap justify-center gap-2">
+      <div className="mt-5 flex flex-wrap justify-center gap-2">
         {DEMO_ADDRESSES.map((a) => (
           <Link
             key={a}
@@ -257,20 +322,20 @@ function NoResults({ query }: { query: string }) {
           </Link>
         ))}
       </div>
-    </Card>
+    </div>
   );
 }
 
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <Card className="mt-10 rounded-2xl border-danger/30 bg-surface p-10 text-center shadow-card">
-      <AlertTriangle className="mx-auto h-8 w-8 text-danger" />
-      <h2 className="mt-4 text-lg font-semibold text-navy">불러오는 중 문제가 발생했습니다</h2>
-      <p className="mt-2 text-sm text-muted-foreground">{message}</p>
-      <Button variant="outline" className="mt-6 rounded-full" onClick={onRetry}>
+    <div className="rounded-2xl border border-danger/30 bg-surface p-6 text-center">
+      <AlertTriangle className="mx-auto h-7 w-7 text-danger" />
+      <h2 className="mt-3 text-base font-semibold text-navy">불러오는 중 문제가 발생했습니다</h2>
+      <p className="mt-1.5 text-sm text-muted-foreground">{message}</p>
+      <Button variant="outline" className="mt-5 rounded-full" onClick={onRetry}>
         다시 시도
       </Button>
-    </Card>
+    </div>
   );
 }
 
@@ -285,32 +350,52 @@ function JibunTabs({
   query: string;
   onSelect: (jibun: string) => void;
 }) {
+  // 탭에는 "금토동 405-1"처럼 동 이름까지 붙여 표기(지도 핀 라벨은 지번만 유지)
+  const dong = query
+    .trim()
+    .split(/\s+/)
+    .reverse()
+    .find((t) => DONG_SUFFIX.test(t));
+
   return (
-    <div className="max-h-[108px] overflow-y-auto pr-1">
-      <div className="grid grid-cols-5 gap-2">
-        {candidates.map((c) => {
-          const active = c.jibunAddress === activeJibun;
-          return (
-            <button
-              key={c.pnu}
-              onClick={() => onSelect(c.jibunAddress)}
-              className={
-                "rounded-full px-3 py-1.5 text-xs transition " +
-                (active
-                  ? "bg-navy text-navy-foreground"
-                  : "border border-border bg-surface text-navy hover:border-brand/40")
-              }
-            >
-              {extractLotLabel(c.jibunAddress, query)}
-            </button>
-          );
-        })}
-      </div>
+    <div className="flex max-h-[96px] flex-wrap gap-1 overflow-y-auto rounded-2xl bg-secondary/60 p-1.5">
+      {candidates.map((c) => {
+        const active = c.jibunAddress === activeJibun;
+        const lot = extractLotLabel(c.jibunAddress, query);
+        return (
+          <button
+            key={c.pnu}
+            onClick={() => onSelect(c.jibunAddress)}
+            className={
+              "rounded-full px-3.5 py-2 text-sm font-semibold transition " +
+              (active
+                ? "bg-navy text-navy-foreground shadow-sm"
+                : "text-navy hover:bg-background/80")
+            }
+          >
+            {dong ? `${dong} ${lot}` : lot}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-function UnitList({ units, jibunAddress }: { units: UnitSummary[]; jibunAddress: string }) {
+const LOCATION_SOURCE_LABEL: Record<UnitSummary["locationSource"], string | null> = {
+  sangga_api: "상가API 매칭",
+  overlap_inferred: "추정 분리",
+  license: null,
+};
+
+const unitSummaryLine = (u: UnitSummary) => {
+  const parts: (string | null)[] =
+    u.currentStatus === "영업" ? [u.currentBusinessName, u.industryDetail] : ["지금은 비어 있어요"];
+  parts.push(`가게 ${u.totalTenancyCount}곳 거쳐감`, `폐업 ${u.closedCount}번`);
+  if (u.averageSurvivalMonths != null) parts.push(`평균 ${u.averageSurvivalMonths}개월`);
+  return parts.filter(Boolean).join(" · ");
+};
+
+function UnitList({ units }: { units: UnitSummary[] }) {
   const [statusFilter, setStatusFilter] = useState<"all" | "영업" | "공실">("all");
   if (!units.length) return null;
   const sortedUnits = [...units]
@@ -325,17 +410,15 @@ function UnitList({ units, jibunAddress }: { units: UnitSummary[]; jibunAddress:
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-base text-muted-foreground">
-          📢 궁금한 점포를 누르면 보고서가 생성되요!
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">궁금한 점포를 누르면 히스토리가 열려요</p>
         <Select
           value={statusFilter}
           onValueChange={(value) => {
             if (value === "all" || value === "영업" || value === "공실") setStatusFilter(value);
           }}
         >
-          <SelectTrigger className="h-9 w-[110px] rounded-full border-border bg-surface text-xs text-navy shadow-none">
+          <SelectTrigger className="h-8 w-[92px] rounded-full border-border bg-surface text-xs text-navy shadow-none">
             <SelectValue placeholder="필터" />
           </SelectTrigger>
           <SelectContent>
@@ -345,65 +428,56 @@ function UnitList({ units, jibunAddress }: { units: UnitSummary[]; jibunAddress:
           </SelectContent>
         </Select>
       </div>
-      {sortedUnits.map((u) => (
-        <Link
-          key={u.unitId}
-          to="/report/$storeId"
-          params={{ storeId: u.unitId }}
-          className="group block"
-        >
-          <Card
-            className={
-              "flex items-center gap-3 rounded-xl border border-border/70 bg-surface p-4 shadow-card transition hover:bg-surface-muted/60 hover:shadow-elevated"
-            }
+      {sortedUnits.map((u) => {
+        const sourceLabel = LOCATION_SOURCE_LABEL[u.locationSource];
+        const open = u.currentStatus === "영업";
+        return (
+          <Link
+            key={u.unitId}
+            to="/report/$storeId"
+            params={{ storeId: u.unitId }}
+            className="group block"
           >
-            <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={
-                    "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium " +
-                    (u.currentStatus === "영업"
-                      ? "bg-brand-soft text-navy"
-                      : "bg-secondary text-muted-foreground")
-                  }
-                >
-                  <span
-                    className={
-                      "mr-1.5 h-1.5 w-1.5 rounded-full " +
-                      (u.currentStatus === "영업" ? "bg-brand" : "bg-muted-foreground/50")
-                    }
-                  />
-                  <span>{u.currentStatus}</span>
-                </span>
-                <span className="text-base font-semibold text-navy">
-                  {u.currentStatus === "영업" && u.currentBusinessName
-                    ? `${displayUnitLabel(u.label)})`
-                    : displayUnitLabel(u.label)}
-                </span>
-                {u.currentStatus === "영업" && u.currentBusinessName ? (
-                  <span className="text-base font-semibold text-navy">{u.currentBusinessName}</span>
-                ) : null}
+            <Card className="relative flex items-center gap-3 overflow-hidden rounded-xl border-border/70 bg-surface p-4 pl-5 shadow-card transition hover:bg-surface-muted/60 hover:shadow-elevated">
+              {/* 영업 중인 점포는 왼쪽 초록 강조선 */}
+              {open ? <span className="absolute inset-y-0 left-0 w-1 bg-brand" /> : null}
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-base font-bold text-navy">{displayUnitLabel(u.label)}</span>
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <span
+                      className={
+                        "h-1.5 w-1.5 rounded-full " + (open ? "bg-brand" : "bg-muted-foreground/50")
+                      }
+                    />
+                    {u.currentStatus === "영업" ? "영업" : "공실"}
+                  </span>
+                  {sourceLabel ? (
+                    <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+                      {sourceLabel}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-1.5 truncate text-sm text-muted-foreground">
+                  {unitSummaryLine(u)}
+                </p>
               </div>
-              <p className="mt-1.5 line-clamp-1 text-sm text-muted-foreground">{jibunAddress}</p>
-            </div>
-            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-navy" />
-          </Card>
-        </Link>
-      ))}
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-navy" />
+            </Card>
+          </Link>
+        );
+      })}
     </div>
   );
 }
 
-function SearchSkeleton() {
+function PanelSkeleton() {
   return (
-    <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,420px)_1fr]">
-      <div className="space-y-4">
-        <Skeleton className="h-9 w-40 rounded-full" />
-        <Skeleton className="h-32 rounded-2xl" />
-        <Skeleton className="h-20 rounded-xl" />
-        <Skeleton className="h-20 rounded-xl" />
-      </div>
-      <Skeleton className="h-[500px] rounded-2xl" />
+    <div className="space-y-4">
+      <Skeleton className="h-11 w-full rounded-2xl" />
+      <Skeleton className="h-24 rounded-xl" />
+      <Skeleton className="h-16 rounded-xl" />
+      <Skeleton className="h-16 rounded-xl" />
     </div>
   );
 }

@@ -36,7 +36,7 @@ interface NaverMapsNamespace {
     zIndex?: number;
   }) => NaverMarker;
   Event: {
-    addListener(target: NaverMarker, eventName: string, handler: () => void): void;
+    addListener(target: NaverMarker | NaverMap, eventName: string, handler: () => void): void;
   };
 }
 
@@ -104,14 +104,21 @@ const pinHtml = (label: string, active?: boolean) => `
 export function MapView({
   markers,
   onMarkerClick,
+  onMapClick,
+  className = "h-[420px] w-full lg:h-[640px]",
 }: {
   markers: MapMarker[];
   onMarkerClick?: (jibunAddress: string) => void;
+  /** 지도 빈 곳을 클릭했을 때(드래그 제외). 마커 클릭과는 별개로 발화한다. */
+  onMapClick?: () => void;
+  className?: string;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<NaverMap | null>(null);
   const markerRefs = useRef<NaverMarker[]>([]);
   const onMarkerClickRef = useRef(onMarkerClick);
+  const onMapClickRef = useRef(onMapClick);
+  const lastCenteredIdRef = useRef<string | null>(null);
   const initialCenterRef = useRef<{ lat: number; lng: number } | null>(
     markers.length ? { lat: markers[0].lat, lng: markers[0].lng } : null,
   );
@@ -120,7 +127,8 @@ export function MapView({
 
   useEffect(() => {
     onMarkerClickRef.current = onMarkerClick;
-  }, [onMarkerClick]);
+    onMapClickRef.current = onMapClick;
+  }, [onMarkerClick, onMapClick]);
 
   useEffect(() => {
     if (!ref.current || typeof window === "undefined") return;
@@ -142,6 +150,8 @@ export function MapView({
           ? new maps.LatLng(initialCenter.lat, initialCenter.lng)
           : new maps.LatLng(37.5665, 126.978);
         mapRef.current = new maps.Map(ref.current, { center, zoom: 17, zoomControl: true });
+        // 네이버 SDK의 map click은 드래그(팬)에는 발화하지 않는다.
+        maps.Event.addListener(mapRef.current, "click", () => onMapClickRef.current?.());
         setMapReady(true);
       })
       .catch((e: unknown) => {
@@ -175,6 +185,13 @@ export function MapView({
       return marker;
     });
 
+    // 선택된 지번이 바뀌었을 때만 지도 중심을 옮긴다(매 렌더마다 재센터링 방지).
+    const active = markers.find((m) => m.active);
+    if (active && active.id !== lastCenteredIdRef.current) {
+      lastCenteredIdRef.current = active.id;
+      mapRef.current.setCenter(new maps.LatLng(active.lat, active.lng));
+    }
+
     return () => {
       markerRefs.current.forEach((marker) => marker.setMap(null));
       markerRefs.current = [];
@@ -183,11 +200,13 @@ export function MapView({
 
   if (error) {
     return (
-      <div className="flex h-[420px] w-full flex-col items-center justify-center gap-1 bg-secondary/30 px-6 text-center lg:h-[640px]">
+      <div
+        className={`flex flex-col items-center justify-center gap-1 bg-secondary/30 px-6 text-center ${className}`}
+      >
         <p className="text-sm text-muted-foreground">{error}</p>
       </div>
     );
   }
 
-  return <div ref={ref} className="h-[420px] w-full lg:h-[640px]" />;
+  return <div ref={ref} className={className} />;
 }
