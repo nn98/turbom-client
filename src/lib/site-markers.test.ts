@@ -26,6 +26,14 @@ describe("extractLotLabel", () => {
   it("falls back to the last token when no dong suffix is found in the query", () => {
     expect(extractLotLabel("성남시 수정구 신흥동 123-4", "123-4")).toBe("123-4");
   });
+
+  it("strips a trailing non-numeric suffix like '번지' for label consistency", () => {
+    expect(extractLotLabel("성남시 수정구 신흥동 123번지 상가빌딩", "신흥동 123")).toBe("123");
+  });
+
+  it("keeps a lot number with a sub-number intact after stripping the suffix", () => {
+    expect(extractLotLabel("성남시 수정구 신흥동 123-4번지", "신흥동 123")).toBe("123-4");
+  });
 });
 
 describe("extractDongToken", () => {

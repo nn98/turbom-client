@@ -34,6 +34,12 @@ export function dongCandidateCounts(candidates: Candidate[]): Map<string, number
   return counts;
 }
 
+// 실 데이터의 지번 토큰에 "번지" 같은 접미어가 섞여 있으면 탭 라벨이
+// "123-4" / "56번지"처럼 표기가 들쭉날쭉해진다 — 숫자를 포함한 토큰에서만
+// 후행 비숫자·비하이픈 문자를 잘라낸다(순수 텍스트 폴백 토큰은 건드리지 않음).
+const stripLotSuffix = (token: string): string =>
+  /\d/.test(token) ? token.replace(/[^\d-]+$/, "") : token;
+
 export const extractLotLabel = (jibunAddress: string, query: string): string => {
   const tokens = jibunAddress.trim().split(/\s+/);
   const queryTokens = query.trim().split(/\s+/).filter(Boolean);
@@ -43,9 +49,9 @@ export const extractLotLabel = (jibunAddress: string, query: string): string => 
     .find((t) => DONG_SUFFIX.test(t));
   if (dongToken) {
     const idx = tokens.findIndex((t) => t === dongToken);
-    if (idx !== -1 && idx + 1 < tokens.length) return tokens[idx + 1];
+    if (idx !== -1 && idx + 1 < tokens.length) return stripLotSuffix(tokens[idx + 1]);
   }
-  return tokens[tokens.length - 1] ?? jibunAddress;
+  return stripLotSuffix(tokens[tokens.length - 1] ?? jibunAddress);
 };
 
 // candidates 배열이 매 렌더마다(예: 검색창 타이핑으로 인한 SearchPage 리렌더) 새
