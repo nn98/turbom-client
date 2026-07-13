@@ -58,6 +58,20 @@
 - 지도 마커 자체의 애니메이션 — Naver 지도는 이 환경에서 인증이 안 돼 검증 불가, 스코프 밖
 - `docs/spec/api-spec.md`/`docs/spec/frontend-spec.md` 수정 — 이 두 파일은 서버 레포 미러라 로컬에서 고치지 않음(`CLAUDE.md` §2). "명세 최신화"는 이 설계 문서 자체를 가리킴.
 
+## Task 5 — Pretendard 폰트 실제 로드 (전역, `src/styles.css`)
+
+`--font-sans`가 `"Pretendard", "Inter", ...`를 선언하지만 이 레포 어디에도 `@font-face`/CDN/npm으로 두 폰트를 실제로 불러오는 곳이 없다 — 전 페이지가 조용히 시스템 sans-serif로 폴백 중이었다(Explore 조사로 확인). 참조 레포(`D:\Dev\_Woowahan-Techcourse\woowaTon\client`)는 `src/index.css`에서 `@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css")`로 실제 로드한다 — 이 줄을 그대로 `styles.css` 최상단에 추가한다(사용자 지시대로 참조 레포를 기준점으로 삼음). `turbom_sub`는 폰트를 아예 안 건드리므로 참고하지 않는다.
+
+## Task 6 — 지도 페이지 기준 디자인 일원화
+
+Explore 조사로 확인된 구체적 불일치(모두 file:line 근거 있음)를 지도 페이지(`search.tsx`)의 현재 패턴 쪽으로 통일한다. `search.tsx` 자체가 참조와 어긋나는 지점(제출 버튼만 `rounded-xl`)은 참조 레포·`turbom_sub` 둘 다 우세한 쪽(`rounded-full`)으로 함께 고친다.
+
+- **플로팅 크롬 표면 통일**: `site-header.tsx`/`site-footer.tsx`의 `floating` 모드(현재 `bg-background/80 backdrop-blur`의 얇은 바)를 `search.tsx`의 브랜드 블록과 같은 표면 언어(`bg-surface/90` + `backdrop-blur` + `shadow-lg` + `rounded-2xl` pill 형태)로 맞춘다. `index.tsx`/`report.$storeId.tsx`가 이 컴포넌트를 그대로 쓰므로 두 페이지 모두 자동으로 통일된다.
+- **검색 제출 버튼 모양 수정**: `search.tsx`의 검색 제출 버튼(`rounded-xl`, 현재 페이지 안에서도 유일한 사각 버튼)을 `rounded-full`로 통일.
+- **"현재 보고 있는 항목" 라벨 굵기 통일**: `search.tsx`의 "지금 보고 있는 자리"(`font-extrabold`)와 동일한 역할을 하는 `index.tsx`의 `PreviewReportCard` 소제목("1층 102호 · 상가 리포트", 현재 `font-semibold`)을 `font-extrabold`로 맞춘다. 히어로 대제목(`h1`) 같은 큰 디스플레이 타이포는 건드리지 않는다(스코프 밖).
+- **`index.tsx` 카드 패딩 스케일 정리**: `WhyTurbohm`(`p-3 sm:p-8`)/`AnalysisInfo`(`p-3 sm:p-5`) 카드가 서로 다른 패딩 스케일을 쓰던 것을 같은 크기 역할의 카드끼리 동일하게 정리한다.
+- 낮은 우선순위로 남기고 이번엔 건드리지 않는 것: `Badge`(필터/이력 라벨용) vs `Pill`(데이터 칩용)의 스타일 차이 — 서로 의미가 다른 위젯이라 통일 대상이 아니라고 판단.
+
 ## 검증 계획
 
 - `npx tsc`/lint/vitest 통과
