@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EdgeScroller } from "@/components/edge-scroller";
 import { DEMO_ADDRESSES } from "@/lib/mock-data";
 import { isDemoMode } from "@/lib/api";
 import type { UnitSummary } from "@/lib/api";
@@ -460,36 +461,38 @@ function SegmentedTabs({
 
   return (
     <div className="flex items-center gap-1.5">
-      <div
-        ref={containerRef}
-        role="radiogroup"
-        className="relative flex min-w-0 flex-1 gap-1 overflow-x-auto rounded-full bg-secondary p-1"
-      >
-        {thumb && (
-          <span
-            aria-hidden
-            className="absolute inset-y-1 rounded-full bg-navy transition-[left,width] duration-300 ease-out"
-            style={{ left: thumb.left, width: thumb.width }}
-          />
-        )}
-        {visibleItems.map((it) => (
-          <button
-            key={it.id}
-            data-id={it.id}
-            role="radio"
-            aria-checked={it.id === activeId}
-            onClick={() => onChange(it.id)}
-            className={
-              "relative z-10 shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors " +
-              (it.id === activeId
-                ? "text-navy-foreground"
-                : "text-muted-foreground hover:text-navy")
-            }
-          >
-            {it.label}
-          </button>
-        ))}
-      </div>
+      <EdgeScroller scrollRef={containerRef} deps={[visibleItems.length]} fadeClassName="from-secondary">
+        <div
+          ref={containerRef}
+          role="radiogroup"
+          className="no-scrollbar relative flex min-w-0 flex-1 gap-1 overflow-x-auto rounded-full bg-secondary p-1"
+        >
+          {thumb && (
+            <span
+              aria-hidden
+              className="absolute inset-y-1 rounded-full bg-navy transition-[left,width] duration-300 ease-out"
+              style={{ left: thumb.left, width: thumb.width }}
+            />
+          )}
+          {visibleItems.map((it) => (
+            <button
+              key={it.id}
+              data-id={it.id}
+              role="radio"
+              aria-checked={it.id === activeId}
+              onClick={() => onChange(it.id)}
+              className={
+                "relative z-10 shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors " +
+                (it.id === activeId
+                  ? "text-navy-foreground"
+                  : "text-muted-foreground hover:text-navy")
+              }
+            >
+              {it.label}
+            </button>
+          ))}
+        </div>
+      </EdgeScroller>
       {/* 스크롤 트랙 안에 같이 두면 스크롤해야만 보여서 존재를 알아채기 어렵다
           — 항상 보이는 자리에 별도로 둔다. */}
       {hiddenCount > 0 && (

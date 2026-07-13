@@ -150,6 +150,13 @@
   text-wrap: balance;
 }
 
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* 풀페이지 스크롤 섹션 진입 애니메이션. 미지원 브라우저는 @supports가
    걸러내 최종 상태(불투명 1)로만 보이므로 폴백이 필요 없다. */
 @media (prefers-reduced-motion: no-preference) {
@@ -215,5 +222,35 @@
   :focus-visible {
     outline: 2px solid var(--color-ring);
     outline-offset: 2px;
+  }
+}
+
+/* 가로 스크롤 엣지 힌트 화살표 — "이 방향에 더 있다"는 걸 알리는 유일한
+   움직임이라 가볍게만 준다. prefers-reduced-motion 사용자는 애니메이션 없이
+   화살표만 정적으로 보인다(기존 section-enter-fade와 같은 처리 방식). */
+@media (prefers-reduced-motion: no-preference) {
+  .edge-nudge-left {
+    animation: edge-nudge-left 1.6s ease-in-out infinite;
+  }
+  .edge-nudge-right {
+    animation: edge-nudge-right 1.6s ease-in-out infinite;
+  }
+}
+@keyframes edge-nudge-left {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-2px);
+  }
+}
+@keyframes edge-nudge-right {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(2px);
   }
 }
