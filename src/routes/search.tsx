@@ -63,6 +63,17 @@ const displayUnitLabel = (label: string) => {
   return `${inferredFloor}층 ${label}`;
 };
 
+// 물건 목록 행 3번째 줄(업종·운영기간). UnitSummary엔 "현재 입주자가 지금까지
+// 운영한 기간"이 없다(그 값은 물건 상세의 Tenancy.survivalMonths에만 있고,
+// 이 목록 API는 averageSurvivalMonths—전체 이력 평균—만 준다) — 그래서
+// "영업 기간"은 averageSurvivalMonths로 표시한다.
+const unitDetailLine = (u: UnitSummary): string => {
+  const parts: string[] = [];
+  if (u.industryDetail) parts.push(u.industryDetail);
+  if (u.averageSurvivalMonths != null) parts.push(`평균 ${u.averageSurvivalMonths}개월`);
+  return parts.length ? parts.join(" · ") : "-";
+};
+
 const searchSchema = z.object({
   q: z.string().optional().catch(""),
   jibun: z.string().optional().catch(""),
@@ -290,11 +301,7 @@ function SearchPage() {
                       onRetry={() => siteDetailQuery.refetch()}
                     />
                   ) : (
-                    <UnitList
-                      units={siteDetailQuery.data?.units ?? []}
-                      jibunAddress={activeCandidate?.jibunAddress ?? ""}
-                      onSelect={goToReport}
-                    />
+                    <UnitList units={siteDetailQuery.data?.units ?? []} onSelect={goToReport} />
                   )}
                 </div>
 
@@ -550,11 +557,9 @@ function StatusBadge({ status }: { status: UnitSummary["currentStatus"] }) {
 
 function UnitList({
   units,
-  jibunAddress,
   onSelect,
 }: {
   units: UnitSummary[];
-  jibunAddress: string;
   onSelect: (storeId: string) => void;
 }) {
   const [statusFilter, setStatusFilter] = useState<"all" | "영업" | "공실">("all");
@@ -607,15 +612,15 @@ function UnitList({
                   <span className="text-sm font-bold text-navy">{displayUnitLabel(u.label)}</span>
                   <StatusBadge status={u.currentStatus} />
                 </div>
-                {/* 영업 정보(라벨+상태)와 점포명을 한 줄에 같이 넣으면 점포명 유무에 따라
-                    줄바꿈 여부가 카드마다 달라져 카드 높이가 들쭉날쭉해진다 — 점포명은
-                    항상 자기 줄을 갖게 분리해서 카드 높이를 예측 가능하게 만든다. */}
-                {u.currentStatus === "영업" && u.currentBusinessName ? (
-                  <p className="mt-1 truncate text-sm font-semibold text-navy">
-                    {u.currentBusinessName}
-                  </p>
-                ) : null}
-                <p className="mt-1.5 line-clamp-1 text-xs text-muted-foreground">{jibunAddress}</p>
+                {/* 2·3번째 줄은 내용이 없어도 고정 높이(h-5/h-4)로 항상 자리를
+                    예약한다 — 그러지 않으면 점포명·업종 유무에 따라 공실/영업
+                    카드 높이가 서로 달라진다. */}
+                <p className="mt-1 h-5 truncate text-sm font-semibold text-navy">
+                  {u.currentStatus === "영업" && u.currentBusinessName ? u.currentBusinessName : ""}
+                </p>
+                <p className="mt-1.5 h-4 truncate text-xs text-muted-foreground">
+                  {unitDetailLine(u)}
+                </p>
               </div>
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
             </button>
@@ -638,9 +643,17 @@ function SearchSkeleton() {
 
 function UnitListSkeleton() {
   return (
-    <div className="space-y-2">
-      <Skeleton className="h-16 rounded-xl" />
-      <Skeleton className="h-16 rounded-xl" />
-    </div>
+    <ul className="space-y-2">
+      {[0, 1].map((i) => (
+        <li key={i} className="rounded-xl border border-border/70 bg-surface p-3.5">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-4 w-16 rounded" />
+            <Skeleton className="h-4 w-10 rounded-full" />
+          </div>
+          <Skeleton className="mt-1 h-5 w-28 rounded" />
+          <Skeleton className="mt-1.5 h-4 w-36 rounded" />
+        </li>
+      ))}
+    </ul>
   );
 }
