@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
@@ -26,8 +26,15 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { EdgeScroller } from "@/components/edge-scroller";
 import { RiskBadge, riskToneOf } from "@/components/risk-badge";
-import { ApiRequestError, buildUnitAnalysis, findOccupant, isOccupiedStatus } from "@/lib/api";
+import {
+  ApiRequestError,
+  buildUnitAnalysis,
+  findOccupant,
+  isOccupiedStatus,
+  RISK_LABELS,
+} from "@/lib/api";
 import type { RiskLevel, Tenancy, UnitAnalysis, UnitDetail } from "@/lib/api";
 import { useUnitDetail } from "@/hooks/use-sites";
 
@@ -131,30 +138,46 @@ function ReportPage() {
         <ReportHeader detail={detail} current={current} riskLevel={analysis.riskLevel} />
 
         <div className="mt-10 space-y-16">
-          <Section title="통계" subtitle="이 자리에서 먼저 확인할 핵심 지표">
+          <Section number="01" title="통계" subtitle="이 자리에서 먼저 확인할 핵심 지표">
             <SummaryGrid detail={detail} analysis={analysis} current={current} />
             <div className="mt-6">
               <StatsBoard detail={detail} current={current} />
             </div>
           </Section>
 
-          <Section title="종합 분석" subtitle="운영 이력과 상권 데이터를 함께 해석했습니다">
+          <Section
+            number="02"
+            title="종합 분석"
+            subtitle="운영 이력과 상권 데이터를 함께 해석했습니다"
+          >
             <NarrativeCard lines={analysis.narrative} />
           </Section>
 
-          <Section title="주변 상권 분석" subtitle="주변 경쟁 환경을 시각적으로 정리했습니다">
+          <Section
+            number="03"
+            title="주변 상권 분석"
+            subtitle="주변 경쟁 환경을 시각적으로 정리했습니다"
+          >
             <DistrictAnalysis district={analysis.district} />
           </Section>
 
-          <Section title="위험도" subtitle="여러 신호를 종합한 참고용 등급">
+          <Section number="04" title="위험도" subtitle="여러 신호를 종합한 참고용 등급">
             <RiskCard level={analysis.riskLevel} label={analysis.riskLabel} />
           </Section>
 
-          <Section title="운영 이력" subtitle="이 자리를 거쳐간 업종의 시간 흐름입니다.">
+          <Section
+            number="05"
+            title="운영 이력"
+            subtitle="이 자리를 거쳐간 업종의 시간 흐름입니다."
+          >
             <TimelineCard timeline={detail.timeline} />
           </Section>
 
-          <Section title="계약 체크리스트" subtitle="계약 전에 반드시 확인해야 하는 항목">
+          <Section
+            number="06"
+            title="계약 체크리스트"
+            subtitle="계약 전에 반드시 확인해야 하는 항목"
+          >
             <ChecklistCard items={analysis.checklist} />
           </Section>
         </div>
@@ -223,17 +246,20 @@ function ReportHeader({
 }
 
 function Section({
+  number,
   title,
   subtitle,
   children,
 }: {
+  number: string;
   title: string;
   subtitle?: string;
   children: React.ReactNode;
 }) {
   return (
     <section>
-      <h2 className="text-2xl font-bold tracking-tight text-navy sm:text-3xl">{title}</h2>
+      <p className="text-xs font-bold tracking-[0.2em] text-muted-foreground">SECTION {number}</p>
+      <h2 className="mt-1 text-2xl font-bold tracking-tight text-navy sm:text-3xl">{title}</h2>
       {subtitle ? <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p> : null}
       <div className="mt-6">{children}</div>
     </section>
@@ -422,14 +448,9 @@ function StatRow({ k, v }: { k: string; v: string }) {
   );
 }
 
-const RISK_BAR_CLASS: Record<"danger" | "warn" | "brand", string> = {
-  danger: "bg-danger",
-  warn: "bg-warn",
-  brand: "bg-brand",
-};
-
 function RiskCard({ level, label }: { level: RiskLevel; label: string }) {
-  const pct = (level / 5) * 100;
+  // 세그먼트 중앙(각 1/5 구간의 가운데)에 현재 단계 마커를 둔다.
+  const markerPct = ((level - 0.5) / 5) * 100;
   return (
     <Card className="rounded-2xl border-border/70 bg-surface p-8 shadow-card">
       <div className="grid gap-8 lg:grid-cols-[auto_1fr] lg:items-center">
@@ -438,15 +459,26 @@ function RiskCard({ level, label }: { level: RiskLevel; label: string }) {
           <p className="mt-3 text-xs tabular-nums text-muted-foreground">Level {level} / 5</p>
         </div>
         <div>
-          <div className="h-2 overflow-hidden rounded-full bg-secondary">
+          <div className="relative">
             <div
-              className={"h-full rounded-full transition-all " + RISK_BAR_CLASS[riskToneOf(level)]}
-              style={{ width: `${pct}%` }}
+              className="h-2 overflow-hidden rounded-full"
+              style={{
+                background:
+                  "linear-gradient(to right, color-mix(in oklch, var(--color-brand) 55%, white), color-mix(in oklch, var(--color-warn) 55%, white), color-mix(in oklch, var(--color-danger) 55%, white))",
+              }}
+            />
+            <div
+              aria-hidden
+              className="absolute -top-1 h-4 w-4 -translate-x-1/2 rounded-full border-2 border-surface bg-navy shadow-card"
+              style={{ left: `${markerPct}%` }}
             />
           </div>
-          <div className="mt-2 flex justify-between text-[11px] text-muted-foreground">
-            <span>안정</span>
-            <span>위험</span>
+          <div className="mt-3 grid grid-cols-5 text-center text-[11px] text-muted-foreground">
+            {([1, 2, 3, 4, 5] as RiskLevel[]).map((l) => (
+              <span key={l} className={l === level ? "font-bold text-navy" : ""}>
+                {RISK_LABELS[l]}
+              </span>
+            ))}
           </div>
           <p className="mt-6 text-sm leading-relaxed text-foreground">
             이 자리에서 관측된 폐업 횟수, 평균 생존기간, 반복 실패 신호를 종합한 참고용 등급입니다.
@@ -467,48 +499,46 @@ function TimelineCard({ timeline }: { timeline: Tenancy[] }) {
   );
   const selected =
     timeline.find((t) => t.tenancyId === selectedId) ?? timeline[timeline.length - 1];
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-2xl border-border/70 bg-surface p-2 shadow-card sm:p-3">
-        <ul className="divide-y divide-border">
-          {timeline.map((t) => {
-            const displayCategory = t.industryDetail ?? t.subCategory;
-            return (
-              <li key={t.tenancyId}>
+      <Card className="rounded-2xl border-border/70 bg-surface p-4 shadow-card sm:p-6">
+        <EdgeScroller scrollRef={scrollRef} deps={[timeline.length]}>
+          <div
+            ref={scrollRef}
+            className="no-scrollbar relative flex gap-3 overflow-x-auto px-1 py-2"
+          >
+            {/* 카드 뒤 연결선. 화면마다 정확한 위치는 다를 수 있어 Playwright로
+                점(StatusDot) 중심과 어긋나는지 확인 후 top 값을 조정할 것. */}
+            <div aria-hidden className="absolute inset-x-1 top-[25px] h-px bg-border" />
+            {timeline.map((t) => {
+              const displayCategory = t.industryDetail ?? t.subCategory;
+              return (
                 <button
+                  key={t.tenancyId}
                   type="button"
                   onClick={() => setSelectedId(t.tenancyId)}
                   className={
-                    "flex w-full items-start gap-3 rounded-lg px-4 py-3 text-left transition hover:bg-secondary/40 " +
+                    "relative z-10 flex w-40 shrink-0 flex-col items-start gap-1.5 rounded-xl p-3 text-left transition hover:bg-secondary/40 " +
                     (t.tenancyId === selectedId ? "bg-secondary/50" : "")
                   }
                 >
-                  <span className="mt-1.5 shrink-0">
-                    <StatusDot status={t.status} />
+                  <StatusDot status={t.status} />
+                  <span className="w-full truncate text-sm font-semibold text-navy">
+                    {t.businessName}
                   </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-baseline justify-between gap-3">
-                      <span className="truncate text-sm font-semibold text-navy">
-                        {t.businessName}
-                      </span>
-                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                        {t.survivalMonths}개월
-                      </span>
-                    </span>
-                    <span className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-                      <span>{t.status}</span>
-                      <span className="tabular-nums">
-                        {t.licensedAt.slice(0, 7)} — {t.closedAt ? t.closedAt.slice(0, 7) : "현재"}
-                      </span>
-                      <span>{displayCategory}</span>
-                    </span>
+                  <span className="text-xs tabular-nums text-muted-foreground">
+                    {t.licensedAt.slice(0, 7)} — {t.closedAt ? t.closedAt.slice(0, 7) : "현재"}
+                  </span>
+                  <span className="w-full truncate text-xs text-muted-foreground">
+                    {displayCategory}
                   </span>
                 </button>
-              </li>
-            );
-          })}
-        </ul>
+              );
+            })}
+          </div>
+        </EdgeScroller>
       </Card>
 
       {selected && (
@@ -629,10 +659,6 @@ function TimelineCard({ timeline }: { timeline: Tenancy[] }) {
 
 // 폐업/취소/말소 등 영업·휴업이 아닌 모든 상태는 빈 원(○)으로 통일 —
 // isOccupiedStatus()와 같은 기준(CLAUDE.md "알려진 스펙-실측 차이" 참고).
-// inline-block이 필수 — 이 span은 flex 컨테이너의 직접 자식이 아니라(래퍼
-// span 안에 있어) blockify가 안 되고 display:inline으로 남는데, inline
-// 요소엔 width/height가 아예 적용되지 않아 원이 아니라 얇은 세로선으로
-// 찌그러진다.
 function StatusDot({ status }: { status: Tenancy["status"] }) {
   if (status === "영업")
     return <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-brand" />;

@@ -29,7 +29,7 @@ export { ApiRequestError } from "./errors";
 export type * from "./types";
 
 // Gray-zone analysis layered on top of UnitDetail — see unit-analysis.ts.
-export { buildUnitAnalysis } from "./unit-analysis";
+export { buildUnitAnalysis, RISK_LABELS } from "./unit-analysis";
 export type { RiskLevel, UnitAnalysis } from "./unit-analysis";
 
 // "이 자리를 지금 누가 쓰고 있는가" (영업 또는 휴업 중인 이력) — see tenancy.ts.

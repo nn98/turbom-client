@@ -30,7 +30,7 @@ import type { UnitDetail } from "./types";
 
 export type RiskLevel = 1 | 2 | 3 | 4 | 5;
 
-const RISK_LABELS: Record<RiskLevel, string> = {
+export const RISK_LABELS: Record<RiskLevel, string> = {
   1: "매우 안정",
   2: "안정",
   3: "보통",
