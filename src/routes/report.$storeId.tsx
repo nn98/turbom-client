@@ -27,7 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { EdgeScroller } from "@/components/edge-scroller";
-import { RiskBadge, riskToneOf } from "@/components/risk-badge";
+import { RiskBadge } from "@/components/risk-badge";
 import {
   ApiRequestError,
   buildUnitAnalysis,
