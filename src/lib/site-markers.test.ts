@@ -34,6 +34,10 @@ describe("extractLotLabel", () => {
   it("keeps a lot number with a sub-number intact after stripping the suffix", () => {
     expect(extractLotLabel("성남시 수정구 신흥동 123-4번지", "신흥동 123")).toBe("123-4");
   });
+
+  it("does not strip suffixes on the fallback (unanchored) path — only the anchored path normalizes", () => {
+    expect(extractLotLabel("성남시 수정구 신흥동 123-4 상가빌딩 2층", "123-4")).toBe("2층");
+  });
 });
 
 describe("extractDongToken", () => {

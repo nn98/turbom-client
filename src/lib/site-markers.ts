@@ -51,7 +51,7 @@ export const extractLotLabel = (jibunAddress: string, query: string): string => 
     const idx = tokens.findIndex((t) => t === dongToken);
     if (idx !== -1 && idx + 1 < tokens.length) return stripLotSuffix(tokens[idx + 1]);
   }
-  return stripLotSuffix(tokens[tokens.length - 1] ?? jibunAddress);
+  return tokens[tokens.length - 1] ?? jibunAddress;
 };
 
 // candidates 배열이 매 렌더마다(예: 검색창 타이핑으로 인한 SearchPage 리렌더) 새
