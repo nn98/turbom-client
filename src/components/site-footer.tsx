@@ -5,7 +5,7 @@
 export function SiteFooter({ floating = false }: { floating?: boolean }) {
   if (floating) {
     return (
-      <footer className="fixed inset-x-0 bottom-0 z-20 h-8 border-t border-border/60 bg-background/80 text-[11px] text-muted-foreground backdrop-blur">
+      <footer className="fixed inset-x-0 bottom-0 z-20 h-8 border-t border-border/60 bg-surface/90 text-[11px] text-muted-foreground backdrop-blur">
         <div className="mx-auto flex h-full max-w-7xl items-center justify-center gap-x-2 px-4 text-center sm:justify-between sm:px-6 lg:px-8">
           <p>© 2026 터봄 Turbohm</p>
           <p className="hidden sm:block">

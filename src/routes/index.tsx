@@ -196,7 +196,7 @@ function PreviewReportCard() {
 
       <div className="mt-6 space-y-1">
         <p className="text-xs text-muted-foreground">성남시 수정구 신흥동 123-4</p>
-        <h3 className="text-xl font-semibold text-navy">1층 102호 · 상가 리포트</h3>
+        <h3 className="text-xl font-extrabold text-navy">1층 102호 · 상가 리포트</h3>
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-3">
@@ -367,7 +367,7 @@ function WhyTurbohm() {
           {cards.map((c) => (
             <Card
               key={c.no}
-              className="rounded-2xl border-border/70 bg-surface p-4 shadow-card sm:p-8"
+              className="rounded-2xl border-border/70 bg-surface p-4 shadow-card sm:p-6"
             >
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-soft text-sm font-semibold text-brand">
                 {c.no}

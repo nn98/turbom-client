@@ -214,7 +214,7 @@ function SearchPage() {
             />
             <button
               type="submit"
-              className="shrink-0 rounded-xl bg-navy px-3.5 py-1.5 text-sm font-bold text-navy-foreground transition hover:brightness-110"
+              className="shrink-0 rounded-full bg-navy px-3.5 py-1.5 text-sm font-bold text-navy-foreground transition hover:brightness-110"
             >
               검색
             </button>
