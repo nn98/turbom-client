@@ -3,10 +3,15 @@ import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   Building2,
+  ClipboardCheck,
+  Clock,
   Database,
+  History,
   Layers,
   MapPin,
   Search,
+  Store,
+  Target,
   TrendingDown,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +57,7 @@ function LandingPage() {
       (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
+            entry.target.classList.add("in-view");
             const idx = SECTION_IDS.indexOf(entry.target.id as (typeof SECTION_IDS)[number]);
             if (idx !== -1) setActiveIndex(idx);
           }
@@ -78,6 +84,7 @@ function LandingPage() {
         targetId={isLast ? SECTION_IDS[0] : SECTION_IDS[activeIndex + 1]}
         label={isLast ? "맨 위로" : "더 알아보기"}
         direction={isLast ? "up" : "down"}
+        tone={activeIndex === 1 ? "light" : "dark"}
       />
     </div>
   );
@@ -91,16 +98,22 @@ function ScrollCue({
   targetId,
   label,
   direction,
+  tone,
 }: {
   targetId: string;
   label: string;
   direction: "down" | "up";
+  tone: "light" | "dark";
 }) {
   return (
     <button
       type="button"
       onClick={() => scrollToId(targetId)}
-      className="fixed bottom-6 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-1 text-xs font-semibold text-muted-foreground transition hover:text-navy"
+      className={`fixed bottom-6 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-1 text-xs font-semibold transition ${
+        tone === "light"
+          ? "text-white/70 hover:text-white"
+          : "text-muted-foreground hover:text-navy"
+      }`}
     >
       {label}
       <svg
@@ -125,14 +138,23 @@ function Hero() {
       className="relative flex min-h-full snap-start flex-col justify-center overflow-hidden"
     >
       <div
-        className="pointer-events-none absolute inset-0 -z-10 opacity-70"
+        className="pointer-events-none absolute inset-0 -z-10"
         style={{
           background:
-            "radial-gradient(60% 50% at 20% 20%, oklch(0.95 0.04 155 / 0.5), transparent 60%), radial-gradient(50% 50% at 100% 0%, oklch(0.9 0.03 260 / 0.4), transparent 60%)",
+            "radial-gradient(60% 50% at 20% 20%, oklch(0.95 0.04 155 / 0.6), transparent 60%), radial-gradient(50% 50% at 100% 0%, oklch(0.9 0.03 260 / 0.5), transparent 60%), radial-gradient(40% 40% at 80% 100%, oklch(0.95 0.04 155 / 0.35), transparent 60%)",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{
+          backgroundImage:
+            "linear-gradient(oklch(0.55 0.02 260 / 0.06) 1px, transparent 1px), linear-gradient(90deg, oklch(0.55 0.02 260 / 0.06) 1px, transparent 1px)",
+          backgroundSize: "56px 56px",
+          maskImage: "radial-gradient(70% 70% at 50% 40%, black, transparent)",
         }}
       />
       <div className="mx-auto grid w-full max-w-7xl gap-12 px-4 py-12 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:px-8 lg:py-16">
-        <div className="flex flex-col justify-center">
+        <div className="flex flex-col justify-center" data-reveal="1">
           <Badge
             variant="outline"
             className="w-fit gap-2 rounded-full border-brand/40 bg-brand-soft px-3 py-1 text-brand-foreground text-xs font-medium"
@@ -140,7 +162,7 @@ function Hero() {
             <span className="h-1.5 w-1.5 rounded-full bg-brand" />
             <span className="text-navy">창업자를 위한 입지 실사 리포트</span>
           </Badge>
-          <h1 className="mt-6 text-balance text-5xl font-bold leading-[1.1] tracking-tight text-navy sm:text-6xl lg:text-[68px]">
+          <h1 className="mt-6 text-5xl font-bold leading-[1.08] tracking-tight text-navy sm:text-6xl lg:text-[76px]">
             자리를 보면,
             <br />
             창업이 보입니다.
@@ -153,11 +175,19 @@ function Hero() {
           <div className="mt-8 flex flex-wrap gap-3">
             <Button
               size="lg"
-              className="rounded-full bg-navy px-6 text-navy-foreground hover:bg-navy/90"
+              className="h-12 rounded-full bg-navy px-7 text-navy-foreground shadow-elevated transition-transform duration-300 hover:-translate-y-0.5 hover:bg-navy/90"
               onClick={() => scrollToId("address-search")}
             >
               자리 분석하기
               <ArrowRight className="ml-1 h-4 w-4" />
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="h-12 rounded-full border-border bg-background/80 px-7 text-navy transition-transform duration-300 hover:-translate-y-0.5 hover:border-brand/50 hover:bg-brand-soft"
+              onClick={() => scrollToId("why-turbohm")}
+            >
+              터봄이 하는 일
             </Button>
           </div>
           <p className="mt-5 text-xs text-muted-foreground">
@@ -165,8 +195,14 @@ function Hero() {
           </p>
         </div>
 
-        <div className="relative lg:pl-4">
-          <PreviewReportCard />
+        <div className="relative lg:pl-4" data-reveal="2">
+          <div
+            className="pointer-events-none absolute -inset-8 -z-10 rounded-full opacity-60 blur-3xl"
+            style={{ background: "oklch(0.95 0.04 155)" }}
+          />
+          <div className="rotate-1 transition-transform duration-700 ease-out hover:rotate-0">
+            <PreviewReportCard />
+          </div>
         </div>
       </div>
     </section>
@@ -263,47 +299,68 @@ function SearchBand() {
   return (
     <section
       id="address-search"
-      className="flex min-h-full snap-start flex-col justify-center border-y border-border/60 bg-surface-muted/60"
+      className="relative flex min-h-full snap-start flex-col justify-center overflow-hidden bg-navy"
     >
-      <div className="mx-auto w-full max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
-        <div>
-          <p className="text-xs font-medium tracking-wider text-brand uppercase">Address Search</p>
-          <h2 className="mt-2 text-2xl font-semibold text-navy sm:text-3xl">
-            지번 주소로 시작하세요
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(50% 60% at 85% 10%, oklch(0.62 0.14 155 / 0.18), transparent 60%), radial-gradient(40% 50% at 10% 90%, oklch(0.62 0.14 155 / 0.1), transparent 60%)",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage:
+            "linear-gradient(oklch(1 0 0 / 0.05) 1px, transparent 1px), linear-gradient(90deg, oklch(1 0 0 / 0.05) 1px, transparent 1px)",
+          backgroundSize: "56px 56px",
+          maskImage: "radial-gradient(70% 70% at 50% 50%, black, transparent)",
+        }}
+      />
+      <div className="relative mx-auto w-full max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+        <div data-reveal="1">
+          <h2 className="text-3xl font-bold tracking-tight text-navy-foreground sm:text-5xl">
+            지번 주소 하나로,
+            <br />그 자리의 이력을 봅니다.
           </h2>
+          <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/60 sm:text-base">
+            계약을 고민 중인 상가의 지번 주소를 입력하면 해당 자리의 개업·폐업·생존 통계 리포트가
+            열립니다.
+          </p>
         </div>
         <form
-          className="mt-6 flex flex-col gap-2 sm:flex-row"
+          className="mt-8 flex flex-col gap-3 sm:flex-row"
+          data-reveal="2"
           onSubmit={(e) => {
             e.preventDefault();
             submit(q);
           }}
         >
           <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="분석할 상가의 지번 주소를 입력하세요"
-              className="h-14 rounded-full border-border bg-background pl-11 pr-4 text-base shadow-sm focus-visible:ring-brand"
+              className="h-16 rounded-full border-transparent bg-white pl-12 pr-4 text-base text-navy shadow-elevated focus-visible:ring-brand"
             />
           </div>
           <Button
             type="submit"
             size="lg"
-            className="h-14 rounded-full bg-navy px-8 text-navy-foreground hover:bg-navy/90"
+            className="h-16 rounded-full bg-brand px-10 text-base font-semibold text-white shadow-elevated transition-transform duration-300 hover:-translate-y-0.5 hover:bg-brand/90"
           >
             검색
           </Button>
         </form>
-        <div className="mt-5 flex flex-wrap items-center gap-2 text-xs">
-          <span className="text-muted-foreground">데모 지번:</span>
+        <div className="mt-6 flex flex-wrap items-center gap-2 text-xs" data-reveal="3">
+          <span className="text-white/50">데모 지번:</span>
           {DEMO_ADDRESSES.map((addr) => (
             <button
               key={addr}
               type="button"
               onClick={() => submit(addr)}
-              className="rounded-full border border-border bg-background px-3 py-1.5 text-navy transition hover:border-brand/50 hover:bg-brand-soft"
+              className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-white/80 transition hover:border-brand/60 hover:bg-white/10 hover:text-white"
             >
               {addr}
             </button>
@@ -362,22 +419,33 @@ function WhyTurbohm() {
       className="flex min-h-full snap-start flex-col justify-center border-t border-border/60 bg-surface-muted/50"
     >
       <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <p className="text-sm font-medium text-brand">왜 터봄인가</p>
-        <h2 className="mt-3 max-w-3xl text-balance text-3xl font-bold tracking-tight text-navy sm:text-4xl">
-          상권을 보기 전에, 자리를 봅니다.
-        </h2>
-        <div className="mt-8 grid gap-5 md:grid-cols-3">
+        <div data-reveal="1">
+          <p className="text-sm font-semibold text-brand">왜 터봄인가</p>
+          <h2 className="mt-3 max-w-3xl text-3xl font-bold tracking-tight text-navy sm:text-5xl">
+            상권을 보기 전에,
+            <br />
+            자리를 봅니다.
+          </h2>
+        </div>
+        <div className="mt-10 grid gap-5 md:grid-cols-3" data-reveal="2">
           {cards.map((c) => (
-            <Card key={c.no} className="rounded-2xl border-border/70 bg-surface p-6 shadow-card">
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-secondary text-sm font-semibold text-navy">
+            <Card
+              key={c.no}
+              className="group relative overflow-hidden rounded-2xl border-border/70 bg-surface p-7 shadow-card transition-all duration-500 ease-out hover:-translate-y-1.5 hover:border-brand/40 hover:shadow-elevated"
+            >
+              <span
+                className="pointer-events-none absolute -top-5 right-3 select-none text-[96px] font-bold leading-none text-navy/[0.05] transition-colors duration-500 group-hover:text-brand/10"
+                aria-hidden
+              >
                 {c.no}
               </span>
-              <h3 className="mt-5 text-lg font-semibold text-navy">{c.title}</h3>
+              <span className="block h-1 w-8 rounded-full bg-brand" />
+              <h3 className="mt-6 text-lg font-semibold text-navy">{c.title}</h3>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{c.desc}</p>
             </Card>
           ))}
         </div>
-        <div className="mt-8">
+        <div className="mt-10" data-reveal="3">
           <KeyFeatures />
         </div>
       </div>
@@ -387,36 +455,50 @@ function WhyTurbohm() {
 
 function AnalysisInfo() {
   const rows = [
-    { k: "운영 이력", v: "지번 내 해당 상가에서 운영된 모든 업종과 상호" },
-    { k: "운영 기간", v: "각 업종이 얼마나 오래 운영되었는지" },
-    { k: "폐업 통계", v: "몇 번의 폐업이 있었는지, 어떤 업종에서 반복되었는지" },
-    { k: "업종 적합성", v: "지금 창업하려는 업종이 이 자리에서 반복 실패한 업종인지" },
-    { k: "현재 상태", v: "현재 어떤 업종이, 얼마나 오래 운영되고 있는지" },
-    { k: "계약 체크리스트", v: "계약 전에 반드시 확인할 항목" },
+    { k: "운영 이력", v: "지번 내 해당 상가에서 운영된 모든 업종과 상호", icon: History },
+    { k: "운영 기간", v: "각 업종이 얼마나 오래 운영되었는지", icon: Clock },
+    {
+      k: "폐업 통계",
+      v: "몇 번의 폐업이 있었는지, 어떤 업종에서 반복되었는지",
+      icon: TrendingDown,
+    },
+    {
+      k: "업종 적합성",
+      v: "지금 창업하려는 업종이 이 자리에서 반복 실패한 업종인지",
+      icon: Target,
+    },
+    { k: "현재 상태", v: "현재 어떤 업종이, 얼마나 오래 운영되고 있는지", icon: Store },
+    { k: "계약 체크리스트", v: "계약 전에 반드시 확인할 항목", icon: ClipboardCheck },
   ];
   return (
     <section
       id="analysis-info"
       className="relative flex min-h-full snap-start flex-col justify-center"
     >
-      <div className="mx-auto w-full max-w-7xl px-4 py-16 pb-20 sm:px-6 lg:px-8">
-        <p className="text-sm font-medium text-brand">제공하는 분석 정보</p>
-        <h2 className="mt-3 max-w-3xl text-balance text-3xl font-bold tracking-tight text-navy sm:text-4xl">
-          하나의 자리, 여섯 가지 각도.
-        </h2>
-        <Card className="mt-10 overflow-hidden rounded-2xl border-border/70 bg-surface shadow-card">
-          <ul className="divide-y divide-border/70">
-            {rows.map((r) => (
-              <li
-                key={r.k}
-                className="grid grid-cols-1 gap-2 px-6 py-5 sm:grid-cols-[220px_1fr] sm:items-center sm:gap-6"
-              >
-                <span className="text-sm font-semibold text-navy">{r.k}</span>
-                <span className="text-sm text-muted-foreground">{r.v}</span>
-              </li>
-            ))}
-          </ul>
-        </Card>
+      <div className="mx-auto w-full max-w-7xl px-4 py-16 pb-24 sm:px-6 lg:px-8">
+        <div data-reveal="1">
+          <p className="text-sm font-semibold text-brand">제공하는 분석 정보</p>
+          <h2 className="mt-3 max-w-3xl text-3xl font-bold tracking-tight text-navy sm:text-5xl">
+            하나의 자리, 여섯 가지 각도.
+          </h2>
+        </div>
+        <div
+          className="mt-10 grid grid-flow-dense gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          data-reveal="2"
+        >
+          {rows.map(({ k, v, icon: Icon }) => (
+            <Card
+              key={k}
+              className="rounded-2xl border-border/70 bg-surface p-6 shadow-card transition-all duration-500 ease-out hover:-translate-y-1 hover:border-brand/40 hover:shadow-elevated"
+            >
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand">
+                <Icon className="h-5 w-5" />
+              </span>
+              <h3 className="mt-4 text-base font-semibold text-navy">{k}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{v}</p>
+            </Card>
+          ))}
+        </div>
       </div>
       <div className="absolute inset-x-0 bottom-0">
         <SiteFooter />
