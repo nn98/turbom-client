@@ -32,10 +32,19 @@ export function useEasedSnapScroll(ref: RefObject<HTMLDivElement | null>, slideS
       e.preventDefault();
       if (busy) return;
       const h = el!.clientHeight;
-      const count = el!.querySelectorAll(slideSelector).length;
+      const slides = el!.querySelectorAll<HTMLElement>(slideSelector);
       const current = Math.round(el!.scrollTop / h);
-      const target = Math.min(count - 1, Math.max(0, current + (e.deltaY > 0 ? 1 : -1)));
-      if (target !== current) animateTo(target * h);
+      const targetIndex = Math.min(
+        slides.length - 1,
+        Math.max(0, current + (e.deltaY > 0 ? 1 : -1)),
+      );
+      if (targetIndex === current) return;
+      // 슬라이드 자체를 target*h로 계산하면 scroll-mt-16(헤더 여백)만큼
+      // 어긋나 네이티브 scroll-snap이 뒤늦게 한 번 더 보정하며 "두 번 넘어가는"
+      // 지연이 생긴다 — 실제 스냅 위치(offsetTop - scroll-margin-top)로 맞춘다.
+      const targetEl = slides[targetIndex];
+      const scrollMarginTop = parseFloat(getComputedStyle(targetEl).scrollMarginTop) || 0;
+      animateTo(targetEl.offsetTop - scrollMarginTop);
     }
 
     el.addEventListener("wheel", onWheel, { passive: false });

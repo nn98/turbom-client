@@ -290,6 +290,11 @@ function SearchPage() {
                     <Pill>점포 {activeCandidate?.unitCount}개</Pill>
                     <Pill tone="danger">폐업 이력 {activeCandidate?.closedCount}건</Pill>
                   </div>
+                  {activeCandidate?.latitude == null && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      이 자리는 위치 정보가 없어 지도에 표시할 수 없습니다.
+                    </p>
+                  )}
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-y-auto p-3">

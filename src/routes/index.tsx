@@ -70,7 +70,7 @@ function LandingPage() {
   return (
     <div
       ref={scrollRef}
-      className="relative isolate h-dvh snap-y snap-mandatory overflow-y-scroll scroll-smooth bg-background"
+      className="relative isolate h-dvh snap-y snap-mandatory overflow-y-scroll bg-background"
     >
       <SkylineGraphic className="pointer-events-none fixed inset-x-0 bottom-0 -z-10 h-24 w-full text-navy/10 sm:h-32" />
       <SiteHeader floating />
@@ -132,6 +132,15 @@ function Hero() {
             "radial-gradient(60% 50% at 20% 20%, oklch(0.95 0.04 155 / 0.5), transparent 60%), radial-gradient(50% 50% at 100% 0%, oklch(0.9 0.03 260 / 0.4), transparent 60%)",
         }}
       />
+      <div
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{
+          backgroundImage:
+            "linear-gradient(oklch(0.55 0.02 260 / 0.05) 1px, transparent 1px), linear-gradient(90deg, oklch(0.55 0.02 260 / 0.05) 1px, transparent 1px)",
+          backgroundSize: "56px 56px",
+          maskImage: "radial-gradient(70% 70% at 50% 40%, black, transparent)",
+        }}
+      />
       <div className="section-enter my-auto mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:gap-14 sm:px-6 sm:py-20 lg:grid-cols-[1.05fr_1fr] lg:gap-20 lg:px-8">
         <div className="flex flex-col justify-center">
           <Badge
@@ -170,7 +179,9 @@ function Hero() {
         </div>
 
         <div className="relative hidden lg:block lg:pl-4">
-          <PreviewReportCard />
+          <div className="rotate-1 transition-transform duration-700 ease-out hover:rotate-0">
+            <PreviewReportCard />
+          </div>
         </div>
       </div>
       <ScrollHint target="address-search" />
@@ -367,8 +378,14 @@ function WhyTurbohm() {
           {cards.map((c) => (
             <Card
               key={c.no}
-              className="rounded-2xl border-border/70 bg-surface p-4 shadow-card sm:p-6"
+              className="group relative overflow-hidden rounded-2xl border-border/70 bg-surface p-4 shadow-card transition-transform duration-500 ease-out hover:-translate-y-1 sm:p-6"
             >
+              <span
+                className="pointer-events-none absolute -top-3 right-2 select-none text-[88px] font-bold leading-none text-navy/[0.04] transition-colors duration-500 group-hover:text-brand/10"
+                aria-hidden
+              >
+                {c.no}
+              </span>
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-soft text-sm font-semibold text-brand">
                 {c.no}
               </span>
