@@ -58,6 +58,15 @@ export const Route = createFileRoute("/")({
 // CSS scroll-snap만으로는 휠 한 틱에도 관성 때문에 섹션 경계를 살짝 넘나들며
 // 미세한 잔여 스크롤이 남는다. 휠 이벤트만 자체 이징으로 가로채(터치·키보드는
 // 네이티브 snap 그대로) 슬라이드 단위로 딱 떨어지게 고정한다.
+//
+// scroll-smooth(scroll-behavior: smooth)는 휠 이징 로직과 무관해 보이지만
+// 빼면 안 된다 — snap-mandatory가 걸린 컨테이너에서 el.scrollTop을 매
+// 프레임 직접 대입하면, 이 값이 스냅 지점 쪽으로 절반쯤 넘어간 순간
+// 네이티브 스냅 엔진이 "사용자가 이미 다음 섹션으로 스크롤했다"고 판단해
+// 나머지 구간을 즉시(에니메이션 없이) 확정해버려 우리 700ms 이징 중간에
+// 훅 끊겨 넘어가 버린다. scroll-smooth를 켜두면 그 네이티브 확정 자체가
+// 부드럽게 처리돼 우리 rAF 루프와 시각적으로 이어진다(참고 구현
+// woowaTon/client Home.tsx도 동일하게 scroll-smooth를 쓴다).
 function LandingPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   useEasedSnapScroll(scrollRef, SLIDE_SELECTOR);
@@ -65,7 +74,7 @@ function LandingPage() {
   return (
     <div
       ref={scrollRef}
-      className="relative isolate h-dvh snap-y snap-mandatory overflow-y-scroll bg-background"
+      className="relative isolate h-dvh snap-y snap-mandatory overflow-y-scroll scroll-smooth bg-background"
     >
       <SkylineGraphic className="pointer-events-none fixed inset-x-0 bottom-0 -z-10 h-24 w-full text-navy/10 sm:h-32" />
       <SiteHeader floating />
