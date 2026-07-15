@@ -65,16 +65,18 @@ const displayUnitLabel = (label: string) => {
   return `${inferredFloor}층 ${label}`;
 };
 
-// 물건 목록 행 3번째 줄(업종·운영기간). UnitSummary엔 "현재 입주자가 지금까지
-// 운영한 기간"이 없다(그 값은 물건 상세의 Tenancy.survivalMonths에만 있고,
-// 이 목록 API는 averageSurvivalMonths—전체 이력 평균—만 준다) — 그래서
-// "영업 기간"은 averageSurvivalMonths로 표시한다.
-const unitDetailLine = (u: UnitSummary): string => {
-  const parts: string[] = [];
-  if (u.industryDetail) parts.push(u.industryDetail);
-  if (u.averageSurvivalMonths != null) parts.push(`평균 ${u.averageSurvivalMonths}개월`);
-  return parts.length ? parts.join(" · ") : "-";
-};
+// 물건 목록 행 3번째 줄 왼쪽(평균 운영기간). UnitSummary엔 "현재 입주자가
+// 지금까지 운영한 기간"이 없다(그 값은 물건 상세의 Tenancy.survivalMonths에만
+// 있고, 이 목록 API는 averageSurvivalMonths—전체 이력 평균—만 준다) — 그래서
+// "영업 기간"은 averageSurvivalMonths로 표시한다. industryDetail은 1번째
+// 줄의 상태 배지 옆으로 옮겨서 여기서는 빼고, 3번째 줄은 평균 운영기간만 남긴다.
+const unitDetailLine = (u: UnitSummary): string =>
+  u.averageSurvivalMonths != null ? `평균 ${u.averageSurvivalMonths}개월` : "-";
+
+// 3번째 줄 오른쪽(개업·폐업 횟수). closedCount가 totalTenancyCount를 넘는
+// 경우는 없지만(폐업도 입점의 부분집합), 방어적으로 음수는 만들지 않는다.
+const unitOpenCloseLine = (u: UnitSummary): string =>
+  `개업 ${u.totalTenancyCount} · 폐업 ${u.closedCount}`;
 
 const searchSchema = z.object({
   q: z.string().optional().catch(""),
@@ -615,9 +617,14 @@ function UnitList({
               className="grid w-full grid-cols-[1fr_auto] items-center gap-3 rounded-xl border border-border/70 border-l-4 bg-surface p-3.5 text-left transition hover:shadow-elevated"
             >
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="text-sm font-bold text-navy">{displayUnitLabel(u.label)}</span>
                   <StatusBadge status={u.currentStatus} />
+                  {u.industryDetail && (
+                    <span className="max-w-[110px] truncate rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-semibold tracking-wide text-brand uppercase">
+                      {u.industryDetail}
+                    </span>
+                  )}
                 </div>
                 {/* 2·3번째 줄은 내용이 없어도 고정 높이(h-5/h-4)로 항상 자리를
                     예약한다 — 그러지 않으면 점포명·업종 유무에 따라 공실/영업
@@ -625,9 +632,10 @@ function UnitList({
                 <p className="mt-1 h-5 truncate text-sm font-semibold text-navy">
                   {u.currentStatus === "영업" && u.currentBusinessName ? u.currentBusinessName : ""}
                 </p>
-                <p className="mt-1.5 h-4 truncate text-xs text-muted-foreground">
-                  {unitDetailLine(u)}
-                </p>
+                <div className="mt-1.5 flex h-4 items-center justify-between gap-2">
+                  <p className="truncate text-xs text-muted-foreground">{unitDetailLine(u)}</p>
+                  <p className="shrink-0 text-xs text-muted-foreground">{unitOpenCloseLine(u)}</p>
+                </div>
               </div>
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
             </button>

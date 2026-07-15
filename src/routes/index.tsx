@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import {
   Activity,
   ArrowRight,
@@ -72,15 +72,61 @@ export const Route = createFileRoute("/")({
 // 훅 끊겨 넘어가 버린다. scroll-smooth를 켜두면 그 네이티브 확정 자체가
 // 부드럽게 처리돼 우리 rAF 루프와 시각적으로 이어진다(참고 구현
 // woowaTon/client Home.tsx도 동일하게 scroll-smooth를 쓴다).
+// 스크롤 위치의 일부(factor)만큼만 배경 레이어를 따라 움직여 전경(섹션
+// 콘텐츠)보다 느리게 내려오는 패럴랙스(parallax scrolling) 효과를 만든다 —
+// "슬라이딩 윈도우"(자료구조/캐싱 알고리즘 용어)와는 다른 개념이다.
+// position:fixed로 뷰포트에 고정해둔 레이어를 JS로 직접 translateY시키는
+// 방식이라 몇 % 안 되는 속도차만으로도 깊이감이 생긴다. 네이티브 scroll
+// 이벤트는 커스텀 휠 이징 훅(useEasedSnapScroll)과 별개로 동작하고,
+// rAF로 묶어 프레임당 한 번만 transform을 갱신한다(transform만 건드려
+// GPU 합성만 타고 레이아웃 재계산은 없음).
+function useParallax(scrollRef: RefObject<HTMLDivElement | null>, factor: number) {
+  const layerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const scrollEl = scrollRef.current;
+    const layerEl = layerRef.current;
+    if (!scrollEl || !layerEl) return;
+    let raf = 0;
+    function onScroll() {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        layerEl!.style.transform = `translateY(${scrollEl!.scrollTop * factor}px)`;
+        raf = 0;
+      });
+    }
+    scrollEl.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      scrollEl.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [scrollRef, factor]);
+  return layerRef;
+}
+
 function LandingPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   useEasedSnapScroll(scrollRef, SLIDE_SELECTOR);
+  const mapLayerRef = useParallax(scrollRef, 0.18);
 
   return (
     <div
       ref={scrollRef}
       className="relative isolate h-dvh snap-y snap-mandatory overflow-y-scroll scroll-smooth bg-background"
     >
+      {/* 지도 텍스처를 섹션 하나가 아니라 전체 페이지의 고정 배경으로 깔고,
+          스크롤할 때 전경보다 느리게(0.18배속) 따라 내려오게 해 페이지
+          전체에 은은한 깊이감을 준다. */}
+      <div ref={mapLayerRef} className="pointer-events-none fixed inset-0 -z-20">
+        <MapTextureGraphic
+          className="absolute -right-[10%] top-[-15%] h-[145%] w-[75%] rotate-[-6deg] text-navy/[0.045]"
+          style={{
+            maskImage:
+              "linear-gradient(115deg, transparent 6%, black 38%, black 62%, transparent 94%)",
+            WebkitMaskImage:
+              "linear-gradient(115deg, transparent 6%, black 38%, black 62%, transparent 94%)",
+          }}
+        />
+      </div>
       <SkylineGraphic className="pointer-events-none fixed inset-x-0 bottom-0 -z-10 h-24 w-full text-navy/10 sm:h-32" />
       <SiteHeader floating />
       <main>
@@ -169,18 +215,6 @@ function Hero() {
         style={{
           background:
             "radial-gradient(60% 50% at 20% 20%, oklch(from var(--color-brand-soft) l c h / 0.8), transparent 60%), radial-gradient(50% 50% at 100% 0%, oklch(from var(--color-foreground) l c h / 0.05), transparent 60%)",
-        }}
-      />
-      {/* 배경의 지도 텍스처 — 살짝 기울여 두고 가장자리로 갈수록 옅어지게
-          마스킹해 장식 이상으로 보이지 않게(텍스트 위로 존재감이 나오지
-          않게) 눌러둔다. */}
-      <MapTextureGraphic
-        className="pointer-events-none absolute -right-[10%] top-1/2 -z-10 h-[140%] w-[75%] -translate-y-1/2 rotate-[-6deg] text-navy/[0.05]"
-        style={{
-          maskImage:
-            "linear-gradient(115deg, transparent 8%, black 42%, black 60%, transparent 92%)",
-          WebkitMaskImage:
-            "linear-gradient(115deg, transparent 8%, black 42%, black 60%, transparent 92%)",
         }}
       />
       <div
@@ -328,6 +362,10 @@ function SearchBand() {
           <h2 className="mt-4 font-serif text-2xl font-medium text-navy sm:mt-3 sm:text-3xl">
             <span className="text-brand">지번 주소</span>로 시작하세요
           </h2>
+          <p className="mx-auto mt-3 max-w-md text-balance text-sm leading-relaxed text-muted-foreground">
+            계약하려는 상가의 지번 주소를 입력하면, 그 자리에서 있었던 개업·폐업 이력과 생존 통계를
+            바로 확인할 수 있습니다.
+          </p>
         </div>
         <form
           className="mt-6 flex flex-col gap-2 sm:mt-8 sm:flex-row"
