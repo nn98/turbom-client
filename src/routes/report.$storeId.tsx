@@ -102,7 +102,7 @@ function ReportPage() {
               <h1 className="text-xl font-semibold text-navy">해당 자리를 찾을 수 없습니다</h1>
               <Button
                 asChild
-                className="mt-6 rounded-full bg-navy text-navy-foreground hover:bg-navy/90"
+                className="mt-6 rounded-lg bg-navy text-navy-foreground hover:bg-navy/90"
               >
                 <Link to="/search">다른 자리 찾기</Link>
               </Button>
@@ -113,7 +113,7 @@ function ReportPage() {
               <p className="mt-4 text-sm text-danger">{errorMessage(unitQuery.error)}</p>
               <Button
                 variant="outline"
-                className="mt-6 rounded-full"
+                className="mt-6 rounded-lg"
                 onClick={() => unitQuery.refetch()}
               >
                 다시 시도
@@ -223,7 +223,7 @@ function ReportHeader({
   return (
     <Card
       className={
-        "relative overflow-hidden rounded-2xl border-border/70 bg-surface p-6 shadow-elevated before:absolute before:inset-y-0 before:left-0 before:w-1 sm:p-8 " +
+        "relative overflow-hidden rounded-xl border-border/70 bg-surface p-6 shadow-elevated before:absolute before:inset-y-0 before:left-0 before:w-1 sm:p-8 " +
         accentClass
       }
     >
@@ -234,7 +234,7 @@ function ReportHeader({
           </Badge>
           <span className="text-muted-foreground">기준일 {disclaimer.dataAsOf}</span>
         </div>
-        <h1 className="mt-3 text-3xl font-bold tracking-tight text-navy sm:text-4xl">
+        <h1 className="mt-3 font-serif text-3xl font-medium tracking-tight text-navy sm:text-4xl">
           {current
             ? `${displayUnitLabel(unit.label)}) ${current.businessName}`
             : displayUnitLabel(unit.label)}
@@ -258,8 +258,10 @@ function Section({
 }) {
   return (
     <section>
-      <p className="text-xs font-bold tracking-[0.2em] text-muted-foreground">SECTION {number}</p>
-      <h2 className="mt-1 text-2xl font-bold tracking-tight text-navy sm:text-3xl">{title}</h2>
+      <p className="text-xs font-bold tracking-[0.2em] text-brand">SECTION {number}</p>
+      <h2 className="mt-1 font-serif text-2xl font-medium tracking-tight text-navy sm:text-3xl">
+        {title}
+      </h2>
       {subtitle ? <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p> : null}
       <div className="mt-6">{children}</div>
     </section>
@@ -305,7 +307,7 @@ function SummaryGrid({
 
 function NarrativeCard({ lines }: { lines: string[] }) {
   return (
-    <Card className="rounded-2xl border-border/70 bg-surface p-6 shadow-card sm:p-8">
+    <Card className="rounded-xl border-border/70 bg-surface p-6 shadow-card sm:p-8">
       <ul className="space-y-3">
         {lines.map((line, i) => (
           <li key={i} className="flex gap-3 text-sm leading-relaxed text-foreground sm:text-base">
@@ -325,7 +327,7 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
   const competitionScore = selectedCategory ? Math.round(selectedCategory.ratio * 100) : 0;
   return (
     <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-      <Card className="rounded-2xl border-border/70 bg-surface p-6 shadow-card">
+      <Card className="rounded-xl border-border/70 bg-surface p-6 shadow-card">
         <div className="flex items-baseline justify-between">
           <h3 className="text-base font-semibold text-navy">업종 구성</h3>
           <span className="text-xs text-muted-foreground">반경 300m · 업종별 점포 수</span>
@@ -361,7 +363,7 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
         </div>
       </Card>
       <div className="space-y-4">
-        <Card className="rounded-2xl border-border/70 bg-surface p-6 shadow-card">
+        <Card className="rounded-xl border-border/70 bg-surface p-6 shadow-card">
           <div className="flex items-baseline justify-between">
             <h3 className="text-base font-semibold text-navy">경쟁도</h3>
             <Popover>
@@ -418,7 +420,7 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
             선택한 업종의 반경 300m 내 점포 비중 기준 참고 지표입니다.
           </p>
         </Card>
-        <Card className="rounded-2xl border-border/70 bg-surface p-6 shadow-card">
+        <Card className="rounded-xl border-border/70 bg-surface p-6 shadow-card">
           <h3 className="text-base font-semibold text-navy">상권 통계</h3>
           <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
             <StatRow k="동일 업종" v={String(stats.sameCategory ?? 0)} />
@@ -452,7 +454,7 @@ function RiskCard({ level, label }: { level: RiskLevel; label: string }) {
   // 세그먼트 중앙(각 1/5 구간의 가운데)에 현재 단계 마커를 둔다.
   const markerPct = ((level - 0.5) / 5) * 100;
   return (
-    <Card className="rounded-2xl border-border/70 bg-surface p-8 shadow-card">
+    <Card className="rounded-xl border-border/70 bg-surface p-8 shadow-card">
       <div className="grid gap-8 lg:grid-cols-[auto_1fr] lg:items-center">
         <div className="text-center">
           <RiskBadge level={level} label={label} />
@@ -503,7 +505,7 @@ function TimelineCard({ timeline }: { timeline: Tenancy[] }) {
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-2xl border-border/70 bg-surface p-4 shadow-card sm:p-6">
+      <Card className="rounded-xl border-border/70 bg-surface p-4 shadow-card sm:p-6">
         <EdgeScroller scrollRef={scrollRef} deps={[timeline.length]}>
           <div
             ref={scrollRef}
@@ -542,7 +544,7 @@ function TimelineCard({ timeline }: { timeline: Tenancy[] }) {
       </Card>
 
       {selected && (
-        <Card className="rounded-2xl border-border/70 bg-surface p-6 shadow-card sm:p-8">
+        <Card className="rounded-xl border-border/70 bg-surface p-6 shadow-card sm:p-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h3 className="text-base font-semibold text-navy">가게 자세히 보기</h3>
             <Select value={selectedId} onValueChange={setSelectedId}>
@@ -738,7 +740,7 @@ function ChecklistCard({ items }: { items: { key: string; label: string }[] }) {
   const done = items.filter((i) => checked[i.key]).length;
   const pct = Math.round((done / items.length) * 100);
   return (
-    <Card className="rounded-2xl border-border/70 bg-surface p-6 shadow-card sm:p-8">
+    <Card className="rounded-xl border-border/70 bg-surface p-6 shadow-card sm:p-8">
       <div className="flex items-baseline justify-between">
         <h3 className="text-base font-semibold text-navy">계약 전 확인 항목</h3>
         <span className="text-sm text-muted-foreground">
@@ -781,10 +783,10 @@ function ChecklistCard({ items }: { items: { key: string; label: string }[] }) {
 
 function ReportCta() {
   return (
-    <div className="mt-20 overflow-hidden rounded-3xl bg-navy p-10 text-navy-foreground sm:p-14">
+    <div className="mt-20 overflow-hidden rounded-xl bg-navy p-10 text-navy-foreground sm:p-14">
       <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
         <div>
-          <h2 className="text-2xl font-bold sm:text-3xl">
+          <h2 className="font-serif text-2xl font-medium sm:text-3xl">
             좋은 창업은 여러 자리를 비교하는 것에서 시작됩니다.
           </h2>
           <p className="mt-2 text-sm text-navy-foreground/70">다른 자리와 비교해 보세요.</p>
@@ -792,7 +794,7 @@ function ReportCta() {
         <Button
           asChild
           size="lg"
-          className="rounded-full bg-background text-navy hover:bg-background/90"
+          className="rounded-lg bg-background text-navy hover:bg-background/90"
         >
           <Link to="/search">
             새로운 자리 분석하기
@@ -807,14 +809,14 @@ function ReportCta() {
 function ReportSkeleton() {
   return (
     <div className="space-y-8">
-      <Skeleton className="h-40 rounded-2xl" />
+      <Skeleton className="h-40 rounded-xl" />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton key={i} className="h-24 rounded-xl" />
         ))}
       </div>
-      <Skeleton className="h-48 rounded-2xl" />
-      <Skeleton className="h-64 rounded-2xl" />
+      <Skeleton className="h-48 rounded-xl" />
+      <Skeleton className="h-64 rounded-xl" />
     </div>
   );
 }
