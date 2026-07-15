@@ -50,10 +50,12 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  /* 소프트 마감 — 확산 반경을 넓히고 불투명도를 더 낮춰 그림자 경계가 거의
+     안 보이게(고급 하드웨어 렌더링처럼) 만든다. */
   --shadow-elevated:
-    0 1px 2px 0 oklch(0.25 0.02 60 / 0.04), 0 8px 24px -8px oklch(0.25 0.02 60 / 0.07);
+    0 2px 4px 0 oklch(0.25 0.02 60 / 0.03), 0 24px 48px -16px oklch(0.25 0.02 60 / 0.09);
   --shadow-card:
-    0 1px 2px 0 oklch(0.25 0.02 60 / 0.03), 0 2px 8px -2px oklch(0.25 0.02 60 / 0.04);
+    0 1px 2px 0 oklch(0.25 0.02 60 / 0.02), 0 12px 28px -10px oklch(0.25 0.02 60 / 0.06);
 }
 
 /* 웜 본(bone) 캔버스 — 순백 대신 아주 옅은 웜톤. 카드(surface)는 순백이라

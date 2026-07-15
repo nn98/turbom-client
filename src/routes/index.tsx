@@ -20,12 +20,7 @@ import { Input } from "@/components/ui/input";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { RiskBadge } from "@/components/risk-badge";
-import {
-  ChecklistGraphic,
-  LayersGraphic,
-  PinPulseGraphic,
-  SkylineGraphic,
-} from "@/components/landing-graphics";
+import { ChecklistGraphic, PinPulseGraphic, SkylineGraphic } from "@/components/landing-graphics";
 import { DEMO_ADDRESSES } from "@/lib/mock-data";
 import { useEasedSnapScroll } from "@/hooks/use-eased-snap-scroll";
 
@@ -52,12 +47,12 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
-// 5개 섹션을 한 화면씩 스크롤 스냅으로 넘긴다. dvh(동적 뷰포트 높이)를 쓰는
+// 4개 섹션을 한 화면씩 스크롤 스냅으로 넘긴다. dvh(동적 뷰포트 높이)를 쓰는
 // 이유: vh/min-h-screen은 모바일 브라우저 주소창이 접히고 펴질 때 실제 보이는
 // 영역보다 커서 스냅 위치가 어긋난다 — 이게 100dvh가 표준으로 자리잡은 이유.
 // 헤더/푸터는 둘 다 문서 흐름에서 완전히 빼서(position: fixed) 오버레이로
 // 띄운다 — 흐름에 남아 있으면 그만큼 섹션이 100dvh보다 짧아지거나(헤더가
-// 첫 페이지를 밀어냄), 푸터처럼 아주 짧은 여분 콘텐츠가 자기 몫의 "6번째
+// 첫 페이지를 밀어냄), 푸터처럼 아주 짧은 여분 콘텐츠가 자기 몫의 "5번째
 // 페이지"를 만들어서 그 페이지만 대부분 빈 공간으로 남는 문제가 생긴다.
 //
 // CSS scroll-snap만으로는 휠 한 틱에도 관성 때문에 섹션 경계를 살짝 넘나들며
@@ -77,12 +72,41 @@ function LandingPage() {
       <main>
         <Hero />
         <SearchBand />
-        <KeyFeatures />
         <WhyTurbohm />
         <AnalysisInfo />
       </main>
       <SiteFooter floating />
     </div>
+  );
+}
+
+// 각 섹션은 정확히 h-dvh(브라우저 뷰포트 높이)만큼만 차지한다. 내용이 그
+// 안에 다 들어가면 "더 알아보기" 힌트가 항상 화면 하단에 바로 보이고, 내용이
+// 넘칠 때만(작은 창 높이 등) 섹션 내부 콘텐츠 영역만 자체 스크롤된다 — 섹션
+// 자체가 뷰포트보다 커지는 일은 없어서 스크롤스냅 인덱스*h 계산이 항상
+// 정확히 맞는다(참고 구현 woowaTon/client Home.tsx와 동일한 패턴).
+function SectionShell({
+  id,
+  className = "",
+  children,
+  scrollHint,
+}: {
+  id: string;
+  className?: string;
+  children: React.ReactNode;
+  scrollHint: React.ReactNode;
+}) {
+  return (
+    <section
+      id={id}
+      className={
+        "relative flex h-dvh snap-start [scroll-snap-stop:always] flex-col overflow-hidden " +
+        className
+      }
+    >
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
+      {scrollHint}
+    </section>
   );
 }
 
@@ -98,7 +122,7 @@ function ScrollHint({ target, isLast = false }: { target: string; isLast?: boole
       onClick={() =>
         document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" })
       }
-      className="group relative z-10 mt-6 mb-10 flex flex-col items-center gap-1 text-xs font-semibold text-muted-foreground transition hover:text-navy"
+      className="group relative z-10 flex shrink-0 flex-col items-center gap-1 py-4 text-xs font-semibold text-muted-foreground transition hover:text-navy"
     >
       {isLast ? "맨 위로" : "더 알아보기"}
       <svg
@@ -121,9 +145,10 @@ function ScrollHint({ target, isLast = false }: { target: string; isLast?: boole
 
 function Hero() {
   return (
-    <section
+    <SectionShell
       id="hero-section"
-      className="relative isolate flex min-h-dvh scroll-mt-16 snap-start [scroll-snap-stop:always] flex-col overflow-hidden"
+      className="isolate"
+      scrollHint={<ScrollHint target="address-search" />}
     >
       <div
         className="pointer-events-none absolute inset-0 -z-10 opacity-70"
@@ -141,7 +166,7 @@ function Hero() {
           maskImage: "radial-gradient(70% 70% at 50% 40%, black, transparent)",
         }}
       />
-      <div className="section-enter my-auto mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:gap-14 sm:px-6 sm:py-20 lg:grid-cols-[1.05fr_1fr] lg:gap-20 lg:px-8">
+      <div className="section-enter mx-auto my-auto grid w-full max-w-7xl gap-10 px-4 py-10 sm:gap-14 sm:px-6 sm:py-20 lg:grid-cols-[1.05fr_1fr] lg:gap-20 lg:px-8">
         <div className="flex flex-col justify-center">
           <Badge
             variant="outline"
@@ -160,9 +185,11 @@ function Hero() {
             개업·폐업 이력과 생존 통계를 분석하여 계약 전에 필요한 판단 근거를 제공합니다.
           </p>
           <div className="mt-7 flex flex-wrap gap-3 sm:mt-8">
+            {/* button-in-button: 화살표를 텍스트 옆에 그냥 두지 않고 자기 원 안에
+                넣어 눌렀을 때 내부 원만 살짝 다른 방향으로 움직이게 한다. */}
             <Button
               size="lg"
-              className="rounded-lg bg-navy px-6 text-navy-foreground hover:bg-navy/90"
+              className="group/cta rounded-full bg-navy pr-2.5 pl-6 text-navy-foreground hover:bg-navy/90"
               onClick={() =>
                 document
                   .getElementById("address-search")
@@ -170,7 +197,9 @@ function Hero() {
               }
             >
               자리 분석하기
-              <ArrowRight className="ml-1 h-4 w-4" />
+              <span className="ml-1 grid h-7 w-7 place-items-center rounded-full bg-navy-foreground/15 transition-transform duration-300 ease-out group-hover/cta:translate-x-0.5 group-hover/cta:-translate-y-0.5">
+                <ArrowRight className="h-3.5 w-3.5" />
+              </span>
             </Button>
           </div>
           <p className="mt-5 text-xs text-muted-foreground">
@@ -184,58 +213,64 @@ function Hero() {
           </div>
         </div>
       </div>
-      <ScrollHint target="address-search" />
-    </section>
+    </SectionShell>
   );
 }
 
+// Double-Bezel(이중 테두리) — 카드를 배경에 바로 놓지 않고 옅은 바깥 셸(패딩+
+// 큰 반경) 안에 얹어 물리적인 트레이에 놓인 유리판처럼 보이게 한다.
 function PreviewReportCard() {
   return (
-    <Card className="relative rounded-xl border-border/70 bg-surface p-6 shadow-elevated">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-brand" />
-          <span className="text-xs font-medium text-muted-foreground">분석 리포트 · 미리보기</span>
+    <div className="rounded-[2rem] bg-navy/[0.04] p-2 ring-1 ring-navy/[0.06]">
+      <Card className="relative overflow-hidden rounded-[1.65rem] border-border/70 bg-surface p-6 shadow-elevated">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-brand" />
+            <span className="text-xs font-medium text-muted-foreground">
+              분석 리포트 · 미리보기
+            </span>
+          </div>
+          <Badge
+            variant="outline"
+            className="rounded-full border-border text-[10px] tracking-wider text-muted-foreground"
+          >
+            SAMPLE
+          </Badge>
         </div>
-        <Badge
-          variant="outline"
-          className="rounded-full border-border text-[10px] tracking-wider text-muted-foreground"
-        >
-          SAMPLE
-        </Badge>
-      </div>
 
-      <div className="mt-6 space-y-1">
-        <p className="text-xs text-muted-foreground">성남시 수정구 신흥동 123-4</p>
-        <h3 className="text-xl font-extrabold text-navy">1층 102호 · 상가 리포트</h3>
-      </div>
+        <div className="mt-6 space-y-1">
+          <p className="text-xs text-muted-foreground">성남시 수정구 신흥동 123-4</p>
+          <h3 className="text-xl font-extrabold text-navy">1층 102호 · 상가 리포트</h3>
+        </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-3">
-        <MiniMetric label="위험도" value={<RiskBadge level={4} label="위험" />} />
-        <MiniMetric
-          label="최근 9년 폐업"
-          value={<span className="text-2xl font-bold tabular-nums text-danger">4회</span>}
-        />
-        <MiniMetric
-          label="평균 생존기간"
-          value={<span className="text-2xl font-bold tabular-nums text-navy">21개월</span>}
-        />
-        <MiniMetric
-          label="현재 업종"
-          value={<span className="text-lg font-semibold text-brand">치킨집 · 41개월</span>}
-        />
-      </div>
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <MiniMetric label="위험도" value={<RiskBadge level={4} label="위험" />} />
+          <MiniMetric
+            label="최근 9년 폐업"
+            value={<span className="text-2xl font-bold tabular-nums text-danger">4회</span>}
+          />
+          <MiniMetric
+            label="평균 생존기간"
+            value={<span className="text-2xl font-bold tabular-nums text-navy">21개월</span>}
+          />
+          <MiniMetric
+            label="현재 업종"
+            value={<span className="text-lg font-semibold text-brand">치킨집 · 41개월</span>}
+          />
+        </div>
 
-      <div className="mt-5 rounded-xl border border-warn/30 bg-warn-soft/60 p-4">
-        <p className="text-sm text-navy">
-          <span className="font-semibold">카페 업종 반복 폐업</span>
-          <span className="text-muted-foreground">
-            {" "}
-            — 이 자리에서 카페는 최근 5년간 3회 폐업했습니다. 카페 창업은 신중한 검토가 필요합니다.
-          </span>
-        </p>
-      </div>
-    </Card>
+        <div className="mt-5 rounded-xl border border-warn/30 bg-warn-soft/60 p-4">
+          <p className="text-sm text-navy">
+            <span className="font-semibold">카페 업종 반복 폐업</span>
+            <span className="text-muted-foreground">
+              {" "}
+              - 이 자리에서 카페는 최근 5년간 3회 폐업했습니다. 카페 창업은 신중한 검토가
+              필요합니다.
+            </span>
+          </p>
+        </div>
+      </Card>
+    </div>
   );
 }
 
@@ -256,17 +291,15 @@ function SearchBand() {
     navigate({ to: "/search", search: { q: query.trim(), demo: false } });
   };
   return (
-    <section
+    <SectionShell
       id="address-search"
-      className="flex min-h-dvh scroll-mt-16 snap-start [scroll-snap-stop:always] flex-col border-y border-border/60 bg-surface-muted/60"
+      className="border-y border-border/60 bg-surface-muted/60"
+      scrollHint={<ScrollHint target="why-section" />}
     >
-      <div className="section-enter my-auto mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+      <div className="section-enter mx-auto my-auto w-full max-w-4xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
         <div className="text-center">
           <PinPulseGraphic className="mx-auto h-16 w-16 text-brand" />
-          <p className="mt-4 text-xs font-medium tracking-wider text-brand uppercase">
-            Address Search
-          </p>
-          <h2 className="mt-2 font-serif text-2xl font-medium text-navy sm:mt-3 sm:text-3xl">
+          <h2 className="mt-4 font-serif text-2xl font-medium text-navy sm:mt-3 sm:text-3xl">
             <span className="text-brand">지번 주소</span>로 시작하세요
           </h2>
         </div>
@@ -308,44 +341,13 @@ function SearchBand() {
           ))}
         </div>
       </div>
-      <ScrollHint target="key-features-section" />
-    </section>
+    </SectionShell>
   );
 }
 
-function KeyFeatures() {
-  const items = [
-    { label: "공공데이터", value: "인허가 기반", icon: Database },
-    { label: "지번 단위", value: "동일 지번 내 전체 상가", icon: MapPin },
-    { label: "층·호 단위", value: "상가별 개별 리포트", icon: Layers },
-    { label: "운영 이력", value: "폐업·생존 통계", icon: TrendingDown },
-  ];
-  return (
-    <section
-      id="key-features-section"
-      className="flex min-h-dvh scroll-mt-16 snap-start [scroll-snap-stop:always] flex-col"
-    >
-      <div className="section-enter my-auto mx-auto grid max-w-7xl items-center gap-12 px-4 py-16 sm:gap-16 sm:px-6 lg:grid-cols-[1fr_1.2fr] lg:px-8">
-        <LayersGraphic className="mx-auto h-40 w-full max-w-sm text-navy/80 lg:mx-0" />
-        <div className="grid gap-6 sm:grid-cols-2 sm:gap-8">
-          {items.map(({ label, value, icon: Icon }) => (
-            <div key={label} className="flex items-start gap-3">
-              <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brand-soft text-brand">
-                <Icon className="h-4 w-4" />
-              </span>
-              <div>
-                <p className="text-sm text-muted-foreground">{label}</p>
-                <p className="mt-1 text-base font-semibold text-navy">{value}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-      <ScrollHint target="why-section" />
-    </section>
-  );
-}
-
+// "왜 터봄인가"(3가지 이유) + "핵심 특징"(4가지 사실)을 한 화면에 압축했다 —
+// 예전엔 두 개의 풀스크린 섹션이었지만 참고 구현(woowaTon/client)처럼 이유
+// 카드 아래 사실 스트립을 붙이는 편이 한 화면 안에서 자연스럽게 읽힌다.
 function WhyTurbohm() {
   const cards = [
     {
@@ -364,22 +366,29 @@ function WhyTurbohm() {
       desc: "데이터를 나열하지 않습니다. 계약 여부를 판단할 수 있는 인사이트와 체크리스트를 함께 제공합니다.",
     },
   ];
+  const facts = [
+    { label: "공공데이터", value: "인허가 기반", icon: Database },
+    { label: "지번 단위", value: "동일 지번 내 전체 상가", icon: MapPin },
+    { label: "층·호 단위", value: "상가별 개별 리포트", icon: Layers },
+    { label: "운영 이력", value: "폐업·생존 통계", icon: TrendingDown },
+  ];
   return (
-    <section
+    <SectionShell
       id="why-section"
-      className="flex min-h-dvh scroll-mt-16 snap-start [scroll-snap-stop:always] flex-col border-t border-border/60 bg-surface-muted/50"
+      className="border-t border-border/60 bg-surface-muted/50"
+      scrollHint={<ScrollHint target="analysis-section" />}
     >
-      <div className="section-enter my-auto mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-20 lg:px-8">
+      <div className="section-enter mx-auto my-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
         <p className="text-sm font-medium text-brand">왜 터봄인가</p>
         <h2 className="mt-3 max-w-3xl text-balance font-serif text-3xl font-medium tracking-tight text-navy sm:text-4xl">
           상권을 보기 전에, 자리를 봅니다.
         </h2>
         {/* 3장을 균등 3열로 늘어놓지 않고 첫 카드를 넓게 강조 — 나머지 둘은
             오른쪽에 세로로 쌓아 리듬을 준다. */}
-        <div className="mt-4 grid gap-3 sm:mt-12 sm:gap-6 lg:grid-cols-[1.3fr_1fr]">
-          <Card className="group relative overflow-hidden rounded-xl border-border/70 bg-surface p-4 shadow-card transition-transform duration-500 ease-out hover:-translate-y-1 sm:p-8">
+        <div className="mt-5 grid gap-3 sm:gap-5 lg:grid-cols-[1.3fr_1fr]">
+          <Card className="group relative overflow-hidden rounded-[1.5rem] border-border/70 bg-surface p-4 shadow-card transition-transform duration-500 ease-out hover:-translate-y-1 sm:p-6">
             <span
-              className="pointer-events-none absolute -top-3 right-2 select-none text-[88px] font-bold leading-none text-navy/[0.04] transition-colors duration-500 group-hover:text-brand/10"
+              className="pointer-events-none absolute -top-3 right-2 select-none text-[72px] font-bold leading-none text-navy/[0.04] transition-colors duration-500 group-hover:text-brand/10"
               aria-hidden
             >
               {cards[0].no}
@@ -387,35 +396,51 @@ function WhyTurbohm() {
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-soft text-sm font-semibold text-brand">
               {cards[0].no}
             </span>
-            <h3 className="mt-4 text-xl font-semibold text-navy sm:mt-6">{cards[0].title}</h3>
-            <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground sm:mt-3">
+            <h3 className="mt-3 text-lg font-semibold text-navy sm:mt-4">{cards[0].title}</h3>
+            <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
               {cards[0].desc}
             </p>
           </Card>
-          <div className="grid gap-3 sm:gap-6">
+          <div className="grid gap-3 sm:gap-5">
             {cards.slice(1).map((c) => (
               <Card
                 key={c.no}
-                className="group relative overflow-hidden rounded-xl border-border/70 bg-surface p-4 shadow-card transition-transform duration-500 ease-out hover:-translate-y-1 sm:p-6"
+                className="group relative overflow-hidden rounded-[1.5rem] border-border/70 bg-surface p-4 shadow-card transition-transform duration-500 ease-out hover:-translate-y-1"
               >
                 <span
-                  className="pointer-events-none absolute -top-3 right-2 select-none text-[64px] font-bold leading-none text-navy/[0.04] transition-colors duration-500 group-hover:text-brand/10"
+                  className="pointer-events-none absolute -top-2 right-2 select-none text-[52px] font-bold leading-none text-navy/[0.04] transition-colors duration-500 group-hover:text-brand/10"
                   aria-hidden
                 >
                   {c.no}
                 </span>
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-soft text-sm font-semibold text-brand">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand-soft text-xs font-semibold text-brand">
                   {c.no}
                 </span>
-                <h3 className="mt-4 text-base font-semibold text-navy">{c.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{c.desc}</p>
+                <h3 className="mt-3 text-sm font-semibold text-navy">{c.title}</h3>
+                <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{c.desc}</p>
               </Card>
             ))}
           </div>
         </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-2 sm:mt-6 sm:grid-cols-4 sm:gap-4">
+          {facts.map(({ label, value, icon: Icon }) => (
+            <div
+              key={label}
+              className="flex items-start gap-2.5 rounded-xl border border-border/60 bg-surface/70 p-3"
+            >
+              <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-soft text-brand">
+                <Icon className="h-3.5 w-3.5" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[11px] text-muted-foreground">{label}</p>
+                <p className="mt-0.5 truncate text-sm font-semibold text-navy">{value}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
-      <ScrollHint target="analysis-section" />
-    </section>
+    </SectionShell>
   );
 }
 
@@ -437,11 +462,8 @@ function AnalysisInfo() {
     { k: "계약 체크리스트", v: "계약 전에 반드시 확인할 항목", icon: ListChecks },
   ];
   return (
-    <section
-      id="analysis-section"
-      className="flex min-h-dvh scroll-mt-16 snap-start [scroll-snap-stop:always] flex-col"
-    >
-      <div className="section-enter my-auto mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-16 lg:px-8">
+    <SectionShell id="analysis-section" scrollHint={<ScrollHint target="hero-section" isLast />}>
+      <div className="section-enter mx-auto my-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-16 lg:px-8">
         <div className="flex items-start justify-between gap-8">
           <div>
             <p className="text-sm font-medium text-brand">제공하는 분석 정보</p>
@@ -491,7 +513,6 @@ function AnalysisInfo() {
           </div>
         </div>
       </div>
-      <ScrollHint target="hero-section" isLast />
-    </section>
+    </SectionShell>
   );
 }
