@@ -42,3 +42,15 @@
 | 휴업                     | 2    | 0.2%  |
 
 **처리**: `영업`/`휴업`이 아니면 전부 "폐업과 동등"하게 취급한다. `src/lib/api/tenancy.ts`의 `isOccupiedStatus()`가 이 판정의 유일한 창구이며, `Tenancy.status`의 타입은 `"영업" | "휴업" | (string & {})`로 넓혀 실제 응답과 타입이 어긋나지 않게 했다(`src/lib/api/types.ts`).
+
+### 상가API 보강(`enrichmentSource: "sangga_api"`)이 실 배포에서 전혀 관측되지 않음
+
+`api-spec.md`는 `units[].industryDetail`/`timeline[].marketInfo.categoryBreakdown`/`totalStoreCount`/`sameCategoryNearbyCount`가 상가API 동단위·반경 매칭으로 채워진다고 명시하지만, 2026-07-16 실측(성남시 수정구 3개 동·영업 중인 유닛 6곳 — 금토동 1곳, 신흥동 1곳, 창곡동 4곳)에서 **6/6 전부** `enrichmentSource: "license_only"`, `industryDetail: null`, `marketInfo.categoryBreakdown: []`, `marketInfo.totalStoreCount: null`, `marketInfo.sameCategoryNearbyCount: null`이었다. 표본이 작지만 100% 일관된 실패라 부분 커버리지 문제가 아니라 상가API 보강 파이프라인 자체가 배포 환경에서 전혀 실행되지 않고 있는 것으로 보인다(루트 프로젝트 CLAUDE.md §9엔 "실호출은 Railway 배포 후 검증"이 아직 미완료로 남아있음 — 이 검증이 안 된 상태로 보임).
+
+**영향**: `업종 구성`(district.composition) 카드는 백엔드 필드가 비어있을 때 정직하게 실패 표시하는 대신 고정 목업 배열(`FALLBACK_COMPOSITION`, `src/lib/api/unit-analysis.ts`)로 대체되므로, 서로 다른 물건을 봐도 항상 똑같아 보인다 — 프론트 버그 아님, 백엔드 보강 미동작의 결과. 백엔드(`turbom-server`)에서 상가API 클라이언트 호출 여부·인증키 유효성을 먼저 확인해야 한다.
+
+### `units[]`(검색·건물상세 물건목록)엔 `category`/`subCategory`가 없음 — `industryDetail`뿐
+
+`api-spec.md` 245번째 줄 근처에 명시된 "세 업종 필드 구분: `category`(대분류, 필수) → `subCategory`(소분류, 필수) → `industryDetail`(상가API 세부, 있으면 우선)" 3단 폴백은 `timeline[]`(물건 상세, `/api/units/{unitId}`)에만 적용된다. `units[]` 필드표(같은 문서 105번째 줄 근처)엔 `industryDetail`만 있고 `category`/`subCategory`는 스펙에도, 실제 `/api/sites/{pnu}` 응답에도 없다(2026-07-16 실측 확인).
+
+**영향**: 검색 결과 리스트(`search.tsx`의 `UnitList`)는 물건 상세처럼 "industryDetail 없으면 subCategory로 폴백" 표시를 할 수 없다 — 폴백할 데이터 자체가 이 API 레이어에 안 내려온다. 위 상가API 보강 미동작과 겹쳐 지금은 리스트에 업종 라벨이 거의 항상 안 보인다. **근본 해결은 백엔드가 `units[]` 응답에 `category`(또는 `subCategory`)를 추가하는 것**(인허가 원본에서 바로 만들 수 있는 값이라 상가API 보강과 무관하게 항상 채울 수 있음) — 프론트에서 유닛별로 `/api/units/{unitId}`를 추가 호출해 우회하는 건 리스트 하나 그리려고 N번의 추가 API 콜이 나가 권장하지 않는다.
