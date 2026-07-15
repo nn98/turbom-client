@@ -5,7 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: "Pretendard", "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-sans: "Pretendard Variable", "Pretendard", "Noto Sans KR", ui-sans-serif, system-ui,
+    -apple-system, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -48,83 +49,65 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --shadow-elevated:
-    0 1px 2px 0 oklch(0.15 0.03 260 / 0.04), 0 8px 24px -8px oklch(0.15 0.03 260 / 0.08);
-  --shadow-card:
-    0 1px 2px 0 oklch(0.15 0.03 260 / 0.04), 0 2px 8px -2px oklch(0.15 0.03 260 / 0.05);
+  /* diffusion shadow — 넓고 옅게 퍼지는 그림자, 배경 색조(cool slate)로 틴트. */
+  --shadow-elevated: 0 20px 40px -15px oklch(0.22 0.02 255 / 0.1), 0 2px 6px -2px oklch(0.22 0.02 255 / 0.05);
+  --shadow-card: 0 12px 28px -12px oklch(0.22 0.02 255 / 0.08), 0 1px 3px 0 oklch(0.22 0.02 255 / 0.04);
 }
 
+/* 쿨 라이트 슬레이트 베이스 + 단일 일렉트릭 블루 포인트. 큰 radius(카드
+   xl/2xl, 히어로급 컨테이너는 JSX에서 rounded-[2.5rem])와 디퓨전 섀도로
+   "Bento SaaS" 톤을 만든다. */
 :root {
-  --radius: 0.75rem;
+  --radius: 1.25rem;
 
-  --background: oklch(0.995 0.002 240);
-  --foreground: oklch(0.18 0.03 260);
+  --background: oklch(0.98 0.003 250);
+  --foreground: oklch(0.22 0.02 255);
 
   --surface: oklch(1 0 0);
-  --surface-muted: oklch(0.975 0.006 250);
+  --surface-muted: oklch(0.965 0.004 250);
 
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.03 260);
+  --card-foreground: oklch(0.22 0.02 255);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.03 260);
+  --popover-foreground: oklch(0.22 0.02 255);
 
-  /* Navy = primary */
-  --navy: oklch(0.22 0.04 260);
-  --navy-foreground: oklch(0.985 0.003 240);
-  --primary: oklch(0.22 0.04 260);
-  --primary-foreground: oklch(0.985 0.003 240);
+  /* navy = 잉크. 코드 전역에서 text-navy/bg-navy를 본문 잉크색으로 쓰므로
+     이 토큰만 바꾸면 컴포넌트 수정 없이 전파된다. */
+  --navy: oklch(0.22 0.02 255);
+  --navy-foreground: oklch(0.99 0.002 250);
+  --primary: oklch(0.22 0.02 255);
+  --primary-foreground: oklch(0.99 0.002 250);
 
-  /* Green = brand accent */
-  --brand: oklch(0.62 0.14 155);
-  --brand-foreground: oklch(0.99 0.005 155);
-  --brand-soft: oklch(0.95 0.04 155);
+  /* brand = 단일 액센트(일렉트릭 블루). 채도 80% 미만, 보라 계열 금지. */
+  --brand: oklch(0.58 0.19 255);
+  --brand-foreground: oklch(0.99 0.005 255);
+  --brand-soft: oklch(0.95 0.03 255);
 
-  --secondary: oklch(0.965 0.006 250);
-  --secondary-foreground: oklch(0.22 0.04 260);
-  --muted: oklch(0.965 0.006 250);
-  --muted-foreground: oklch(0.48 0.02 260);
-  --accent: oklch(0.955 0.02 155);
-  --accent-foreground: oklch(0.22 0.04 260);
+  --secondary: oklch(0.965 0.004 250);
+  --secondary-foreground: oklch(0.22 0.02 255);
+  --muted: oklch(0.965 0.004 250);
+  --muted-foreground: oklch(0.52 0.016 255);
+  --accent: oklch(0.95 0.03 255);
+  --accent-foreground: oklch(0.22 0.02 255);
 
-  --destructive: oklch(0.58 0.22 27);
-  --destructive-foreground: oklch(0.99 0.003 240);
-  --danger: oklch(0.58 0.22 27);
-  --danger-soft: oklch(0.96 0.04 27);
-  --warn: oklch(0.72 0.16 65);
-  --warn-soft: oklch(0.965 0.05 80);
-  --success: oklch(0.62 0.14 155);
-  --success-soft: oklch(0.95 0.04 155);
+  --destructive: oklch(0.55 0.2 25);
+  --destructive-foreground: oklch(0.99 0.003 25);
+  --danger: oklch(0.55 0.2 25);
+  --danger-soft: oklch(0.95 0.03 25);
+  --warn: oklch(0.68 0.15 75);
+  --warn-soft: oklch(0.96 0.04 85);
+  --success: oklch(0.55 0.14 155);
+  --success-soft: oklch(0.95 0.03 155);
 
-  --border: oklch(0.92 0.006 250);
-  --input: oklch(0.92 0.006 250);
-  --ring: oklch(0.62 0.14 155);
+  --border: oklch(0.91 0.006 255);
+  --input: oklch(0.91 0.006 255);
+  --ring: oklch(0.58 0.19 255);
 
-  --chart-1: oklch(0.22 0.04 260);
-  --chart-2: oklch(0.62 0.14 155);
-  --chart-3: oklch(0.55 0.12 220);
-  --chart-4: oklch(0.72 0.16 65);
-  --chart-5: oklch(0.58 0.22 27);
-}
-
-.dark {
-  --background: oklch(0.15 0.02 260);
-  --foreground: oklch(0.98 0.003 240);
-  --surface: oklch(0.18 0.03 260);
-  --surface-muted: oklch(0.22 0.03 260);
-  --card: oklch(0.18 0.03 260);
-  --card-foreground: oklch(0.98 0.003 240);
-  --popover: oklch(0.18 0.03 260);
-  --popover-foreground: oklch(0.98 0.003 240);
-  --primary: oklch(0.98 0.003 240);
-  --primary-foreground: oklch(0.22 0.04 260);
-  --secondary: oklch(0.26 0.03 260);
-  --secondary-foreground: oklch(0.98 0.003 240);
-  --muted: oklch(0.26 0.03 260);
-  --muted-foreground: oklch(0.72 0.02 260);
-  --accent: oklch(0.26 0.03 260);
-  --accent-foreground: oklch(0.98 0.003 240);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
+  --chart-1: oklch(0.22 0.02 255);
+  --chart-2: oklch(0.58 0.19 255);
+  --chart-3: oklch(0.6 0.12 300);
+  --chart-4: oklch(0.68 0.15 75);
+  --chart-5: oklch(0.55 0.2 25);
 }
 
 @layer base {

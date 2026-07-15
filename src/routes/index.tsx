@@ -126,19 +126,10 @@ function Hero() {
       className="relative isolate flex min-h-dvh scroll-mt-16 snap-start [scroll-snap-stop:always] flex-col overflow-hidden"
     >
       <div
-        className="pointer-events-none absolute inset-0 -z-10 opacity-70"
-        style={{
-          background:
-            "radial-gradient(60% 50% at 20% 20%, oklch(0.95 0.04 155 / 0.5), transparent 60%), radial-gradient(50% 50% at 100% 0%, oklch(0.9 0.03 260 / 0.4), transparent 60%)",
-        }}
-      />
-      <div
         className="pointer-events-none absolute inset-0 -z-10"
         style={{
-          backgroundImage:
-            "linear-gradient(oklch(0.55 0.02 260 / 0.05) 1px, transparent 1px), linear-gradient(90deg, oklch(0.55 0.02 260 / 0.05) 1px, transparent 1px)",
-          backgroundSize: "56px 56px",
-          maskImage: "radial-gradient(70% 70% at 50% 40%, black, transparent)",
+          background:
+            "radial-gradient(55% 50% at 15% 15%, oklch(from var(--color-brand-soft) l c h / 0.9), transparent 62%), radial-gradient(45% 40% at 100% 0%, oklch(from var(--color-brand-soft) l c h / 0.6), transparent 60%)",
         }}
       />
       <div className="section-enter my-auto mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:gap-14 sm:px-6 sm:py-20 lg:grid-cols-[1.05fr_1fr] lg:gap-20 lg:px-8">
@@ -150,7 +141,7 @@ function Hero() {
             <span className="h-1.5 w-1.5 rounded-full bg-brand" />
             <span className="text-navy">창업자를 위한 입지 실사 리포트</span>
           </Badge>
-          <h1 className="mt-5 text-balance text-4xl font-bold leading-[1.15] tracking-tight text-navy sm:mt-6 sm:text-5xl lg:text-6xl">
+          <h1 className="mt-5 text-balance text-4xl font-bold leading-[1.05] tracking-tighter text-navy sm:mt-6 sm:text-5xl lg:text-6xl">
             자리를 보면,
             <br />
             <span className="text-brand">창업</span>이 보입니다.
@@ -162,7 +153,7 @@ function Hero() {
           <div className="mt-7 flex flex-wrap gap-3 sm:mt-8">
             <Button
               size="lg"
-              className="rounded-full bg-navy px-6 text-navy-foreground hover:bg-navy/90"
+              className="bg-navy px-6 text-navy-foreground hover:bg-navy/90"
               onClick={() =>
                 document
                   .getElementById("address-search")
@@ -191,7 +182,7 @@ function Hero() {
 
 function PreviewReportCard() {
   return (
-    <Card className="relative rounded-2xl border-border/70 bg-surface p-6 shadow-elevated">
+    <Card className="relative rounded-[2rem] border-border/70 bg-surface p-6 shadow-elevated">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-brand" />
@@ -231,7 +222,7 @@ function PreviewReportCard() {
           <span className="font-semibold">카페 업종 반복 폐업</span>
           <span className="text-muted-foreground">
             {" "}
-            — 이 자리에서 카페는 최근 5년간 3회 폐업했습니다. 카페 창업은 신중한 검토가 필요합니다.
+            - 이 자리에서 카페는 최근 5년간 3회 폐업했습니다. 카페 창업은 신중한 검토가 필요합니다.
           </span>
         </p>
       </div>
@@ -283,13 +274,13 @@ function SearchBand() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="분석할 상가의 지번 주소를 입력하세요"
-              className="h-14 rounded-full border-border bg-background pl-11 pr-4 text-base shadow-sm focus-visible:ring-brand"
+              className="h-14 rounded-xl border-border bg-background pl-11 pr-4 text-base focus-visible:ring-brand"
             />
           </div>
           <Button
             type="submit"
             size="lg"
-            className="h-14 rounded-full bg-navy px-8 text-navy-foreground hover:bg-navy/90"
+            className="h-14 bg-navy px-8 text-navy-foreground hover:bg-navy/90"
           >
             검색
           </Button>
@@ -371,28 +362,47 @@ function WhyTurbohm() {
     >
       <div className="section-enter my-auto mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-20 lg:px-8">
         <p className="text-sm font-medium text-brand">왜 터봄인가</p>
-        <h2 className="mt-3 max-w-3xl text-balance text-3xl font-bold tracking-tight text-navy sm:text-4xl">
+        <h2 className="mt-3 max-w-3xl text-balance text-3xl font-bold tracking-tighter text-navy sm:text-4xl">
           상권을 보기 전에, 자리를 봅니다.
         </h2>
-        <div className="mt-4 grid gap-3 sm:mt-12 sm:gap-6 md:grid-cols-3">
-          {cards.map((c) => (
-            <Card
-              key={c.no}
-              className="group relative overflow-hidden rounded-2xl border-border/70 bg-surface p-4 shadow-card transition-transform duration-500 ease-out hover:-translate-y-1 sm:p-6"
+        {/* 균등 3열 카드 행 대신 첫 카드를 넓은 벤토 타일로, 나머지 둘을
+            오른쪽에 쌓아 비대칭을 만든다. */}
+        <div className="mt-4 grid gap-3 sm:mt-12 sm:gap-6 lg:grid-cols-[1.3fr_1fr]">
+          <Card className="group relative overflow-hidden rounded-[2rem] border-border/70 bg-surface p-4 shadow-card transition-transform duration-500 ease-out hover:-translate-y-1 sm:p-8">
+            <span
+              className="pointer-events-none absolute -top-3 right-2 select-none text-[88px] font-bold leading-none text-navy/[0.04] transition-colors duration-500 group-hover:text-brand/10"
+              aria-hidden
             >
-              <span
-                className="pointer-events-none absolute -top-3 right-2 select-none text-[88px] font-bold leading-none text-navy/[0.04] transition-colors duration-500 group-hover:text-brand/10"
-                aria-hidden
+              {cards[0].no}
+            </span>
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-brand-soft text-sm font-semibold text-brand">
+              {cards[0].no}
+            </span>
+            <h3 className="mt-4 text-xl font-semibold text-navy sm:mt-6">{cards[0].title}</h3>
+            <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground sm:mt-3">
+              {cards[0].desc}
+            </p>
+          </Card>
+          <div className="grid gap-3 sm:gap-6">
+            {cards.slice(1).map((c) => (
+              <Card
+                key={c.no}
+                className="group relative overflow-hidden rounded-[2rem] border-border/70 bg-surface p-4 shadow-card transition-transform duration-500 ease-out hover:-translate-y-1 sm:p-6"
               >
-                {c.no}
-              </span>
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-soft text-sm font-semibold text-brand">
-                {c.no}
-              </span>
-              <h3 className="mt-4 text-lg font-semibold text-navy sm:mt-6">{c.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:mt-3">{c.desc}</p>
-            </Card>
-          ))}
+                <span
+                  className="pointer-events-none absolute -top-3 right-2 select-none text-[64px] font-bold leading-none text-navy/[0.04] transition-colors duration-500 group-hover:text-brand/10"
+                  aria-hidden
+                >
+                  {c.no}
+                </span>
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-brand-soft text-sm font-semibold text-brand">
+                  {c.no}
+                </span>
+                <h3 className="mt-4 text-base font-semibold text-navy">{c.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{c.desc}</p>
+              </Card>
+            ))}
+          </div>
         </div>
       </div>
       <ScrollHint target="analysis-section" />
@@ -426,7 +436,7 @@ function AnalysisInfo() {
         <div className="flex items-start justify-between gap-8">
           <div>
             <p className="text-sm font-medium text-brand">제공하는 분석 정보</p>
-            <h2 className="mt-3 max-w-2xl text-balance text-2xl font-bold tracking-tight text-navy sm:text-3xl">
+            <h2 className="mt-3 max-w-2xl text-balance text-2xl font-bold tracking-tighter text-navy sm:text-3xl">
               하나의 자리, <span className="text-brand">여섯 가지</span> 각도.
             </h2>
           </div>
@@ -436,9 +446,9 @@ function AnalysisInfo() {
           {rows.map(({ k, v, icon: Icon }) => (
             <Card
               key={k}
-              className="rounded-2xl border-border/70 bg-surface p-3 shadow-card sm:p-5"
+              className="rounded-[2rem] border-border/70 bg-surface p-3 shadow-card sm:p-5"
             >
-              <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-soft text-brand">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-soft text-brand">
                 <Icon className="h-4 w-4" />
               </span>
               <h3 className="mt-4 text-sm font-semibold text-navy">{k}</h3>
@@ -447,7 +457,7 @@ function AnalysisInfo() {
           ))}
         </div>
 
-        <div className="mt-3 flex flex-col items-start gap-3 rounded-2xl bg-navy p-3 text-navy-foreground sm:mt-6 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="mt-3 flex flex-col items-start gap-3 rounded-[2rem] bg-navy p-3 text-navy-foreground sm:mt-6 sm:flex-row sm:items-center sm:justify-between sm:p-4">
           <div>
             <p className="font-semibold">계약 전에, 자리를 먼저 보세요.</p>
             <p className="mt-1 hidden text-sm text-navy-foreground/70 sm:block">
@@ -462,13 +472,13 @@ function AnalysisInfo() {
                   .getElementById("address-search")
                   ?.scrollIntoView({ behavior: "smooth", block: "start" })
               }
-              className="rounded-full bg-navy-foreground px-4 py-2 text-sm font-semibold text-navy transition hover:brightness-95"
+              className="rounded-xl bg-navy-foreground px-4 py-2 text-sm font-semibold text-navy transition hover:brightness-95 active:scale-[0.98]"
             >
               자리 분석하기
             </button>
             <Link
               to="/search"
-              className="rounded-full border border-navy-foreground/30 px-4 py-2 text-sm font-semibold text-navy-foreground transition hover:bg-navy-foreground/10"
+              className="rounded-xl border border-navy-foreground/30 px-4 py-2 text-sm font-semibold text-navy-foreground transition hover:bg-navy-foreground/10 active:scale-[0.98]"
             >
               지도 둘러보기
             </Link>
