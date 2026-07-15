@@ -24,10 +24,12 @@ import { buildSiteMarkers, dongCandidateCounts, extractLotLabel } from "@/lib/si
 // 매칭된 후보들 좌표의 근사 중심점(withinRadius 참고) 기준 반경 300m로 좁힌다.
 const SEARCH_RADIUS_METERS = 300;
 // 반경 필터만으로는 부족할 때(넓은 동에서 우연히 반경 안에 몰린 경우) 지도 핀이
-// 수십 개씩 찍히면 클러터·성능 문제가 생긴다 — 중심점에서 가까운 순 상위 20개로
-// 한 번 더 자른다. 아래 탭 펼치기(MAX_VISIBLE_TABS=8)보다 넉넉하게 잡아야 "더보기"
-// 탭 펼치기가 실제로 의미 있는 개수를 보여준다.
-const MAX_CANDIDATES = 20;
+// 수십~수백 개씩 찍히면 클러터·성능 문제가 생긴다 — 중심점에서 가까운 순으로
+// 최대 100개 지번(부번 단위 site)까지만 남긴다(candidates는 site=pnu=지번 1개
+// 단위라 "지번 개수 캡"과 "부번 개수 캡"은 같은 값). 300m 반경 + 100개 캡이
+// 검색 결과와 지도 마커 둘 다에 적용되는 최종 조건이다(markers도 이 candidates에서
+// 그대로 파생).
+const MAX_CANDIDATES = 100;
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
