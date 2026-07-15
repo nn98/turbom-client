@@ -184,7 +184,7 @@ function SearchPage() {
         <div className="pointer-events-auto flex w-full max-w-[420px] items-center gap-3 transition-all duration-300 focus-within:max-w-[640px]">
           <Link
             to="/"
-            className="flex shrink-0 items-center gap-2.5 rounded-2xl bg-surface/90 px-3 py-2 shadow-lg backdrop-blur transition hover:shadow-xl"
+            className="flex shrink-0 items-center gap-2.5 rounded-lg bg-surface/90 px-3 py-2 shadow-elevated backdrop-blur transition"
           >
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand text-sm font-black text-brand-foreground">
               터
@@ -199,7 +199,7 @@ function SearchPage() {
             </span>
           </Link>
           <form
-            className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl border border-border/70 bg-surface/95 p-1.5 shadow-lg backdrop-blur"
+            className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border/70 bg-surface/95 p-1.5 shadow-elevated backdrop-blur"
             onSubmit={(e) => {
               e.preventDefault();
               submit(input);
@@ -214,7 +214,7 @@ function SearchPage() {
             />
             <button
               type="submit"
-              className="shrink-0 rounded-full bg-navy px-3.5 py-1.5 text-sm font-bold text-navy-foreground transition hover:brightness-110"
+              className="shrink-0 rounded-md bg-navy px-3.5 py-1.5 text-sm font-bold text-navy-foreground transition hover:brightness-110 active:scale-[0.98]"
             >
               검색
             </button>
@@ -233,7 +233,7 @@ function SearchPage() {
                 : undefined
             }
             className={
-              "pointer-events-auto mt-auto flex max-h-[58dvh] w-full flex-col overflow-hidden rounded-2xl border border-border/70 bg-surface/95 shadow-2xl backdrop-blur transition-transform duration-300 ease-out sm:mt-0 sm:max-h-full sm:w-[420px] " +
+              "pointer-events-auto mt-auto flex max-h-[58dvh] w-full flex-col overflow-hidden rounded-lg border border-border/70 bg-surface/95 shadow-elevated backdrop-blur transition-transform duration-300 ease-out sm:mt-0 sm:max-h-full sm:w-[420px] " +
               (collapsed
                 ? "translate-y-[calc(100%-18px)] cursor-pointer sm:-translate-x-[calc(100%-18px)] sm:translate-y-0"
                 : "")
@@ -287,8 +287,12 @@ function SearchPage() {
                     {activeCandidate?.roadAddress}
                   </p>
                   <div className="mt-2.5 flex gap-2">
-                    <Pill>점포 {activeCandidate?.unitCount}개</Pill>
-                    <Pill tone="danger">폐업 이력 {activeCandidate?.closedCount}건</Pill>
+                    <Pill>
+                      점포 <span className="font-mono">{activeCandidate?.unitCount}</span>개
+                    </Pill>
+                    <Pill tone="danger">
+                      폐업 이력 <span className="font-mono">{activeCandidate?.closedCount}</span>건
+                    </Pill>
                   </div>
                   {activeCandidate?.latitude == null && (
                     <p className="mt-2 text-xs text-muted-foreground">
@@ -326,7 +330,7 @@ function SearchPage() {
         {collapsed && (
           <button
             onClick={() => setCollapsed(false)}
-            className="pointer-events-auto absolute bottom-6 left-4 flex items-center gap-2 rounded-full bg-navy px-4 py-2.5 text-sm font-bold text-navy-foreground shadow-xl transition hover:bg-navy/90 sm:left-5"
+            className="pointer-events-auto absolute bottom-6 left-4 flex items-center gap-2 rounded-md bg-navy px-4 py-2.5 text-sm font-bold text-navy-foreground shadow-elevated transition hover:bg-navy/90 active:scale-[0.98] sm:left-5"
           >
             <List className="h-4 w-4" />
             점포 목록
@@ -413,7 +417,9 @@ function DongPicker({
               className="flex w-full items-center justify-between rounded-xl border border-border bg-background px-4 py-3 text-left text-sm font-semibold text-navy transition hover:border-brand/50 hover:bg-brand-soft"
             >
               <span>{dong}</span>
-              <span className="text-xs font-normal text-muted-foreground">{count}개 자리</span>
+              <span className="font-mono text-xs font-normal text-muted-foreground">
+                {count}개 자리
+              </span>
             </button>
           </li>
         ))}
@@ -428,7 +434,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
       <AlertTriangle className="mx-auto h-8 w-8 text-danger" />
       <h2 className="mt-4 text-base font-semibold text-navy">불러오는 중 문제가 발생했습니다</h2>
       <p className="mt-2 text-sm text-muted-foreground">{message}</p>
-      <Button variant="outline" className="mt-5 rounded-full" onClick={onRetry}>
+      <Button variant="outline" className="mt-5 rounded-md" onClick={onRetry}>
         다시 시도
       </Button>
     </div>
@@ -515,7 +521,7 @@ function SegmentedTabs({
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="shrink-0 whitespace-nowrap rounded-full bg-secondary px-3 py-1.5 text-sm font-semibold text-brand hover:text-navy"
+          className="shrink-0 whitespace-nowrap rounded-full bg-secondary px-3 py-1.5 font-mono text-sm font-semibold text-brand hover:text-navy"
         >
           +{hiddenCount}
         </button>

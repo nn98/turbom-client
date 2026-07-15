@@ -97,7 +97,7 @@ const pinHtml = (label: string, active?: boolean) => `
   <div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:6px;">
     ${
       active
-        ? `<div style="padding:3px 8px;border:1px solid rgba(15,23,42,0.08);border-radius:9999px;background:rgba(255,255,255,0.98);color:#0f172a;font-size:11px;font-weight:700;line-height:1;white-space:nowrap;box-shadow:0 4px 12px rgba(15,23,42,0.12);">
+        ? `<div style="padding:3px 8px;border:1px solid var(--color-border);border-radius:4px;background:var(--color-surface);color:var(--color-brand);font-family:var(--font-mono);font-size:11px;font-weight:700;line-height:1;white-space:nowrap;box-shadow:0 4px 12px oklch(0 0 0 / 0.4);">
       ${escapeHtml(label)}
     </div>`
         : ""
@@ -105,9 +105,9 @@ const pinHtml = (label: string, active?: boolean) => `
     <div style="display:flex;align-items:center;justify-content:center;width:26px;height:34px;">
       <svg viewBox='0 0 24 32' width='26' height='34' xmlns='http://www.w3.org/2000/svg'>
         <path d='M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20C24 5.4 18.6 0 12 0z' fill='${
-          active ? "#dc2626" : "#94a3b8"
+          active ? "var(--color-brand)" : "var(--color-muted-foreground)"
         }'/>
-        <circle cx='12' cy='12' r='4.5' fill='white'/>
+        <circle cx='12' cy='12' r='4.5' fill='var(--color-surface)'/>
       </svg>
     </div>
   </div>`;
