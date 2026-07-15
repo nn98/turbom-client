@@ -32,8 +32,14 @@ export function useEasedSnapScroll(ref: RefObject<HTMLDivElement | null>, slideS
     }
 
     function onWheel(e: WheelEvent) {
-      if (Math.abs(e.deltaY) < 4) return;
+      // 델타 체크보다 먼저 항상 preventDefault를 호출한다. 트랙패드는 스크롤
+      // 시작 시 |deltaY| < 4인 아주 작은 이벤트를 여러 번 먼저 보내는데,
+      // 이전엔 그 이벤트들을 그냥 return해 네이티브 스크롤로 흘려보냈다 —
+      // 이 컨테이너에 걸린 CSS snap-mandatory가 그 네이티브 스크롤을 즉시
+      // (이징 없이) 다음 섹션으로 스냅시켜버려서, 휠로 살살 내릴 때만
+      // 버튼 클릭과 달리 애니메이션 없이 뚝 끊겨 넘어가는 원인이었다.
       e.preventDefault();
+      if (Math.abs(e.deltaY) < 4) return;
       if (busy) return;
       const h = el!.clientHeight;
       const count = el!.querySelectorAll(slideSelector).length;
