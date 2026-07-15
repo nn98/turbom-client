@@ -701,6 +701,7 @@ function StatsBoard({ detail, current }: { detail: UnitDetail; current: Tenancy 
     : 0;
 
   const selfStats = [
+    { label: "개업 횟수", value: `${statistics.totalTenancyCount}회` },
     { label: "폐업 횟수", value: `${statistics.closedCount}회` },
     {
       label: "최장 운영",
@@ -723,7 +724,7 @@ function StatsBoard({ detail, current }: { detail: UnitDetail; current: Tenancy 
     },
   ];
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
       {selfStats.map((it) => (
         <Card key={it.label} className={"rounded-xl border-border/70 bg-surface p-5 shadow-card"}>
           <p className="text-xs text-muted-foreground">{it.label}</p>

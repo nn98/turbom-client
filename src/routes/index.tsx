@@ -20,7 +20,12 @@ import { Input } from "@/components/ui/input";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { RiskBadge } from "@/components/risk-badge";
-import { ChecklistGraphic, PinPulseGraphic, SkylineGraphic } from "@/components/landing-graphics";
+import {
+  ChecklistGraphic,
+  MapTextureGraphic,
+  PinPulseGraphic,
+  SkylineGraphic,
+} from "@/components/landing-graphics";
 import { DEMO_ADDRESSES } from "@/lib/mock-data";
 import { useEasedSnapScroll } from "@/hooks/use-eased-snap-scroll";
 
@@ -79,8 +84,8 @@ function LandingPage() {
       <SkylineGraphic className="pointer-events-none fixed inset-x-0 bottom-0 -z-10 h-24 w-full text-navy/10 sm:h-32" />
       <SiteHeader floating />
       <main>
-        <Hero />
         <SearchBand />
+        <Hero />
         <WhyTurbohm />
         <AnalysisInfo />
       </main>
@@ -157,13 +162,25 @@ function Hero() {
     <SectionShell
       id="hero-section"
       className="isolate"
-      scrollHint={<ScrollHint target="address-search" />}
+      scrollHint={<ScrollHint target="why-section" />}
     >
       <div
         className="pointer-events-none absolute inset-0 -z-10 opacity-70"
         style={{
           background:
             "radial-gradient(60% 50% at 20% 20%, oklch(from var(--color-brand-soft) l c h / 0.8), transparent 60%), radial-gradient(50% 50% at 100% 0%, oklch(from var(--color-foreground) l c h / 0.05), transparent 60%)",
+        }}
+      />
+      {/* 배경의 지도 텍스처 — 살짝 기울여 두고 가장자리로 갈수록 옅어지게
+          마스킹해 장식 이상으로 보이지 않게(텍스트 위로 존재감이 나오지
+          않게) 눌러둔다. */}
+      <MapTextureGraphic
+        className="pointer-events-none absolute -right-[10%] top-1/2 -z-10 h-[140%] w-[75%] -translate-y-1/2 rotate-[-6deg] text-navy/[0.05]"
+        style={{
+          maskImage:
+            "linear-gradient(115deg, transparent 8%, black 42%, black 60%, transparent 92%)",
+          WebkitMaskImage:
+            "linear-gradient(115deg, transparent 8%, black 42%, black 60%, transparent 92%)",
         }}
       />
       <div
@@ -303,7 +320,7 @@ function SearchBand() {
     <SectionShell
       id="address-search"
       className="border-y border-border/60 bg-surface-muted/60"
-      scrollHint={<ScrollHint target="why-section" />}
+      scrollHint={<ScrollHint target="hero-section" />}
     >
       <div className="section-enter mx-auto my-auto w-full max-w-4xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
         <div className="text-center">
@@ -471,7 +488,7 @@ function AnalysisInfo() {
     { k: "계약 체크리스트", v: "계약 전에 반드시 확인할 항목", icon: ListChecks },
   ];
   return (
-    <SectionShell id="analysis-section" scrollHint={<ScrollHint target="hero-section" isLast />}>
+    <SectionShell id="analysis-section" scrollHint={<ScrollHint target="address-search" isLast />}>
       <div className="section-enter mx-auto my-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-16 lg:px-8">
         <div className="flex items-start justify-between gap-8">
           <div>

@@ -1,6 +1,8 @@
 // 랜딩 전용 커스텀 SVG — 실사진/스톡 이미지 대신 브랜드 컬러(currentColor
 // 상속)로 그린 추상 그래픽. 전부 순수 장식이라 aria-hidden.
 
+import type { CSSProperties } from "react";
+
 export function SkylineGraphic({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 400 160" fill="none" className={className} aria-hidden="true">
@@ -56,6 +58,44 @@ export function LayersGraphic({ className }: { className?: string }) {
         strokeOpacity="0.45"
       />
       <rect x="10" y="10" width="160" height="50" rx="10" fill="currentColor" />
+    </svg>
+  );
+}
+
+// 히어로 배경용 추상 지도 텍스처 — 실사진 대신 도로망 느낌의 선 그래픽으로
+// "지도" 모티프만 가볍게 암시한다(외부 이미지 에셋 없이 currentColor 상속).
+export function MapTextureGraphic({
+  className,
+  style,
+}: {
+  className?: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <svg viewBox="0 0 800 520" fill="none" className={className} style={style} aria-hidden="true">
+      <g stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        <path d="M0 96 H800" strokeOpacity="0.35" />
+        <path d="M0 214 H800" strokeOpacity="0.35" />
+        <path d="M0 332 H800" strokeOpacity="0.35" />
+        <path d="M0 450 H800" strokeOpacity="0.35" />
+        <path d="M120 0 V520" strokeOpacity="0.35" />
+        <path d="M280 0 V520" strokeOpacity="0.35" />
+        <path d="M440 0 V520" strokeOpacity="0.35" />
+        <path d="M600 0 V520" strokeOpacity="0.35" />
+        <path d="M720 0 V520" strokeOpacity="0.35" />
+        <path d="M0 40 L800 480" strokeOpacity="0.5" strokeWidth="2" />
+        <path
+          d="M0 470 C 160 420, 260 380, 340 300 S 520 140, 800 90"
+          strokeOpacity="0.55"
+          strokeWidth="2.5"
+        />
+      </g>
+      <g fill="currentColor">
+        <circle cx="340" cy="300" r="6" />
+        <circle cx="600" cy="130" r="4" fillOpacity="0.6" />
+        <circle cx="120" cy="450" r="4" fillOpacity="0.6" />
+        <circle cx="600" cy="450" r="4" fillOpacity="0.6" />
+      </g>
     </svg>
   );
 }
