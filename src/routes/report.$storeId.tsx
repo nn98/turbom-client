@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
+import { Bar, BarChart, CartesianGrid, Cell, Label, Pie, PieChart, Sector, XAxis, YAxis } from "recharts";
 import {
   AlertTriangle,
   ArrowRight,
@@ -12,6 +13,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import type { ChartConfig } from "@/components/ui/chart";
+import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
@@ -61,6 +64,39 @@ const displayUnitLabel = (label: string) => {
   const inferredFloor = unit >= 100 ? Math.floor(unit / 100) : 0;
   return `${inferredFloor}층 ${label}`;
 };
+
+// 업종 구성 차트 전용 카테고리 팔레트 — navy/brand 등 본문 토큰과 별개다.
+// 검증 근거는 styles.css의 --chart-1..6 정의부 주석 참고(2026-07-17,
+// dataviz 스킬 validate_palette.js 통과: CVD 인접쌍·명도대·채도 하한 전부 PASS,
+// 마젠타/노랑/아쿠아 3개는 대비 3:1 미만이라 항상 텍스트 라벨과 병기).
+const CHART_CATEGORY_COLORS = [
+  "var(--color-chart-1)",
+  "var(--color-chart-2)",
+  "var(--color-chart-3)",
+  "var(--color-chart-4)",
+  "var(--color-chart-5)",
+  "var(--color-chart-6)",
+];
+
+type CompositionEntry = { category: string; count: number; ratio: number };
+
+// 카테고리 색 슬롯은 6개뿐(CHART_CATEGORY_COLORS) — 그 이상은 인접 색상을
+// 재사용(cycling)하는 대신 하위 항목을 합쳐 "기타"로 접는다(dataviz 스킬:
+// "8개 넘는 카테고리 hue를 새로 만들지 말고 꼬리를 Other로 접어라").
+function foldToChartCategories(composition: CompositionEntry[]): CompositionEntry[] {
+  if (composition.length <= CHART_CATEGORY_COLORS.length) return composition;
+  const sorted = [...composition].sort((a, b) => b.count - a.count);
+  const kept = sorted.slice(0, CHART_CATEGORY_COLORS.length - 1);
+  const rest = sorted.slice(CHART_CATEGORY_COLORS.length - 1);
+  return [
+    ...kept,
+    {
+      category: "기타",
+      count: rest.reduce((sum, c) => sum + c.count, 0),
+      ratio: rest.reduce((sum, c) => sum + c.ratio, 0),
+    },
+  ];
+}
 
 export const Route = createFileRoute("/report/$storeId")({
   head: () => ({
@@ -321,10 +357,15 @@ function NarrativeCard({ lines }: { lines: string[] }) {
 }
 
 function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) {
-  const { composition, isPlaceholder, stats } = district;
-  const [selectedCategory, setSelectedCategory] = useState(() => composition[0] ?? null);
-  const max = Math.max(...composition.map((c) => c.count));
+  const { isPlaceholder, stats } = district;
+  const composition = foldToChartCategories(district.composition);
+  const [selectedCategoryName, setSelectedCategoryName] = useState(
+    () => composition[0]?.category ?? "",
+  );
+  const selectedCategory =
+    composition.find((c) => c.category === selectedCategoryName) ?? composition[0];
   const competitionScore = selectedCategory ? Math.round(selectedCategory.ratio * 100) : 0;
+  const totalCount = composition.reduce((sum, c) => sum + c.count, 0);
   return (
     <div>
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
@@ -343,35 +384,15 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
               <span className="text-xs text-muted-foreground">반경 300m · 업종별 점포 수</span>
             </div>
           </div>
-          <div className="mt-5 space-y-3">
-            {composition.map((c) => (
-              <button
-                key={c.category}
-                type="button"
-                onClick={() => setSelectedCategory(c)}
-                className={
-                  "block w-full rounded-xl p-2 text-left transition " +
-                  (selectedCategory?.category === c.category
-                    ? "bg-secondary/60"
-                    : "hover:bg-secondary/30")
-                }
-              >
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">{c.category}</span>
-                  <span className="font-medium tabular-nums text-navy">{c.count}</span>
-                </div>
-                <div className="mt-1 h-2 overflow-hidden rounded-full bg-secondary">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${(c.count / max) * 100}%`,
-                      background: "var(--color-navy)",
-                    }}
-                  />
-                </div>
-              </button>
-            ))}
-          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            이 자리 반경 300m 안 상가 {totalCount}곳을 업종별 비중으로 나눈 도넛입니다. 조각이나
+            아래 항목을 누르면 오른쪽 경쟁도가 그 업종 기준으로 바뀝니다.
+          </p>
+          <CompositionDonut
+            composition={composition}
+            selectedCategory={selectedCategory?.category}
+            onSelect={setSelectedCategoryName}
+          />
         </Card>
         <div className="space-y-4">
           <Card className="rounded-xl border-border/70 bg-surface p-6 shadow-card">
@@ -405,7 +426,7 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
                           <button
                             key={c.category}
                             type="button"
-                            onClick={() => setSelectedCategory(c)}
+                            onClick={() => setSelectedCategoryName(c.category)}
                             className={
                               "rounded-full px-3 py-1.5 text-xs transition " +
                               (active
@@ -454,6 +475,197 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
       {isPlaceholder && (
         <p className="mt-3 text-xs text-muted-foreground">실 데이터 연동 전 예시값입니다.</p>
       )}
+    </div>
+  );
+}
+
+// "업종 구성"(part-to-whole)은 도넛 차트로 표현한다. dataviz 스킬은 part-to-whole의
+// 기본값으로 스택 막대를 권장하지만, pie/donut 금지는 "값이 비슷해 비교가 안 될 때"
+// 한정이다(anti-patterns.md: "part-to-whole at a glance only, ≤6 segments"는 허용
+// 조건으로 명시돼 있음) — 이 데이터는 33%~9%로 값이 뚜렷이 갈리고 세그먼트도 6개
+// 이하라 도넛이 안전하다. 값이 서로 근접해 순위를 가려야 하는 경우라면 막대로
+// 되돌린다. 범례는 색만으로 구분하지 않도록 항상 이름·개수·비율 텍스트를 병기.
+function CompositionDonut({
+  composition,
+  selectedCategory,
+  onSelect,
+}: {
+  composition: CompositionEntry[];
+  selectedCategory: string | undefined;
+  onSelect: (category: string) => void;
+}) {
+  const total = composition.reduce((sum, c) => sum + c.count, 0);
+  const [hoverIndex, setHoverIndex] = useState<number | undefined>(undefined);
+  const chartConfig: ChartConfig = Object.fromEntries(
+    composition.map((c, i) => [
+      c.category,
+      { label: c.category, color: CHART_CATEGORY_COLORS[i % CHART_CATEGORY_COLORS.length] },
+    ]),
+  );
+
+  // 호버한 조각만 살짝 도려내듯 확대하고, 중심에서 바깥으로 꺾인 리더선을
+  // 그어 그 끝에 업종명·개수·비율을 같은 색으로 띄운다(Recharts 공식
+  // "Customized active shape" 예제의 sx/sy(선 시작)→mx/my(꺾이는 지점)→
+  // ex/ey(라벨 지점) 삼각함수 좌표 계산을 그대로 재사용). 로딩 시 조각이
+  // 각도 0에서 실제 각도까지 그려지는 것은 Recharts Pie의 기본 진입
+  // 애니메이션(isAnimationActive, 기본값 true)이라 별도 구현이 필요 없다.
+  const renderActiveShape = (props: {
+    cx?: number;
+    cy?: number;
+    midAngle?: number;
+    innerRadius?: number;
+    outerRadius?: number;
+    startAngle?: number;
+    endAngle?: number;
+    fill?: string;
+    payload?: unknown;
+    percent?: number;
+    value?: number;
+  }) => {
+    const RADIAN = Math.PI / 180;
+    const {
+      cx = 0,
+      cy = 0,
+      midAngle = 0,
+      innerRadius = 0,
+      outerRadius = 0,
+      startAngle,
+      endAngle,
+      fill,
+      payload,
+      percent = 0,
+      value,
+    } = props;
+    const sin = Math.sin(-RADIAN * midAngle);
+    const cos = Math.cos(-RADIAN * midAngle);
+    const sx = cx + (outerRadius + 8) * cos;
+    const sy = cy + (outerRadius + 8) * sin;
+    const mx = cx + (outerRadius + 22) * cos;
+    const my = cy + (outerRadius + 22) * sin;
+    const ex = mx + (cos >= 0 ? 1 : -1) * 16;
+    const ey = my;
+    const textAnchor = cos >= 0 ? "start" : "end";
+    const entry = payload as CompositionEntry;
+    return (
+      <g>
+        <Sector
+          cx={cx}
+          cy={cy}
+          innerRadius={innerRadius}
+          outerRadius={outerRadius}
+          startAngle={startAngle}
+          endAngle={endAngle}
+          fill={fill}
+        />
+        <Sector
+          cx={cx}
+          cy={cy}
+          startAngle={startAngle}
+          endAngle={endAngle}
+          innerRadius={outerRadius + 4}
+          outerRadius={outerRadius + 7}
+          fill={fill}
+        />
+        <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={fill} fill="none" strokeWidth={1.5} />
+        <circle cx={ex} cy={ey} r={2.5} fill={fill} stroke="none" />
+        <text
+          x={ex + (cos >= 0 ? 1 : -1) * 8}
+          y={ey - 6}
+          textAnchor={textAnchor}
+          className="fill-navy text-[13px] font-semibold"
+        >
+          {entry.category}
+        </text>
+        <text
+          x={ex + (cos >= 0 ? 1 : -1) * 8}
+          y={ey + 10}
+          textAnchor={textAnchor}
+          className="fill-muted-foreground text-[11px]"
+        >
+          {`${value}개 · ${Math.round(percent * 100)}%`}
+        </text>
+      </g>
+    );
+  };
+
+  return (
+    <div>
+      <ChartContainer config={chartConfig} className="mx-auto mt-2 aspect-square max-h-[340px]">
+        <PieChart>
+          <Pie
+            data={composition}
+            dataKey="count"
+            nameKey="category"
+            innerRadius="34%"
+            outerRadius="46%"
+            paddingAngle={2}
+            stroke="var(--color-surface)"
+            strokeWidth={2}
+            activeIndex={hoverIndex}
+            activeShape={renderActiveShape}
+            onMouseEnter={(_, index) => setHoverIndex(index)}
+            onMouseLeave={() => setHoverIndex(undefined)}
+            onClick={(entry) => onSelect((entry as unknown as CompositionEntry).category)}
+            className="cursor-pointer"
+          >
+            {composition.map((c, i) => (
+              <Cell
+                key={c.category}
+                fill={CHART_CATEGORY_COLORS[i % CHART_CATEGORY_COLORS.length]}
+                fillOpacity={selectedCategory && selectedCategory !== c.category ? 0.45 : 1}
+              />
+            ))}
+            {/* 호버 중엔 activeShape가 리더선+라벨로 대체 표시하므로, 가운데
+                총합 라벨은 호버가 없을 때만 그려 겹치지 않게 한다. */}
+            {hoverIndex == null && (
+              <Label
+                position="center"
+                content={({ viewBox }) => {
+                  if (!viewBox || !("cx" in viewBox)) return null;
+                  const { cx, cy } = viewBox;
+                  return (
+                    <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
+                      <tspan x={cx} y={cy} className="fill-navy text-2xl font-bold">
+                        {total}
+                      </tspan>
+                      <tspan x={cx} y={(cy ?? 0) + 18} className="fill-muted-foreground text-xs">
+                        개 점포
+                      </tspan>
+                    </text>
+                  );
+                }}
+              />
+            )}
+          </Pie>
+        </PieChart>
+      </ChartContainer>
+      {/* 범례를 겸하는 클릭 목록 — 색만으로 구분하지 않도록 스와치 옆에 항상
+          업종명·개수·비율을 텍스트로 병기한다(마젠타/노랑/아쿠아 슬롯은 배경
+          대비가 3:1 미만이라 텍스트 라벨이 없으면 식별 자체가 안 됨). */}
+      <ul className="mt-4 flex flex-wrap justify-center gap-2">
+        {composition.map((c, i) => (
+          <li key={c.category}>
+            <button
+              type="button"
+              onClick={() => onSelect(c.category)}
+              className={
+                "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition " +
+                (selectedCategory === c.category ? "bg-secondary/60" : "hover:bg-secondary/30")
+              }
+            >
+              <span
+                aria-hidden
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ background: CHART_CATEGORY_COLORS[i % CHART_CATEGORY_COLORS.length] }}
+              />
+              <span className="font-medium text-navy">{c.category}</span>
+              <span className="tabular-nums text-muted-foreground">
+                {c.count}개 · {Math.round(c.ratio * 100)}%
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -747,24 +959,259 @@ function StatsBoard({ detail, current }: { detail: UnitDetail; current: Tenancy 
           ? `${statistics.shortestSurvivalMonths}개월`
           : "-",
     },
-    {
-      label: "동일 업종 실패",
-      value: `${sameSubCategoryFailures}회`,
-      hint: sameSubCategoryFailures
-        ? `현재 업종(${current?.subCategory})은 이 자리에서 과거 ${sameSubCategoryFailures}번 폐업했습니다.`
-        : "이 자리에서 동일 업종의 반복 폐업은 관측되지 않았습니다.",
-    },
   ];
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-      {selfStats.map((it) => (
-        <Card key={it.label} className={"rounded-xl border-border/70 bg-surface p-5 shadow-card"}>
-          <p className="text-xs text-muted-foreground">{it.label}</p>
-          <p className="mt-2 text-2xl font-bold tabular-nums text-navy">{it.value}</p>
-          {it.hint ? <p className="mt-1 text-xs text-muted-foreground">{it.hint}</p> : null}
+    <div className="space-y-3">
+      <TenancyHistoryGantt timeline={timeline} />
+      <div className="grid gap-3 lg:grid-cols-2">
+        <SurvivalRangeMeter
+          shortest={statistics.shortestSurvivalMonths}
+          average={statistics.averageSurvivalMonths}
+          longest={statistics.longestSurvivalMonths}
+        />
+        <Card className="rounded-xl border-border/70 bg-surface p-5 shadow-card">
+          <p className="text-xs text-muted-foreground">동일 업종 실패</p>
+          <p className="mt-2 text-2xl font-bold tabular-nums text-navy">
+            {sameSubCategoryFailures}회
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {sameSubCategoryFailures
+              ? `현재 업종(${current?.subCategory})은 이 자리에서 과거 ${sameSubCategoryFailures}번 폐업했습니다.`
+              : "이 자리에서 동일 업종의 반복 폐업은 관측되지 않았습니다."}
+          </p>
         </Card>
-      ))}
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {selfStats.map((it) => (
+          <Card key={it.label} className={"rounded-xl border-border/70 bg-surface p-5 shadow-card"}>
+            <p className="text-xs text-muted-foreground">{it.label}</p>
+            <p className="mt-2 text-2xl font-bold tabular-nums text-navy">{it.value}</p>
+          </Card>
+        ))}
+      </div>
     </div>
+  );
+}
+
+const monthsBetween = (fromISO: string, toISO: string): number => {
+  const from = new Date(fromISO);
+  const to = new Date(toISO);
+  return (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
+};
+
+// 분기 눈금이 실제 달력 분기(1·4·7·10월 시작)에 맞도록, 원점을 최초 이력의
+// 날짜가 아니라 그 날짜가 속한 분기의 시작월로 내림한다.
+const quarterAlignedOrigin = (iso: string): Date => {
+  const d = new Date(iso);
+  const quarterStartMonth = Math.floor(d.getMonth() / 3) * 3;
+  return new Date(d.getFullYear(), quarterStartMonth, 1);
+};
+
+// 분기 눈금마다 라벨을 다 채우면(10년 기준 40개) 너무 빽빽해지므로, 눈금
+// 자체(분기 단위 grid)는 매 분기 그리되 텍스트 라벨은 1분기(연초)에만 표시.
+const formatYearTick = (origin: Date, offsetMonths: number): string => {
+  const d = new Date(origin.getFullYear(), origin.getMonth() + offsetMonths, 1);
+  return d.getMonth() === 0 ? `${d.getFullYear()}` : "";
+};
+
+const GANTT_STATUS_COLOR: Record<string, string> = {
+  영업: "var(--color-brand)",
+  휴업: "var(--color-warn)",
+};
+const ganttColorOf = (status: string) => GANTT_STATUS_COLOR[status] ?? "var(--color-muted-foreground)";
+
+type GanttRow = Tenancy & { offset: number; duration: number };
+
+// 개업/폐업을 고립된 숫자 비교(막대 2개)로 보여주는 대신, 운영 이력
+// 타임라인 자체를 간트차트로 그린다 — 몇 번 개폐업했는지(행 수)뿐 아니라
+// 언제·얼마나 오래(막대 위치·길이) 운영했는지, 어떤 상태였는지(색)까지
+// 한 그림에서 드러난다. Recharts(this project pins ^2.15) has no native
+// floating/range bar — 그 기능은 v3.6부터다 — 그래서 v2 표준 우회 기법인
+// "투명 offset 막대 + 보이는 duration 막대"를 같은 stackId로 쌓아 뜬 막대를
+// 만든다. 상태 색은 이 파일의 StatusDot과 동일한 의미(영업=브랜드,
+// 휴업=warn, 그 외 폐업/취소 등=muted)를 그대로 재사용한다.
+function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
+  if (timeline.length === 0) {
+    return (
+      <Card className="rounded-xl border-border/70 bg-surface p-5 shadow-card">
+        <p className="text-xs text-muted-foreground">개업·폐업 이력</p>
+        <p className="mt-3 text-sm text-muted-foreground">운영 이력이 없습니다.</p>
+      </Card>
+    );
+  }
+  const earliestRaw = timeline.reduce(
+    (min, t) => (t.licensedAt < min ? t.licensedAt : min),
+    timeline[0].licensedAt,
+  );
+  const now = new Date().toISOString().slice(0, 10);
+  // 끝점(오른쪽)은 항상 "지금"으로 고정하고, 시작점(왼쪽)은 거기서 최소
+  // 10년 전으로 잡는다 — 실제 이력이 10년보다 오래됐으면(earliestRaw가 더
+  // 과거) 그만큼 왼쪽으로 늘어난다. 예전엔 원점을 earliestRaw 기준으로만
+  // 잡고 최소폭 120개월을 앞으로 채웠는데, 이력이 10년보다 짧으면 "지금"이
+  // 축 중간 어딘가에 찍히고 그 뒤로 빈 미래 공간이 남는 문제가 있었다.
+  const tenYearsAgo = new Date();
+  tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
+  const windowStartRaw =
+    earliestRaw < tenYearsAgo.toISOString().slice(0, 10)
+      ? earliestRaw
+      : tenYearsAgo.toISOString().slice(0, 10);
+  const originDate = quarterAlignedOrigin(windowStartRaw);
+  const origin = originDate.toISOString().slice(0, 10);
+  const rows: GanttRow[] = [...timeline]
+    .sort((a, b) => b.licensedAt.localeCompare(a.licensedAt))
+    .map((t) => ({
+      ...t,
+      offset: monthsBetween(origin, t.licensedAt),
+      duration: Math.max(1, monthsBetween(t.licensedAt, t.closedAt ?? now)),
+    }));
+  // origin이 이미 "지금"으로부터 최소 10년 전(또는 그 이상)이라 결과는
+  // 항상 120개월 이상이다 — 분기 단위로 올림해 눈금 경계와 맞춘다.
+  const totalMonths = Math.ceil(monthsBetween(origin, now) / 3) * 3;
+  const quarterTicks = Array.from({ length: totalMonths / 3 + 1 }, (_, i) => i * 3);
+  // 막대 자체는 얇게 줄이고(barSize) 그만큼 왼쪽 라벨 폭을 넓혀 매장명이
+  // 잘리지 않게 여유를 준다 — 실제 기간 비율(offset/duration)은 그대로.
+  const rowHeight = 26;
+  const chartHeight = rows.length * rowHeight + 36;
+  const closedCount = timeline.filter((t) => !isOccupiedStatus(t.status)).length;
+
+  const chartConfig: ChartConfig = {
+    영업: { label: "영업", color: "var(--color-brand)" },
+    휴업: { label: "휴업", color: "var(--color-warn)" },
+    기타: { label: "폐업/기타", color: "var(--color-muted-foreground)" },
+  };
+
+  return (
+    <Card className="rounded-xl border-border/70 bg-surface p-5 shadow-card">
+      <p className="text-xs text-muted-foreground">개업·폐업 이력(기간) · 분기 단위</p>
+      <ChartContainer config={chartConfig} className="mt-2 aspect-auto w-full" style={{ height: chartHeight }}>
+        <BarChart
+          data={rows}
+          layout="vertical"
+          margin={{ top: 2, right: 16, bottom: 4, left: 0 }}
+          barCategoryGap={4}
+        >
+          {/* 세로 그리드선을 XAxis와 같은 분기 눈금에 맞춰 그려 "분기 단위로
+              쪼갠" 시간축을 시각적으로도 드러낸다(가로선은 끔 — 행 구분은
+              막대 자체로 충분). */}
+          <CartesianGrid vertical horizontal={false} stroke="var(--color-border)" />
+          <XAxis
+            type="number"
+            domain={[0, totalMonths]}
+            ticks={quarterTicks}
+            tickFormatter={(v: number) => formatYearTick(originDate, v)}
+            tickLine={false}
+            axisLine={false}
+            height={20}
+            tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
+          />
+          <YAxis
+            type="category"
+            dataKey="businessName"
+            tickLine={false}
+            axisLine={false}
+            width={132}
+            interval={0}
+            tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+            tickFormatter={(v: string) => (v.length > 12 ? `${v.slice(0, 12)}…` : v)}
+          />
+          <ChartTooltip
+            cursor={false}
+            content={({ active, payload }) => {
+              if (!active || !payload?.length) return null;
+              const row = payload[0].payload as GanttRow;
+              return (
+                <div className="rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
+                  <p className="font-semibold text-navy">{row.businessName}</p>
+                  <p className="mt-0.5 text-muted-foreground">
+                    {row.licensedAt.slice(0, 7)} — {row.closedAt ? row.closedAt.slice(0, 7) : "현재"}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {row.status} · {row.duration}개월
+                  </p>
+                </div>
+              );
+            }}
+          />
+          <Bar dataKey="offset" stackId="gantt" fill="transparent" isAnimationActive={false} />
+          <Bar dataKey="duration" stackId="gantt" radius={3} barSize={12} isAnimationActive={false}>
+            {rows.map((row) => (
+              <Cell key={row.tenancyId} fill={ganttColorOf(row.status)} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ChartContainer>
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+        {(["영업", "휴업", "기타"] as const).map((key) => (
+          <span key={key} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <span
+              aria-hidden
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ background: chartConfig[key].color as string }}
+            />
+            {chartConfig[key].label as string}
+          </span>
+        ))}
+      </div>
+      <p className="mt-2 text-xs text-muted-foreground">
+        막대 길이가 실제 운영 기간입니다. 총 {timeline.length}번 개업했고, 그중 {closedCount}번
+        폐업으로 이어졌습니다.
+      </p>
+    </Card>
+  );
+}
+
+// 최단·평균·최장 생존기간을 하나의 막대 위 위치로 보여준다 — RiskCard의
+// "트랙 + 마커" 시각언어를 그대로 재사용해 페이지 안에서 일관된 패턴을 쓴다.
+function SurvivalRangeMeter({
+  shortest,
+  average,
+  longest,
+}: {
+  shortest: number | null;
+  average: number | null;
+  longest: number | null;
+}) {
+  if (shortest == null || longest == null || longest <= 0) {
+    return (
+      <Card className="rounded-xl border-border/70 bg-surface p-5 shadow-card">
+        <p className="text-xs text-muted-foreground">생존기간 범위</p>
+        <p className="mt-4 text-sm text-muted-foreground">
+          운영 이력이 충분하지 않아 범위를 계산할 수 없습니다.
+        </p>
+      </Card>
+    );
+  }
+  const shortPct = (shortest / longest) * 100;
+  const avgPct = average != null ? Math.min(100, (average / longest) * 100) : null;
+  return (
+    <Card className="rounded-xl border-border/70 bg-surface p-5 shadow-card">
+      <p className="text-xs text-muted-foreground">생존기간 범위(최단–최장)</p>
+      <div className="relative mt-5 h-2 rounded-full bg-secondary">
+        <div
+          aria-hidden
+          className="absolute inset-y-0 rounded-full bg-brand/40"
+          style={{ left: `${shortPct}%`, right: 0 }}
+        />
+        {avgPct != null && (
+          <div
+            aria-hidden
+            className="absolute -top-1 h-4 w-4 -translate-x-1/2 rounded-full border-2 border-surface bg-navy shadow-card"
+            style={{ left: `${avgPct}%` }}
+          />
+        )}
+      </div>
+      <div className="relative mt-2 h-4 text-xs tabular-nums text-muted-foreground">
+        <span className="absolute -translate-x-1/2" style={{ left: `${shortPct}%` }}>
+          {shortest}개월
+        </span>
+        <span className="absolute right-0">{longest}개월</span>
+      </div>
+      <p className="mt-4 text-xs text-muted-foreground">
+        {average != null
+          ? `평균 생존기간은 ${average}개월(●)로, 최단 ${shortest}개월과 최장 ${longest}개월 사이입니다.`
+          : `이 자리를 거쳐간 업종의 생존기간은 최단 ${shortest}개월에서 최장 ${longest}개월까지 관측됐습니다.`}
+      </p>
+    </Card>
   );
 }
 

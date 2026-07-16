@@ -50,6 +50,7 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
   /* 소프트 마감 — 확산 반경을 넓히고 불투명도를 더 낮춰 그림자 경계가 거의
      안 보이게(고급 하드웨어 렌더링처럼) 만든다. */
   --shadow-elevated:
@@ -108,11 +109,23 @@
   --input: oklch(0.9 0.006 70);
   --ring: oklch(0.5 0.05 150);
 
-  --chart-1: oklch(0.22 0.012 55);
-  --chart-2: oklch(0.5 0.05 150);
-  --chart-3: oklch(0.55 0.05 230);
-  --chart-4: oklch(0.55 0.13 75);
-  --chart-5: oklch(0.5 0.15 25);
+  /* 카테고리 차트 팔레트(업종 구성 등 part-to-whole 시각화 전용) — 기존
+     --chart-1..5는 navy/brand/warn/danger 등 다른 용도 토큰의 별칭이라 채도가
+     너무 낮아(회색조) CVD(색각이상) 인접쌍 구분 실패 + 명도대 이탈로
+     실패했다(2026-07-17 다이어그램 팔레트 검증 스크립트 실측). 아래 6개는
+     dataviz 스킬의 검증된 레퍼런스 팔레트(파랑/초록/마젠타/노랑/아쿠아/주황,
+     고정 순서)에서 그대로 가져온 값 — 6개 전부 인접쌍 CVD ΔE·명도대·채도
+     하한 통과 확인됨(마젠타/노랑/아쿠아 3개는 대비 3:1 미만이라 텍스트 라벨과
+     항상 같이 써야 함, 색만으로 구분 금지). 이 슬롯들은 본문 UI의 navy/brand
+     등과 별개로 "카테고리 식별"에만 쓴다.
+     검증: node dataviz/scripts/validate_palette.js
+       "#2a78d6,#008300,#e87ba4,#eda100,#1baf7a,#eb6834" --mode light --surface "#ffffff" */
+  --chart-1: #2a78d6;
+  --chart-2: #008300;
+  --chart-3: #e87ba4;
+  --chart-4: #eda100;
+  --chart-5: #1baf7a;
+  --chart-6: #eb6834;
 }
 
 @layer base {
