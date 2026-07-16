@@ -287,7 +287,9 @@ function SearchPage() {
                   <p className="mt-1 truncate text-lg font-extrabold text-navy">
                     {activeCandidate?.jibunAddress}
                   </p>
-                  <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                  {/* 도로명주소가 없는(null) 실측 응답이 있다 — 내용 유무와
+                      무관하게 h-5로 고정해 자리 전환 시 패널 높이가 안 흔들리게 */}
+                  <p className="mt-0.5 h-5 truncate text-sm text-muted-foreground">
                     {activeCandidate?.roadAddress}
                   </p>
                   <div className="mt-2.5 flex flex-wrap gap-2">
@@ -297,24 +299,34 @@ function SearchPage() {
                       <Pill>{activeCandidate.currentSubCategory}</Pill>
                     )}
                   </div>
-                  {activeCandidate?.latitude == null && (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      이 자리는 위치 정보가 없어 지도에 표시할 수 없습니다.
-                    </p>
-                  )}
+                  {/* 좌표 유무와 무관하게 항상 자리를 예약 — 자리 전환마다 이
+                      문구가 나타났다 사라졌다 하며 패널 높이가 흔들리지 않게 */}
+                  <p className="mt-2 h-4 text-xs text-muted-foreground">
+                    {activeCandidate?.latitude == null
+                      ? "이 자리는 위치 정보가 없어 지도에 표시할 수 없습니다."
+                      : ""}
+                  </p>
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-y-auto p-3">
-                  {siteDetailQuery.isLoading ? (
-                    <UnitListSkeleton />
-                  ) : siteDetailQuery.isError ? (
-                    <ErrorState
-                      message={errorMessage(siteDetailQuery.error)}
-                      onRetry={() => siteDetailQuery.refetch()}
-                    />
-                  ) : (
-                    <UnitList units={siteDetailQuery.data?.units ?? []} onSelect={goToReport} />
-                  )}
+                  {/* 로딩/에러/빈 목록/실제 목록 어느 상태든 항상 같은 자리에
+                      떠 있도록 분기 바깥으로 뺐다 — 자리 전환마다 이 줄이
+                      나타났다 사라지며 패널이 흔들리는 걸 막는다. */}
+                  <p className="px-2 text-xs font-semibold text-muted-foreground">
+                    궁금한 점포를 누르면 보고서가 생성돼요
+                  </p>
+                  <div className="mt-3">
+                    {siteDetailQuery.isLoading ? (
+                      <UnitListSkeleton />
+                    ) : siteDetailQuery.isError ? (
+                      <ErrorState
+                        message={errorMessage(siteDetailQuery.error)}
+                        onRetry={() => siteDetailQuery.refetch()}
+                      />
+                    ) : (
+                      <UnitList units={siteDetailQuery.data?.units ?? []} onSelect={goToReport} />
+                    )}
+                  </div>
                 </div>
 
                 {siteDetailQuery.data && (
@@ -575,7 +587,16 @@ function UnitList({
   onSelect: (storeId: string) => void;
 }) {
   const [statusFilter, setStatusFilter] = useState<"all" | "영업" | "공실">("all");
-  if (!units.length) return null;
+  // 자리 전환 시 이 자리에 등록된 점포가 0개일 수 있다 — 조용히 아무것도 안
+  // 보여주면 패널 본문이 통째로 사라져 높이가 흔들린다. 안내 문구로 자리를
+  // 채워 항상 비슷한 골격을 유지한다.
+  if (!units.length) {
+    return (
+      <p className="px-2 py-1.5 text-xs text-muted-foreground">
+        이 자리엔 등록된 점포 정보가 없습니다.
+      </p>
+    );
+  }
   const sortedUnits = [...units]
     .filter((u) => statusFilter === "all" || u.currentStatus === statusFilter)
     .sort((a, b) => {
@@ -588,10 +609,7 @@ function UnitList({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-2">
-        <p className="text-xs font-semibold text-muted-foreground">
-          궁금한 점포를 누르면 보고서가 생성돼요
-        </p>
+      <div className="flex justify-end px-2">
         <Select
           value={statusFilter}
           onValueChange={(value) => {

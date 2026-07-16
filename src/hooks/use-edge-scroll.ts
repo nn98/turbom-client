@@ -23,9 +23,23 @@ export function useEdgeScroll(ref: RefObject<HTMLElement | null>, deps: unknown[
     update();
     el.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);
+
+    // 마우스 휠(세로 델타)은 가로 전용 스크롤 컨테이너를 기본적으로 안 움직인다
+    // — 트랙패드의 가로 제스처(deltaX 우세)는 그대로 두고, 세로 휠일 때만
+    // scrollLeft로 변환한다. 스크롤할 여지가 없으면 페이지 자체 스크롤을
+    // 막지 않도록 preventDefault를 호출하지 않는다.
+    function onWheel(e: WheelEvent) {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      if (el!.scrollWidth <= el!.clientWidth) return;
+      e.preventDefault();
+      el!.scrollLeft += e.deltaY;
+    }
+    el.addEventListener("wheel", onWheel, { passive: false });
+
     return () => {
       el.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
+      el.removeEventListener("wheel", onWheel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);

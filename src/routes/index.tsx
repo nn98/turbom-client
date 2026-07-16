@@ -226,7 +226,7 @@ function Hero() {
           maskImage: "radial-gradient(70% 70% at 50% 40%, black, transparent)",
         }}
       />
-      <div className="section-enter mx-auto my-auto grid w-full max-w-7xl gap-10 px-4 py-10 sm:gap-14 sm:px-6 sm:py-20 lg:grid-cols-[1.05fr_1fr] lg:gap-20 lg:px-8">
+      <div className="section-enter mx-auto my-auto grid w-full max-w-7xl gap-10 px-4 py-[clamp(1.5rem,5dvh,5rem)] sm:gap-14 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:gap-20 lg:px-8">
         <div className="flex flex-col justify-center">
           <Badge
             variant="outline"
@@ -235,7 +235,7 @@ function Hero() {
             <span className="h-1.5 w-1.5 rounded-full bg-brand" />
             <span className="text-navy">창업자를 위한 입지 실사 리포트</span>
           </Badge>
-          <h1 className="mt-5 text-balance font-serif text-4xl font-medium leading-[1.15] tracking-tight text-navy sm:mt-6 sm:text-5xl lg:text-6xl">
+          <h1 className="mt-5 text-balance font-serif text-[clamp(2.25rem,1.5rem+3vw,3.75rem)] font-medium leading-[1.15] tracking-tight text-navy sm:mt-6">
             자리를 보면,
             <br />
             <span className="text-brand">창업</span>이 보입니다.
@@ -442,14 +442,14 @@ function WhyTurbohm() {
       className="border-t border-border/60 bg-surface-muted/50"
       scrollHint={<ScrollHint target="analysis-section" />}
     >
-      <div className="section-enter mx-auto my-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+      <div className="section-enter mx-auto my-auto w-full max-w-7xl px-4 py-[clamp(1rem,4dvh,3rem)] sm:px-6 lg:px-8">
         <p className="text-sm font-medium text-brand">왜 터봄인가</p>
         <h2 className="mt-3 max-w-3xl text-balance font-serif text-3xl font-medium tracking-tight text-navy sm:text-4xl">
           상권을 보기 전에, 자리를 봅니다.
         </h2>
         {/* 3장을 균등 3열로 늘어놓지 않고 첫 카드를 넓게 강조 — 나머지 둘은
             오른쪽에 세로로 쌓아 리듬을 준다. */}
-        <div className="mt-5 grid gap-3 sm:gap-5 lg:grid-cols-[1.3fr_1fr]">
+        <div className="mt-[clamp(0.75rem,2.5dvh,1.25rem)] grid gap-3 sm:gap-5 lg:grid-cols-[1.3fr_1fr]">
           <Card className="group relative overflow-hidden rounded-[1.5rem] border-border/70 bg-surface p-4 shadow-card transition-transform duration-500 ease-out hover:-translate-y-1 sm:p-6">
             <span
               className="pointer-events-none absolute -top-3 right-2 select-none text-[72px] font-bold leading-none text-navy/[0.04] transition-colors duration-500 group-hover:text-brand/10"
@@ -487,7 +487,7 @@ function WhyTurbohm() {
           </div>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-2 sm:mt-6 sm:grid-cols-4 sm:gap-4">
+        <div className="mt-[clamp(0.75rem,2.5dvh,1.5rem)] grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-4">
           {facts.map(({ label, value, icon: Icon }) => (
             <div
               key={label}
@@ -527,7 +527,7 @@ function AnalysisInfo() {
   ];
   return (
     <SectionShell id="analysis-section" scrollHint={<ScrollHint target="address-search" isLast />}>
-      <div className="section-enter mx-auto my-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-16 lg:px-8">
+      <div className="section-enter mx-auto my-auto w-full max-w-7xl px-4 py-[clamp(1rem,5dvh,4rem)] sm:px-6 lg:px-8">
         <div className="flex items-start justify-between gap-8">
           <div>
             <p className="text-sm font-medium text-brand">제공하는 분석 정보</p>
@@ -537,7 +537,7 @@ function AnalysisInfo() {
           </div>
           <ChecklistGraphic className="hidden h-28 w-24 shrink-0 text-navy/70 lg:block" />
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-10 sm:gap-5 lg:grid-cols-3">
+        <div className="mt-[clamp(0.75rem,3dvh,2.5rem)] grid grid-cols-2 gap-2 sm:gap-5 lg:grid-cols-3">
           {rows.map(({ k, v, icon: Icon }) => (
             <Card key={k} className="rounded-xl border-border/70 bg-surface p-3 shadow-card sm:p-5">
               <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-soft text-brand">
@@ -549,7 +549,7 @@ function AnalysisInfo() {
           ))}
         </div>
 
-        <div className="mt-3 flex flex-col items-start gap-3 rounded-xl bg-navy p-3 text-navy-foreground sm:mt-6 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="mt-[clamp(0.5rem,2dvh,1.5rem)] flex flex-col items-start gap-3 rounded-xl bg-navy p-3 text-navy-foreground sm:flex-row sm:items-center sm:justify-between sm:p-4">
           <div>
             <p className="font-semibold">계약 전에, 자리를 먼저 보세요.</p>
             <p className="mt-1 hidden text-sm text-navy-foreground/70 sm:block">
