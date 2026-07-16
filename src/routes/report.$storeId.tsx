@@ -321,114 +321,139 @@ function NarrativeCard({ lines }: { lines: string[] }) {
 }
 
 function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) {
-  const { composition, stats } = district;
+  const { composition, isPlaceholder, stats } = district;
   const [selectedCategory, setSelectedCategory] = useState(() => composition[0] ?? null);
   const max = Math.max(...composition.map((c) => c.count));
   const competitionScore = selectedCategory ? Math.round(selectedCategory.ratio * 100) : 0;
   return (
-    <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-      <Card className="rounded-xl border-border/70 bg-surface p-6 shadow-card">
-        <div className="flex items-baseline justify-between">
-          <h3 className="text-base font-semibold text-navy">업종 구성</h3>
-          <span className="text-xs text-muted-foreground">반경 300m · 업종별 점포 수</span>
-        </div>
-        <div className="mt-5 space-y-3">
-          {composition.map((c) => (
-            <button
-              key={c.category}
-              type="button"
-              onClick={() => setSelectedCategory(c)}
-              className={
-                "block w-full rounded-xl p-2 text-left transition " +
-                (selectedCategory?.category === c.category
-                  ? "bg-secondary/60"
-                  : "hover:bg-secondary/30")
-              }
-            >
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">{c.category}</span>
-                <span className="font-medium tabular-nums text-navy">{c.count}</span>
-              </div>
-              <div className="mt-1 h-2 overflow-hidden rounded-full bg-secondary">
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${(c.count / max) * 100}%`,
-                    background: "var(--color-navy)",
-                  }}
-                />
-              </div>
-            </button>
-          ))}
-        </div>
-      </Card>
-      <div className="space-y-4">
+    <div>
+      <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
         <Card className="rounded-xl border-border/70 bg-surface p-6 shadow-card">
           <div className="flex items-baseline justify-between">
-            <h3 className="text-base font-semibold text-navy">경쟁도</h3>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
+            <h3 className="text-base font-semibold text-navy">업종 구성</h3>
+            <div className="flex items-center gap-2">
+              {isPlaceholder && (
+                <Badge
                   variant="outline"
-                  className="h-8 rounded-full border-border/70 px-3 text-xs text-muted-foreground"
+                  className="rounded-full border-border text-[10px] text-muted-foreground"
                 >
-                  {selectedCategory?.category ?? "업종 선택"}
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-auto max-w-[320px] p-3">
-                <div className="flex flex-wrap gap-2">
-                  {composition.map((c) => {
-                    const active = selectedCategory?.category === c.category;
-                    return (
-                      <button
-                        key={c.category}
-                        type="button"
-                        onClick={() => setSelectedCategory(c)}
-                        className={
-                          "rounded-full px-3 py-1.5 text-xs transition " +
-                          (active
-                            ? "bg-navy text-navy-foreground"
-                            : "border border-border bg-surface text-muted-foreground hover:border-brand/40 hover:text-navy")
-                        }
-                      >
-                        {c.category}
-                      </button>
-                    );
-                  })}
+                  예시
+                </Badge>
+              )}
+              <span className="text-xs text-muted-foreground">반경 300m · 업종별 점포 수</span>
+            </div>
+          </div>
+          <div className="mt-5 space-y-3">
+            {composition.map((c) => (
+              <button
+                key={c.category}
+                type="button"
+                onClick={() => setSelectedCategory(c)}
+                className={
+                  "block w-full rounded-xl p-2 text-left transition " +
+                  (selectedCategory?.category === c.category
+                    ? "bg-secondary/60"
+                    : "hover:bg-secondary/30")
+                }
+              >
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">{c.category}</span>
+                  <span className="font-medium tabular-nums text-navy">{c.count}</span>
                 </div>
-              </PopoverContent>
-            </Popover>
+                <div className="mt-1 h-2 overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${(c.count / max) * 100}%`,
+                      background: "var(--color-navy)",
+                    }}
+                  />
+                </div>
+              </button>
+            ))}
           </div>
-          <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-4xl font-bold tabular-nums text-navy">{competitionScore}</span>
-            <span className="text-sm text-muted-foreground">/ 100</span>
-          </div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
-            <div
-              className="h-full rounded-full bg-warn"
-              style={{ width: `${competitionScore}%` }}
-            />
-          </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            {competitionCaptionOf(competitionScore)}
-          </p>
-          {/* muted-foreground/70은 11px에서 대비 3.3:1로 WCAG AA(4.5:1) 미달 —
+        </Card>
+        <div className="space-y-4">
+          <Card className="rounded-xl border-border/70 bg-surface p-6 shadow-card">
+            <div className="flex items-baseline justify-between">
+              <h3 className="text-base font-semibold text-navy">경쟁도</h3>
+              <div className="flex items-center gap-2">
+                {isPlaceholder && (
+                  <Badge
+                    variant="outline"
+                    className="rounded-full border-border text-[10px] text-muted-foreground"
+                  >
+                    예시
+                  </Badge>
+                )}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-8 rounded-full border-border/70 px-3 text-xs text-muted-foreground"
+                    >
+                      {selectedCategory?.category ?? "업종 선택"}
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-auto max-w-[320px] p-3">
+                    <div className="flex flex-wrap gap-2">
+                      {composition.map((c) => {
+                        const active = selectedCategory?.category === c.category;
+                        return (
+                          <button
+                            key={c.category}
+                            type="button"
+                            onClick={() => setSelectedCategory(c)}
+                            className={
+                              "rounded-full px-3 py-1.5 text-xs transition " +
+                              (active
+                                ? "bg-navy text-navy-foreground"
+                                : "border border-border bg-surface text-muted-foreground hover:border-brand/40 hover:text-navy")
+                            }
+                          >
+                            {c.category}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            <div className="mt-4 flex items-baseline gap-2">
+              <span className="text-4xl font-bold tabular-nums text-navy">{competitionScore}</span>
+              <span className="text-sm text-muted-foreground">/ 100</span>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
+              <div
+                className="h-full rounded-full bg-warn"
+                style={{ width: `${competitionScore}%` }}
+              />
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              {competitionCaptionOf(competitionScore)}
+            </p>
+            {/* muted-foreground/70은 11px에서 대비 3.3:1로 WCAG AA(4.5:1) 미달 —
               불투명 muted-foreground(6.5:1)로 낮춤. */}
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            선택한 업종의 반경 300m 내 점포 비중 기준 참고 지표입니다.
-          </p>
-        </Card>
-        <Card className="rounded-xl border-border/70 bg-surface p-6 shadow-card">
-          <h3 className="text-base font-semibold text-navy">상권 통계</h3>
-          <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-            <StatRow k="동일 업종" v={String(stats.sameCategory ?? 0)} />
-            <StatRow k="전체 점포" v={String(stats.totalStores)} />
-            <StatRow k="집계 기준일" v={stats.referenceDate} />
-          </dl>
-        </Card>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              선택한 업종의 반경 300m 내 점포 비중 기준 참고 지표입니다.
+            </p>
+          </Card>
+          <Card className="rounded-xl border-border/70 bg-surface p-6 shadow-card">
+            <h3 className="text-base font-semibold text-navy">상권 통계</h3>
+            <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+              <StatRow k="동일 업종" v={String(stats.sameCategory ?? 0)} />
+              <StatRow k="전체 점포" v={String(stats.totalStores)} placeholder={isPlaceholder} />
+              <StatRow k="집계 기준일" v={stats.referenceDate} />
+            </dl>
+          </Card>
+        </div>
       </div>
+      {isPlaceholder && (
+        <p className="mt-3 text-xs text-muted-foreground">실 데이터 연동 전 예시값입니다.</p>
+      )}
     </div>
   );
 }
@@ -441,10 +466,17 @@ function competitionCaptionOf(score: number): string {
   return "경쟁이 상대적으로 적은 상권입니다.";
 }
 
-function StatRow({ k, v }: { k: string; v: string }) {
+function StatRow({ k, v, placeholder }: { k: string; v: string; placeholder?: boolean }) {
   return (
     <div>
-      <dt className="text-xs text-muted-foreground">{k}</dt>
+      <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        {k}
+        {placeholder && (
+          <span className="rounded border border-border px-1 text-[9px] text-muted-foreground">
+            예시
+          </span>
+        )}
+      </dt>
       <dd className="mt-0.5 text-base font-semibold tabular-nums text-navy">{v}</dd>
     </div>
   );
