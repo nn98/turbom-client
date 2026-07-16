@@ -21,6 +21,9 @@ export interface Candidate {
   longitude: number | null;
   unitCount: number;
   closedCount: number;
+  // 현재 영업 중인 첫 번째 물건의 인허가 소분류. 전체 공실이면 null. Sangga
+  // API를 호출하지 않고 인허가 데이터만으로 나오는 값이라 항상 신뢰 가능.
+  currentSubCategory: string | null;
 }
 
 export interface SearchResponse {

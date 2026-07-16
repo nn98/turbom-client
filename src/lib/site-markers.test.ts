@@ -15,6 +15,7 @@ const candidate = (overrides: Partial<Candidate>): Candidate => ({
   longitude: 127.15,
   unitCount: 1,
   closedCount: 0,
+  currentSubCategory: null,
   ...overrides,
 });
 

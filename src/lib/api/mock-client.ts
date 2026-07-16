@@ -18,7 +18,7 @@ const DISCLAIMER = {
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // pnu is currently just jibunFull — see legacy-adapter.ts for why.
-const toCandidate = (group: JibunGroup): Candidate => ({
+const toCandidate = (group: JibunGroup, stores: Store[]): Candidate => ({
   pnu: group.jibunFull,
   jibunAddress: group.jibunFull,
   roadAddress: group.roadAddress,
@@ -26,6 +26,9 @@ const toCandidate = (group: JibunGroup): Candidate => ({
   longitude: group.lng,
   unitCount: group.storeCount,
   closedCount: group.closureCount,
+  // api-spec.md: "현재 영업 중인 첫 번째 물건의 인허가 소분류" — 영업 중인
+  // 첫 store의 currentCategory(mock-data.ts의 소분류 근사치)를 그대로 쓴다.
+  currentSubCategory: stores.find((s) => s.status === "영업")?.currentCategory ?? null,
 });
 
 const toUnitSummary = (store: Store): UnitSummary => {
@@ -52,7 +55,11 @@ export const mockSearchSites = async (query: string): Promise<SearchResponse> =>
   await delay(200);
   if (!query || !query.trim()) throw invalidQueryError();
   const result = searchByJibun(query);
-  return { candidates: result ? result.groups.map(toCandidate) : [] };
+  return {
+    candidates: result
+      ? result.groups.map((g) => toCandidate(g, result.storesByJibun[g.jibunFull] ?? []))
+      : [],
+  };
 };
 
 export const mockGetSiteDetail = async (pnu: string): Promise<SiteDetail> => {

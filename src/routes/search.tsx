@@ -290,9 +290,12 @@ function SearchPage() {
                   <p className="mt-0.5 truncate text-sm text-muted-foreground">
                     {activeCandidate?.roadAddress}
                   </p>
-                  <div className="mt-2.5 flex gap-2">
+                  <div className="mt-2.5 flex flex-wrap gap-2">
                     <Pill>점포 {activeCandidate?.unitCount}개</Pill>
                     <Pill tone="danger">폐업 이력 {activeCandidate?.closedCount}건</Pill>
+                    {activeCandidate?.currentSubCategory && (
+                      <Pill>{activeCandidate.currentSubCategory}</Pill>
+                    )}
                   </div>
                   {activeCandidate?.latitude == null && (
                     <p className="mt-2 text-xs text-muted-foreground">
@@ -620,9 +623,11 @@ function UnitList({
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="text-sm font-bold text-navy">{displayUnitLabel(u.label)}</span>
                   <StatusBadge status={u.currentStatus} />
-                  {u.industryDetail && (
-                    <span className="max-w-[110px] truncate rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-semibold tracking-wide text-brand uppercase">
-                      {u.industryDetail}
+                  {/* 업종(industryDetail)은 상가API 보강에 의존해 신뢰도가 낮아
+                      목록에서는 배제 — 항상 신뢰 가능한 개폐업 이력으로 채운다. */}
+                  {u.closedCount > 0 && (
+                    <span className="max-w-[110px] truncate rounded-full bg-danger/10 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-danger uppercase">
+                      폐업 {u.closedCount}회
                     </span>
                   )}
                 </div>
