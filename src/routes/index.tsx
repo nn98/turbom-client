@@ -165,7 +165,9 @@ function SectionShell({
       }
     >
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
-      {scrollHint}
+      {/* pb-8은 SiteFooter(floating)의 고정 높이(h-8)만큼 여백을 남겨 힌트가
+          그 아래 깔리지 않게 한다. */}
+      <div className="flex shrink-0 justify-center pb-8">{scrollHint}</div>
     </section>
   );
 }
@@ -182,7 +184,7 @@ function ScrollHint({ target, isLast = false }: { target: string; isLast?: boole
       onClick={() =>
         document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" })
       }
-      className="group relative z-10 flex shrink-0 flex-col items-center gap-1 py-4 text-xs font-semibold text-muted-foreground transition hover:text-navy"
+      className="group relative z-30 flex shrink-0 flex-col items-center gap-1 py-4 text-xs font-semibold text-muted-foreground transition hover:text-navy"
     >
       {isLast ? "맨 위로" : "더 알아보기"}
       <svg
