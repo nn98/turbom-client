@@ -44,6 +44,10 @@ export interface UnitAnalysis {
   narrative: string[];
   district: {
     composition: { category: string; count: number; ratio: number }[];
+    // categoryBreakdown이 비어 있어(상가API 보강 미동작 등) FALLBACK_* 목업으로
+    // 대체됐는지 여부 — report.$storeId.tsx의 DistrictAnalysis가 이 값으로
+    // "예시" Badge/칩 표시 여부를 결정한다.
+    isPlaceholder: boolean;
     stats: {
       sameCategory: number | null;
       totalStores: number;
@@ -61,12 +65,14 @@ const riskLevelOf = (closedCount: number): RiskLevel => {
   return 1;
 };
 
-// district.composition/totalStores used to be 100% static demo numbers
-// (same on every report). The backend's marketInfo now includes real
-// categoryBreakdown/totalStoreCount (confirmed 2026-07-10), so those are
-// used when present. Falls back to the old static demo numbers only when
-// absent — mock mode (legacy-adapter.ts never sets these) or a vacant unit
-// with no current occupant to read marketInfo from.
+// district.composition/totalStores read real data from marketInfo
+// (categoryBreakdown/totalStoreCount) when present, falling back to the
+// static demo numbers below otherwise. In practice the real branch is
+// rarely taken: 2026-07-16 실측(CLAUDE.md "알려진 스펙-실측 차이" 참고)
+// 확인 결과 상가API 보강 파이프라인이 실배포에서 100% 미동작이라
+// categoryBreakdown이 항상 비어 있다 — 그래서 사실상 항상 아래
+// FALLBACK_* 목업으로 대체된다. isPlaceholder가 이 폴백 여부를
+// report.$storeId.tsx의 DistrictAnalysis에 알리는 신호다.
 const FALLBACK_COMPOSITION = [
   { category: "음식점", count: 62 },
   { category: "카페", count: 34 },
@@ -86,13 +92,13 @@ export const buildUnitAnalysis = (detail: UnitDetail): UnitAnalysis => {
   // 두고 화면에서 "정보 없음"으로 정직하게 표시한다.
   const sameCategoryCount = current?.marketInfo.sameCategoryNearbyCount ?? null;
   const categoryBreakdown = current?.marketInfo.categoryBreakdown;
-  const composition =
-    categoryBreakdown && categoryBreakdown.length > 0
-      ? categoryBreakdown.map((c) => ({ category: c.name, count: c.count, ratio: c.ratio }))
-      : FALLBACK_COMPOSITION.map((c) => ({
-          ...c,
-          ratio: FALLBACK_TOTAL_STORES > 0 ? c.count / FALLBACK_TOTAL_STORES : 0,
-        }));
+  const isPlaceholder = !(categoryBreakdown && categoryBreakdown.length > 0);
+  const composition = !isPlaceholder
+    ? categoryBreakdown!.map((c) => ({ category: c.name, count: c.count, ratio: c.ratio }))
+    : FALLBACK_COMPOSITION.map((c) => ({
+        ...c,
+        ratio: FALLBACK_TOTAL_STORES > 0 ? c.count / FALLBACK_TOTAL_STORES : 0,
+      }));
   const totalStores = current?.marketInfo.totalStoreCount ?? FALLBACK_TOTAL_STORES;
   const referenceDate = current?.marketInfo.asOf ?? "-";
 
@@ -115,6 +121,7 @@ export const buildUnitAnalysis = (detail: UnitDetail): UnitAnalysis => {
     ],
     district: {
       composition,
+      isPlaceholder,
       stats: {
         sameCategory: sameCategoryCount,
         totalStores,
