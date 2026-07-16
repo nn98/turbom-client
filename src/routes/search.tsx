@@ -17,19 +17,7 @@ import { isDemoMode } from "@/lib/api";
 import type { UnitSummary } from "@/lib/api";
 import { useSiteDetail, useSiteSearch } from "@/hooks/use-sites";
 import { MapView, type ViewportBounds } from "@/components/map-view";
-import { capToNearest, withinRadius } from "@/lib/geo";
 import { buildSiteMarkers, dongCandidateCounts, extractLotLabel } from "@/lib/site-markers";
-
-// 넓은 동/읍 이름만으로 검색하면 후보가 실제 관심 범위 밖까지 잡힐 수 있다 —
-// 매칭된 후보들 좌표의 근사 중심점(withinRadius 참고) 기준 반경 300m로 좁힌다.
-const SEARCH_RADIUS_METERS = 300;
-// 반경 필터만으로는 부족할 때(넓은 동에서 우연히 반경 안에 몰린 경우) 지도 핀이
-// 수십~수백 개씩 찍히면 클러터·성능 문제가 생긴다 — 중심점에서 가까운 순으로
-// 최대 100개 지번(부번 단위 site)까지만 남긴다(candidates는 site=pnu=지번 1개
-// 단위라 "지번 개수 캡"과 "부번 개수 캡"은 같은 값). 300m 반경 + 100개 캡이
-// 검색 결과와 지도 마커 둘 다에 적용되는 최종 조건이다(markers도 이 candidates에서
-// 그대로 파생).
-const MAX_CANDIDATES = 100;
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
@@ -114,14 +102,13 @@ function SearchPage() {
   // 중(input state 변화)에는 바뀌지 않는다 — candidates/markers를 이 값에 대해서만
   // useMemo로 묶어야 SearchPage가 리렌더될 때마다 MapView의 마커 이펙트가
   // 불필요하게(마커 전부 재생성 + fitBounds 재계산) 재실행되는 걸 막을 수 있다.
-  const candidates = useMemo(
-    () =>
-      capToNearest(
-        withinRadius(searchQuery.data?.candidates ?? [], SEARCH_RADIUS_METERS),
-        MAX_CANDIDATES,
-      ),
-    [searchQuery.data],
-  );
+  // 반경(m)/개수 캡으로 후보를 미리 자르지 않는다 — 근사 중심점(전체 후보 좌표
+  // 평균) 기준 고정 반경은 동/구처럼 넓이가 들쭉날쭉한 검색어에 안 맞는다(좁은
+  // 동은 다 묻히고 넓은 동은 그래도 넘침, 2026-07-17 금토동 실측: 71개 중 4개만
+  // 300m 안에 남음). 대신 전체 후보를 그대로 지도에 fitBounds시키고(지도가
+  // 검색 범위에 맞춰 알아서 확대/축소), 마커 밀집은 MapView의 클러스터링이,
+  // 패널 목록 노출은 아래 뷰포트 필터(visibleCandidates)가 각각 맡는다.
+  const candidates = useMemo(() => searchQuery.data?.candidates ?? [], [searchQuery.data]);
   // `구` 단위처럼 넓은 검색어로 결과가 여러 동에 걸치면(distinct 동 2개 이상)
   // 지번 탭/패널 대신 동 선택 화면을 먼저 보여준다 — Task 2의 뷰포트 필터보다
   // 앞선 게이트라 candidates(전체) 기준으로만 판단한다.
