@@ -215,7 +215,12 @@ export function MapView({
   }, []);
 
   useEffect(() => {
-    if (!mapReady || !mapRef.current || !window.naver) return;
+    // window.naver가 있어도 .maps는 비어 있을 수 있다(예: 배포 도메인이 Naver
+    // Maps 콘솔의 Web Service URL 허용목록에 없어 SDK 초기화가 중간에 실패하는
+    // 경우) — 이 effect는 최초 지도 생성 effect(.then/.catch로 감싸여 있음)와
+    // 달리 안전망이 없어, 가드 없이 진행하면 "Cannot read properties of null
+    // (reading 'LatLng')" 같은 uncaught 크래시로 바로 이어진다.
+    if (!mapReady || !mapRef.current || !window.naver?.maps) return;
     const { maps } = window.naver;
 
     markerRefs.current.forEach((marker) => marker.setMap(null));
