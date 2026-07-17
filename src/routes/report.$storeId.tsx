@@ -1051,7 +1051,16 @@ const GANTT_STATUS_COLOR: Record<string, string> = {
 };
 const ganttColorOf = (status: string) => GANTT_STATUS_COLOR[status] ?? "var(--color-muted-foreground)";
 
-type GanttRow = Tenancy & { offset: number; duration: number };
+// closedAt이 없는데 상태도 영업/휴업이 아닌(=지금 점유 중은 아닌) 이력은
+// 실제 종료일을 모른다(endLabelOf의 "종료일 미상" 참고). 이 경우 실제
+// monthsBetween(licensedAt, now)로 막대를 그리면 "지금까지 이어졌다"는
+// 착시가 생긴다 — 폭을 반년(2분기 눈금)짜리 고정 상징 길이로 잘라 "여기서부터
+// 알 수 없음"을 명시하고, 페이드아웃 그라데이션으로 그 불확실함을 한 번 더
+// 표시한다.
+const UNKNOWN_END_DURATION_MONTHS = 6;
+const GANTT_UNKNOWN_END_GRADIENT_ID = "ganttUnknownEndFade";
+
+type GanttRow = Tenancy & { offset: number; duration: number; hasUnknownEnd: boolean };
 
 // 개업/폐업을 고립된 숫자 비교(막대 2개)로 보여주는 대신, 운영 이력
 // 타임라인 자체를 간트차트로 그린다 — 몇 번 개폐업했는지(행 수)뿐 아니라
@@ -1090,11 +1099,17 @@ function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
   const origin = originDate.toISOString().slice(0, 10);
   const rows: GanttRow[] = [...timeline]
     .sort((a, b) => b.licensedAt.localeCompare(a.licensedAt))
-    .map((t) => ({
-      ...t,
-      offset: monthsBetween(origin, t.licensedAt),
-      duration: Math.max(1, monthsBetween(t.licensedAt, t.closedAt ?? now)),
-    }));
+    .map((t) => {
+      const hasUnknownEnd = !isOccupiedStatus(t.status) && !t.closedAt;
+      return {
+        ...t,
+        offset: monthsBetween(origin, t.licensedAt),
+        duration: hasUnknownEnd
+          ? UNKNOWN_END_DURATION_MONTHS
+          : Math.max(1, monthsBetween(t.licensedAt, t.closedAt ?? now)),
+        hasUnknownEnd,
+      };
+    });
   // origin이 이미 "지금"으로부터 최소 10년 전(또는 그 이상)이라 결과는
   // 항상 120개월 이상이다 — 분기 단위로 올림해 눈금 경계와 맞춘다.
   const totalMonths = Math.ceil(monthsBetween(origin, now) / 3) * 3;
@@ -1153,6 +1168,14 @@ function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
               인스턴스는 조용히 무시됨) 연초(1월) 구분선은 별도로 여러 개
               둘 수 있는 <ReferenceLine>으로 겹쳐 그려 표준 간트차트의
               "연도 구분선"처럼 굵게 강조한다. */}
+          <defs>
+            {/* 각 막대의 로컬 바운딩박스 기준(0~1) 좌→우로 옅어지는 그라데이션.
+                종료일 미상 이력의 막대에만 이 fill을 쓴다. */}
+            <linearGradient id={GANTT_UNKNOWN_END_GRADIENT_ID} x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="var(--color-muted-foreground)" stopOpacity={1} />
+              <stop offset="100%" stopColor="var(--color-muted-foreground)" stopOpacity={0} />
+            </linearGradient>
+          </defs>
           <CartesianGrid vertical horizontal={false} verticalValues={quarterTicks} stroke="var(--color-border)" />
           {yearTicks.map((v) => (
             <ReferenceLine key={v} x={v} stroke="var(--color-muted-foreground)" strokeOpacity={0.6} />
@@ -1193,8 +1216,12 @@ function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
                     {row.licensedAt.slice(0, 7)} — {endLabelOf(row)}
                   </p>
                   <p className="text-muted-foreground">
-                    {row.status} · {row.duration}개월
+                    {row.status}
+                    {!row.hasUnknownEnd && ` · ${row.duration}개월`}
                   </p>
+                  {row.hasUnknownEnd && (
+                    <p className="mt-0.5 text-muted-foreground">실제 운영기간은 확인되지 않습니다.</p>
+                  )}
                 </div>
               );
             }}
@@ -1202,7 +1229,10 @@ function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
           <Bar dataKey="offset" stackId="gantt" fill="transparent" isAnimationActive={false} />
           <Bar dataKey="duration" stackId="gantt" radius={3} barSize={12} isAnimationActive={false}>
             {rows.map((row) => (
-              <Cell key={row.tenancyId} fill={ganttColorOf(row.status)} />
+              <Cell
+                key={row.tenancyId}
+                fill={row.hasUnknownEnd ? `url(#${GANTT_UNKNOWN_END_GRADIENT_ID})` : ganttColorOf(row.status)}
+              />
             ))}
           </Bar>
         </BarChart>
@@ -1210,6 +1240,8 @@ function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
       <p className="mt-3 text-xs text-muted-foreground">
         막대 길이가 실제 운영 기간입니다. 총 {timeline.length}번 개업했고, 그중 {closedCount}번
         폐업으로 이어졌습니다.
+        {rows.some((r) => r.hasUnknownEnd) &&
+          " 옅어지는 막대는 종료일을 알 수 없는 이력으로, 실제 운영기간과 무관한 표시 길이입니다."}
       </p>
     </Card>
   );
