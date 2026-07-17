@@ -293,8 +293,15 @@ function ReportHeader({
           <span className="text-muted-foreground">기준일 {disclaimer.dataAsOf}</span>
         </div>
         <h1 className="mt-3 font-serif text-3xl font-medium tracking-tight text-navy sm:text-4xl">
+          {/* 예전엔 `${displayUnitLabel(...)}) ${businessName}`처럼 라벨 뒤에
+              닫는 괄호 하나를 그냥 이어붙였는데, 상세주소를 못 뽑은 물건의
+              라벨 자체가 백엔드에서 이미 "단일(상세주소불명)"처럼 괄호로
+              끝나는 값이라 "단일(상세주소불명))"로 괄호가 겹쳐 나갔다(실측:
+              4113110800105430000-U1, 4113110800105560000-U2). businessName을
+              먼저 쓰고 라벨은 그 뒤에 항상 스스로 짝이 맞는 괄호로 감싸면
+              라벨 내용이 뭐든 깨지지 않는다. */}
           {current
-            ? `${displayUnitLabel(unit.label)}) ${current.businessName}`
+            ? `${current.businessName} (${displayUnitLabel(unit.label)})`
             : displayUnitLabel(unit.label)}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground sm:text-base">{unit.jibunAddress}</p>
