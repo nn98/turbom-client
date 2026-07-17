@@ -54,3 +54,13 @@
 `api-spec.md` 245번째 줄 근처에 명시된 "세 업종 필드 구분: `category`(대분류, 필수) → `subCategory`(소분류, 필수) → `industryDetail`(상가API 세부, 있으면 우선)" 3단 폴백은 `timeline[]`(물건 상세, `/api/units/{unitId}`)에만 적용된다. `units[]` 필드표(같은 문서 105번째 줄 근처)엔 `industryDetail`만 있고 `category`/`subCategory`는 스펙에도, 실제 `/api/sites/{pnu}` 응답에도 없다(2026-07-16 실측 확인).
 
 **영향**: 검색 결과 리스트(`search.tsx`의 `UnitList`)는 물건 상세처럼 "industryDetail 없으면 subCategory로 폴백" 표시를 할 수 없다 — 폴백할 데이터 자체가 이 API 레이어에 안 내려온다. 위 상가API 보강 미동작과 겹쳐 지금은 리스트에 업종 라벨이 거의 항상 안 보인다. **근본 해결은 백엔드가 `units[]` 응답에 `category`(또는 `subCategory`)를 추가하는 것**(인허가 원본에서 바로 만들 수 있는 값이라 상가API 보강과 무관하게 항상 채울 수 있음) — 프론트에서 유닛별로 `/api/units/{unitId}`를 추가 호출해 우회하는 건 리스트 하나 그리려고 N번의 추가 API 콜이 나가 권장하지 않는다.
+
+### 서로 다른 `pnu`가 동일한 `jibunAddress` 텍스트를 공유하는 경우가 있다 — 지도 마커가 "축소 시 2개, 확대 시 1개"로 보이는 원인
+
+실측(2026-07-18, `경기도 성남시 수정구 금토동 534-8`): `pnu` `4113111600005340008`(일반 지번)과 `4113111600105340008`(11번째 자릿수만 다름 — PNU 구조상 산여부 플래그로 추정, 즉 "산 534-8")가 완전히 동일한 `jibunAddress: "경기도 성남시 수정구 금토동 534-8"`, 완전히 동일한 `latitude`/`longitude`로 응답된다. 백엔드가 jibunAddress 문자열을 만들 때 "산" 접두어(또는 다른 구분 표기)를 반영하지 않는 것으로 보인다 — 이 자체는 백엔드 데이터 이슈로 남겨둠(프론트에서 지어낼 수 있는 값이 아님).
+
+**영향과 조치**: 좌표가 완전히 같아 지도가 축소 상태(클러스터)에서는 "2"로 뭉쳐 보이다가, 확대해 클러스터가 풀려도 두 마커가 정확히 같은 픽셀 위치에 겹쳐 "1개"처럼 보인다. 더 심각한 프론트 버그를 같이 발견해 수정함: `search.tsx`/`site-markers.ts`가 "선택된 자리"를 `jibunAddress` 문자열로 식별하고 있었는데, 위 경우 두 후보가 텍스트까지 동일해 `.find()`가 항상 첫 번째만 찾고 두 번째 후보는 탭을 눌러도 선택할 수 없었다(활성 마커 표시도 둘 다 동시에 active가 되거나 안 되거나 했음). `pnu`(항상 고유)를 식별자로 바꿔 수정 — URL 검색 파라미터도 `jibun`→`pnu`로 개명(`selectJibun`→`selectSite`). `MapMarker.jibunAddress` 필드는 더 이상 아무도 안 읽어서 함께 제거.
+
+### 백엔드 로컬 스펙(`D:\...\woowaTon\spec\api-spec.md`)과 이 레포 미러(`docs/spec/api-spec.md`)가 내용 기준으로 서로 다르게 갱신돼 있음
+
+2026-07-18 확인: 백엔드 세션이 작업 중인 로컬 `spec/api-spec.md`엔 그날 새로 추가된 `noStorefrontRegistrations[]`(무점포/자가신고형 업종 분리, 11차)와 units 0개 자리 검색 제외(12차)는 반영돼 있지만, 그보다 먼저(2026-07-10~17) 추가됐어야 할 `currentSubCategory`/`parsedFloor`·`parsedUnitNo`·`parseConfidence`/`categoryBreakdown`·`totalStoreCount`/`survivalMonths` null 처리 관련 서술은 빠져 있다 — 반대로 이 레포의 `docs/spec/api-spec.md`는 그 반대 상태(오래된 항목은 있고 `noStorefrontRegistrations`는 없음). 실 배포 API로 직접 확인한 결과 **두 세트 다 실제로 라이브 상태**(`/api/sites/{pnu}` 응답에 양쪽 필드가 동시에 존재) — 로컬 `spec/` 파일 쪽이 어느 시점엔가 오래된 베이스에서 편집을 시작해 일부 구간을 유실한 것으로 보인다. 이 레포에서 고칠 대상은 아니고(그 파일은 서버 레포 소관), 백엔드 세션 쪽에 알려서 정리가 필요함. `noStorefrontRegistrations`는 실측 확인 후 `SiteDetail` 타입(`src/lib/api/types.ts`)에 반영해뒀지만 — 아직 어느 화면에도 노출하는 UI는 안 만듦(필요하면 요청).

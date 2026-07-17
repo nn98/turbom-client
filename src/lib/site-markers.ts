@@ -89,12 +89,17 @@ export const extractLotLabel = (jibunAddress: string, query: string): string => 
 // 참조로 만들어지면, 이 함수의 결과를 useMemo로 감싸지 않는 한 MapView의 마커
 // 렌더 이펙트(`[mapReady, markers]` 의존)가 후보가 실제로 안 바뀌었는데도 매번
 // 재실행된다(마커 전부 지웠다 다시 그리기 + fitBounds/setCenter 재계산). 순수
-// 함수로 뽑아 호출부(search.tsx)에서 candidates/query/activeJibunAddress가 실제로
-// 바뀔 때만 새 배열을 만들도록 useMemo에 넣어 쓴다.
+// 함수로 뽑아 호출부(search.tsx)에서 candidates/query/activePnu가 실제로 바뀔
+// 때만 새 배열을 만들도록 useMemo에 넣어 쓴다.
+//
+// active 판정은 jibunAddress가 아니라 pnu로 한다 — 서로 다른 pnu가 우연히 같은
+// jibunAddress 텍스트를 공유하는 실사례가 있다(2026-07-18 실측: 금토동 534-8,
+// 일반 지번과 산 지번이 "산" 표기 없이 동일 텍스트로 내려옴 — 백엔드 이슈).
+// jibunAddress로 비교하면 이 경우 두 마커가 동시에 active로 잡힌다.
 export function buildSiteMarkers(
   candidates: Candidate[],
   query: string,
-  activeJibunAddress: string | undefined,
+  activePnu: string | undefined,
 ): MapMarker[] {
   return candidates
     .filter((c) => c.latitude != null && c.longitude != null)
@@ -103,7 +108,6 @@ export function buildSiteMarkers(
       lat: c.latitude as number,
       lng: c.longitude as number,
       label: extractLotLabel(c.jibunAddress, query),
-      jibunAddress: c.jibunAddress,
-      active: c.jibunAddress === activeJibunAddress,
+      active: c.pnu === activePnu,
     }));
 }

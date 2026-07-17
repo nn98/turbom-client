@@ -45,6 +45,19 @@ export interface UnitSummary {
   locationSource: LocationSource;
 }
 
+// 물리적 자리(Unit) 개념이 없는 업종의 인허가 이력(통신판매업 등, 원본에
+// 층/호 정보가 구조적으로 없는 업종) — `units[]`와 배타적. 실측 확인
+// 2026-07-18(CLAUDE.md "알려진 스펙-실측 차이" 참고). 아직 어느 화면에도
+// 노출하지 않음 — 타입만 계약에 맞춰 반영.
+export interface NoStorefrontRegistration {
+  businessName: string;
+  category: string;
+  subCategory: string;
+  licensedAt: string;
+  closedAt: string | null;
+  status: string;
+}
+
 export interface SiteDetail {
   site: {
     pnu: string;
@@ -54,6 +67,7 @@ export interface SiteDetail {
     longitude: number | null;
   };
   units: UnitSummary[];
+  noStorefrontRegistrations: NoStorefrontRegistration[];
   disclaimer: Disclaimer;
 }
 

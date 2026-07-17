@@ -73,7 +73,12 @@ const unitOpenCloseLine = (u: UnitSummary): string =>
 
 const searchSchema = z.object({
   q: z.string().optional().catch(""),
-  jibun: z.string().optional().catch(""),
+  // 예전엔 jibunAddress 문자열을 저장했는데, 같은 jibunAddress 텍스트를 공유하는
+  // 서로 다른 pnu가 실제로 존재한다(실측 2026-07-18, 금토동 534-8 — 산 지번과
+  // 일반 지번이 "산" 표기 없이 같은 텍스트로 내려옴, 백엔드 이슈). jibunAddress를
+  // 식별자로 쓰면 이런 경우 두 후보를 구분할 수 없어(항상 첫 번째만 찾아짐) pnu로
+  // 바꿨다 — pnu는 후보마다 항상 고유하다.
+  pnu: z.string().optional().catch(""),
   demo: z.boolean().optional().catch(false),
 });
 
@@ -92,7 +97,7 @@ export const Route = createFileRoute("/search")({
 });
 
 function SearchPage() {
-  const { q = "", jibun = "" } = Route.useSearch();
+  const { q = "", pnu = "" } = Route.useSearch();
   const navigate = useNavigate();
   const [input, setInput] = useState(q);
   const [collapsed, setCollapsed] = useState(false);
@@ -120,12 +125,12 @@ function SearchPage() {
   const dongCounts = useMemo(() => dongCandidateCounts(candidates), [candidates]);
   const needsDongSelection = dongCounts.size >= 2;
 
-  const activeJibun = jibun || candidates[0]?.jibunAddress || "";
-  const activeCandidate = candidates.find((c) => c.jibunAddress === activeJibun) ?? candidates[0];
+  const activePnu = pnu || candidates[0]?.pnu || "";
+  const activeCandidate = candidates.find((c) => c.pnu === activePnu) ?? candidates[0];
   const siteDetailQuery = useSiteDetail(activeCandidate?.pnu);
   const markers = useMemo(
-    () => buildSiteMarkers(candidates, q, activeCandidate?.jibunAddress),
-    [candidates, q, activeCandidate?.jibunAddress],
+    () => buildSiteMarkers(candidates, q, activeCandidate?.pnu),
+    [candidates, q, activeCandidate?.pnu],
   );
 
   // 지도→패널 단방향 흐름: 지도가 idle에서 보고하는 화면 범위를 패널의 지번
@@ -155,8 +160,8 @@ function SearchPage() {
     navigate({ to: "/search", search: { q: query.trim() } });
   };
 
-  const selectJibun = (j: string) => {
-    navigate({ to: "/search", search: { q, jibun: j } });
+  const selectSite = (p: string) => {
+    navigate({ to: "/search", search: { q, pnu: p } });
     setCollapsed(false);
   };
 
@@ -169,7 +174,7 @@ function SearchPage() {
     <div className="fixed inset-0">
       <MapView
         className="h-full w-full"
-        onMarkerClick={selectJibun}
+        onMarkerClick={selectSite}
         onBackgroundClick={() => setCollapsed(true)}
         onViewportChange={setViewportBounds}
         markers={markers}
@@ -267,11 +272,19 @@ function SearchPage() {
                       <SegmentedTabs
                         key={q}
                         items={visibleCandidates.map((c) => ({
-                          id: c.jibunAddress,
+                          // id는 반드시 pnu — jibunAddress 텍스트는 서로 다른
+                          // pnu가 우연히 같은 문자열을 공유할 수 있어(예: 산
+                          // 지번과 일반 지번이 "산" 표기 없이 동일 텍스트로
+                          // 내려오는 백엔드 이슈, 2026-07-18 실측 금토동
+                          // 534-8) 식별자로 못 쓴다. 라벨 텍스트 자체가
+                          // 똑같아 보이는 건 이 문제의 눈에 보이는 증상일 뿐,
+                          // 탭을 눌렀을 때 실제로 다른 자리로 전환되는지는
+                          // pnu 기반 id/activeId로 보장한다.
+                          id: c.pnu,
                           label: extractLotLabel(c.jibunAddress, q),
                         }))}
-                        activeId={activeCandidate?.jibunAddress ?? ""}
-                        onChange={selectJibun}
+                        activeId={activeCandidate?.pnu ?? ""}
+                        onChange={selectSite}
                       />
                     ) : (
                       <p className="px-1 py-1.5 text-xs text-muted-foreground">

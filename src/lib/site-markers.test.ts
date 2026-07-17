@@ -121,12 +121,24 @@ describe("buildSiteMarkers", () => {
     expect(markers.map((m) => m.id)).toEqual(["1"]);
   });
 
-  it("marks only the active candidate's jibunAddress as active", () => {
+  it("marks only the active candidate (by pnu) as active", () => {
     const a = candidate({ pnu: "1", jibunAddress: "성남시 수정구 신흥동 123-4" });
     const b = candidate({ pnu: "2", jibunAddress: "성남시 수정구 신흥동 123-5" });
-    const markers = buildSiteMarkers([a, b], "신흥동", "성남시 수정구 신흥동 123-5");
+    const markers = buildSiteMarkers([a, b], "신흥동", "2");
     expect(markers.find((m) => m.id === "1")?.active).toBe(false);
     expect(markers.find((m) => m.id === "2")?.active).toBe(true);
+  });
+
+  it("disambiguates two candidates that share the same jibunAddress text by pnu", () => {
+    // 실측 재현(2026-07-18, 금토동 534-8): 산 지번과 일반 지번이 "산" 표기
+    // 없이 완전히 같은 jibunAddress 문자열로 내려온다. active 판정을
+    // jibunAddress로 했다면 이 경우 두 마커가 동시에 active가 되거나(또는
+    // 항상 첫 번째만 찾아져) 두 번째 후보를 영영 선택할 수 없었다.
+    const a = candidate({ pnu: "4113111600005340008", jibunAddress: "경기도 성남시 수정구 금토동 534-8" });
+    const b = candidate({ pnu: "4113111600105340008", jibunAddress: "경기도 성남시 수정구 금토동 534-8" });
+    const markers = buildSiteMarkers([a, b], "금토동 534-8", "4113111600105340008");
+    expect(markers.find((m) => m.id === a.pnu)?.active).toBe(false);
+    expect(markers.find((m) => m.id === b.pnu)?.active).toBe(true);
   });
 
   it("returns a value-equal array for value-equal inputs (safe to memoize by content)", () => {

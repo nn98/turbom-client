@@ -5,7 +5,6 @@ export interface MapMarker {
   lat: number;
   lng: number;
   label: string;
-  jibunAddress: string;
   active?: boolean;
 }
 
@@ -184,7 +183,11 @@ export function MapView({
   className = "h-[420px] w-full lg:h-[640px]",
 }: {
   markers: MapMarker[];
-  onMarkerClick?: (jibunAddress: string) => void;
+  // pnu(마커 id)를 넘긴다 — jibunAddress 문자열이 아니다. 서로 다른 pnu가
+  // 같은 jibunAddress 텍스트를 공유하는 실사례가 있어(2026-07-18 실측: 금토동
+  // 534-8, 산/일반 지번이 "산" 표기 없이 동일 텍스트로 내려오는 백엔드 이슈)
+  // jibunAddress로는 어떤 마커를 눌렀는지 구분할 수 없다.
+  onMarkerClick?: (pnu: string) => void;
   onBackgroundClick?: () => void;
   onViewportChange?: (bounds: ViewportBounds) => void;
   className?: string;
@@ -299,7 +302,7 @@ export function MapView({
         icon: { content: pinHtml(m.label, m.active) },
         zIndex: m.active ? 1000 : 100,
       });
-      maps.Event.addListener(marker, "click", () => onMarkerClickRef.current?.(m.jibunAddress));
+      maps.Event.addListener(marker, "click", () => onMarkerClickRef.current?.(m.id));
       return marker;
     });
 

@@ -77,6 +77,9 @@ export const mockGetSiteDetail = async (pnu: string): Promise<SiteDetail> => {
       longitude: group.lng,
     },
     units: stores.map(toUnitSummary),
+    // 데모 데이터엔 무점포/자가신고형 업종 이력이 없다 — 실제 계약 형태만
+    // 맞춘다.
+    noStorefrontRegistrations: [],
     disclaimer: DISCLAIMER,
   };
 };
