@@ -54,6 +54,16 @@ import type { RiskLevel, Tenancy, UnitAnalysis, UnitDetail } from "@/lib/api";
 import { useUnitDetail } from "@/hooks/use-sites";
 
 const jibunBaseOf = (jibunAddress: string) => jibunAddress.replace(/-\d+$/, "");
+// closedAt이 null이라고 해서 무조건 "현재"(지금도 운영 중)는 아니다 — 취소/
+// 말소/만료/정지/중지 같은 상태는 인허가 원본에 실제 폐업일자가 안 잡혀
+// closedAt이 null로 내려오는 경우가 있다(2026-07-17 실측: 제임스딘(James
+// Dean), 4113110800105430000-U1). isOccupiedStatus(영업/휴업)일 때만
+// "현재"로 표시하고, 그 외엔 closedAt이 있으면 그 날짜를, 없으면 종료일
+// 자체가 확인되지 않는다는 걸 정직하게 "종료일 미상"으로 표시한다.
+const endLabelOf = (t: Tenancy): string => {
+  if (t.closedAt) return t.closedAt.slice(0, 7);
+  return isOccupiedStatus(t.status) ? "현재" : "종료일 미상";
+};
 const formatKrw = (n: number) => `${n.toLocaleString("ko-KR")}원`;
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
@@ -797,7 +807,7 @@ function TimelineCard({ timeline }: { timeline: Tenancy[] }) {
                     {t.businessName}
                   </span>
                   <span className="text-xs tabular-nums text-muted-foreground">
-                    {t.licensedAt.slice(0, 7)} — {t.closedAt ? t.closedAt.slice(0, 7) : "현재"}
+                    {t.licensedAt.slice(0, 7)} — {endLabelOf(t)}
                   </span>
                   <span className="w-full truncate text-xs text-muted-foreground">
                     {displayCategory}
@@ -820,8 +830,7 @@ function TimelineCard({ timeline }: { timeline: Tenancy[] }) {
               <SelectContent>
                 {timeline.map((t) => (
                   <SelectItem key={t.tenancyId} value={t.tenancyId}>
-                    {t.businessName} ({t.licensedAt.slice(0, 7)}
-                    {t.closedAt ? ` — ${t.closedAt.slice(0, 7)}` : " — 현재"})
+                    {t.businessName} ({t.licensedAt.slice(0, 7)} — {endLabelOf(t)})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -838,7 +847,7 @@ function TimelineCard({ timeline }: { timeline: Tenancy[] }) {
                 <StatRow k="업종(소분류)" v={selected.subCategory} />
                 <StatRow
                   k="운영 기간"
-                  v={`${selected.licensedAt.slice(0, 7)} — ${selected.closedAt ? selected.closedAt.slice(0, 7) : "현재"}`}
+                  v={`${selected.licensedAt.slice(0, 7)} — ${endLabelOf(selected)}`}
                 />
                 {selected.industryDetail && (
                   <StatRow k="상가API 세부업종" v={selected.industryDetail} />
@@ -1181,7 +1190,7 @@ function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
                 <div className="min-w-[200px] rounded-xl border border-border/50 bg-background px-4 py-3 text-sm shadow-xl">
                   <p className="font-semibold text-navy">{row.businessName}</p>
                   <p className="mt-1 text-muted-foreground">
-                    {row.licensedAt.slice(0, 7)} — {row.closedAt ? row.closedAt.slice(0, 7) : "현재"}
+                    {row.licensedAt.slice(0, 7)} — {endLabelOf(row)}
                   </p>
                   <p className="text-muted-foreground">
                     {row.status} · {row.duration}개월
