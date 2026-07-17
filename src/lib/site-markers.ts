@@ -38,6 +38,18 @@ export const administrativePrefixOf = (query: string): string => {
   return "";
 };
 
+// 후보 하나가 우연히 다른 동 이름을 물고 들어오면(백엔드 느슨한 매칭 —
+// 실측: "창곡동" 검색이 진짜 창곡동 343건 + "성남시수정구 복정동
+// 창곡동219-2호"처럼 실제 동은 복정동인데 "창곡동" 문자열을 포함해 매칭된
+// 레코드 1건을 함께 반환) 그 1건짜리 잡음이 동 이름 버킷 하나를 만들어
+// dongCounts.size가 2 이상이 되고, 이미 단일 동으로 좁혀진 검색인데도 동
+// 선택 화면이 다시 뜬다. 더 나쁜 건 "창곡동"을 다시 선택해도 완전히 같은
+// 쿼리라 같은 잡음이 또 섞여 들어와 무한 반복된다(2026-07-17 실측 재현).
+// 후보 1건짜리 동은 통계적 잡음으로 보고 제외한다 — 실제로 여러 동에 걸친
+// 검색("성남시 수정구")에서 관측된 진짜 동들은 전부 최소 38건 이상이라
+// 이 임계값으로 걸러도 진짜 동이 잘못 지워질 위험은 낮다.
+const MIN_DONG_CANDIDATE_COUNT = 2;
+
 // search.tsx의 동 선택 게이트(candidates의 distinct 동 개수 판정)와 동 선택
 // 버튼의 "N개" 표시가 같은 집계를 필요로 해서 한 번만 순회하도록 묶었다.
 export function dongCandidateCounts(candidates: Candidate[]): Map<string, number> {
@@ -46,6 +58,9 @@ export function dongCandidateCounts(candidates: Candidate[]): Map<string, number
     const dong = extractDongToken(c.jibunAddress);
     if (!dong) continue;
     counts.set(dong, (counts.get(dong) ?? 0) + 1);
+  }
+  for (const [dong, count] of counts) {
+    if (count < MIN_DONG_CANDIDATE_COUNT) counts.delete(dong);
   }
   return counts;
 }

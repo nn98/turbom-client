@@ -86,11 +86,30 @@ describe("dongCandidateCounts", () => {
   it("counts candidates per distinct dong token", () => {
     const a = candidate({ pnu: "1", jibunAddress: "경기도 성남시 수정구 신흥동 123-4" });
     const b = candidate({ pnu: "2", jibunAddress: "경기도 성남시 수정구 신흥동 123-1" });
-    const c = candidate({ pnu: "3", jibunAddress: "경기도 성남시 수정구 창곡동 559-4" });
-    const counts = dongCandidateCounts([a, b, c]);
+    const c1 = candidate({ pnu: "3", jibunAddress: "경기도 성남시 수정구 창곡동 559-4" });
+    const c2 = candidate({ pnu: "4", jibunAddress: "경기도 성남시 수정구 창곡동 560-1" });
+    const counts = dongCandidateCounts([a, b, c1, c2]);
     expect(counts.get("신흥동")).toBe(2);
-    expect(counts.get("창곡동")).toBe(1);
+    expect(counts.get("창곡동")).toBe(2);
     expect(counts.size).toBe(2);
+  });
+
+  it("drops a dong bucket with only 1 matching candidate as noise", () => {
+    // 실측 재현(2026-07-17): "창곡동" 검색이 진짜 창곡동 다수 + 실제 동은
+    // 복정동인데 주소 문자열에 "창곡동"이 섞여 매칭된 레코드 1건을 함께
+    // 반환했다. 이 1건짜리 버킷을 그대로 두면 dongCounts.size가 2가 돼
+    // 이미 단일 동으로 좁혀진 검색에도 동 선택 화면이 다시 뜨고, "창곡동"을
+    // 다시 선택해도 완전히 같은 쿼리라 같은 잡음이 또 섞여 무한 반복됐다.
+    const real1 = candidate({ pnu: "1", jibunAddress: "경기도 성남시 수정구 창곡동 0번지" });
+    const real2 = candidate({ pnu: "2", jibunAddress: "경기도 성남시 수정구 창곡동 92-8" });
+    const noise = candidate({
+      pnu: "3",
+      jibunAddress: "경기도 성남시수정구 복정동 창곡동219-2호",
+    });
+    const counts = dongCandidateCounts([real1, real2, noise]);
+    expect(counts.get("창곡동")).toBe(2);
+    expect(counts.has("복정동")).toBe(false);
+    expect(counts.size).toBe(1);
   });
 });
 
