@@ -22,6 +22,22 @@ export const extractDongToken = (jibunAddress: string): string | null => {
   return null;
 };
 
+// 검색어(query, jibunAddress 아님)에서 "시/도"+"구"(또는 구가 없으면 "시")
+// 접두어만 뽑는다. DongPicker에서 동을 선택할 때 기존 검색어 뒤에 그냥
+// 이어붙이면(구 문자열 concat) 검색어가 이미 특정 동/지번까지 포함한
+// 상태에서 이 화면이 잘못 나타난 경우(예: 건물명이 "OO동"으로 끝나 동으로
+// 오인식) "신흥동 신흥동"처럼 중복되거나 순서가 뒤바뀐 검색어가 만들어진다.
+// 시/구 접두어만 남기고 그 뒤(기존 동/지번/건물명 등)는 버린 뒤 선택한
+// 동을 새로 붙이면 이 문제가 원천적으로 사라진다.
+export const administrativePrefixOf = (query: string): string => {
+  const tokens = query.trim().split(/\s+/).filter(Boolean);
+  const guIdx = tokens.findIndex((t) => t.endsWith("구"));
+  if (guIdx !== -1) return tokens.slice(0, guIdx + 1).join(" ");
+  const siIdx = tokens.findIndex((t) => t.endsWith("시"));
+  if (siIdx !== -1) return tokens.slice(0, siIdx + 1).join(" ");
+  return "";
+};
+
 // search.tsx의 동 선택 게이트(candidates의 distinct 동 개수 판정)와 동 선택
 // 버튼의 "N개" 표시가 같은 집계를 필요로 해서 한 번만 순회하도록 묶었다.
 export function dongCandidateCounts(candidates: Candidate[]): Map<string, number> {

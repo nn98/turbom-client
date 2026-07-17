@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  administrativePrefixOf,
   buildSiteMarkers,
   dongCandidateCounts,
   extractDongToken,
@@ -56,6 +57,28 @@ describe("extractDongToken", () => {
 
   it("returns null for an address with no recognizable suffix at all", () => {
     expect(extractDongToken("알수없는주소형식")).toBeNull();
+  });
+});
+
+describe("administrativePrefixOf", () => {
+  it("keeps everything up to and including the 구 token", () => {
+    expect(administrativePrefixOf("성남시 수정구")).toBe("성남시 수정구");
+  });
+
+  it("drops any trailing tokens after the 구 (e.g. a dong/lot the gate mistakenly matched on)", () => {
+    // 재현 시나리오: q가 이미 특정 동까지 포함한 상태에서 동 선택 게이트가
+    // 잘못 걸린 경우(예: 건물명이 "OO동"으로 끝나 오인식) 뒤 토큰(신흥동)은
+    // 버리고 구까지만 남겨야 선택한 동으로 교체했을 때 "신흥동 신흥동"처럼
+    // 중복되지 않는다.
+    expect(administrativePrefixOf("성남시 수정구 신흥동")).toBe("성남시 수정구");
+  });
+
+  it("falls back to the 시 token when there is no 구", () => {
+    expect(administrativePrefixOf("성남시")).toBe("성남시");
+  });
+
+  it("returns an empty string when neither 시 nor 구 is present", () => {
+    expect(administrativePrefixOf("신흥동")).toBe("");
   });
 });
 

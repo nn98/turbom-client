@@ -17,7 +17,12 @@ import { isDemoMode } from "@/lib/api";
 import type { UnitSummary } from "@/lib/api";
 import { useSiteDetail, useSiteSearch } from "@/hooks/use-sites";
 import { MapView, type ViewportBounds } from "@/components/map-view";
-import { buildSiteMarkers, dongCandidateCounts, extractLotLabel } from "@/lib/site-markers";
+import {
+  administrativePrefixOf,
+  buildSiteMarkers,
+  dongCandidateCounts,
+  extractLotLabel,
+} from "@/lib/site-markers";
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
@@ -245,7 +250,14 @@ function SearchPage() {
               <DongPicker
                 query={q}
                 counts={dongCounts}
-                onSelect={(dong) => submit(`${q} ${dong}`)}
+                // 기존 검색어 뒤에 그냥 이어붙이지 않는다 — 시/구 접두어만
+                // 남기고 그 뒤(이미 있었을 동/지번 등)는 버린 뒤 선택한
+                // 동으로 새로 교체한다(이유: site-markers.ts의
+                // administrativePrefixOf 주석 참고).
+                onSelect={(dong) => {
+                  const prefix = administrativePrefixOf(q);
+                  submit(prefix ? `${prefix} ${dong}` : dong);
+                }}
               />
             ) : (
               <>
@@ -394,7 +406,8 @@ function NoResults({ query }: { query: string }) {
 }
 
 // "구" 단위 검색처럼 결과가 여러 동에 걸칠 때 지번 탭/패널 대신 먼저 보여주는
-// 화면 — 동을 고르면 기존 submit과 동일하게 `${q} ${동}`으로 좁혀 재검색한다.
+// 화면 — 동을 고르면 onSelect(호출부에서 시/구 접두어 + 선택한 동으로 검색어를
+// 새로 구성해 재검색)를 통해 좁힌다.
 function DongPicker({
   query,
   counts,

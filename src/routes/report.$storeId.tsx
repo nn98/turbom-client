@@ -379,10 +379,7 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
   const competitionScore = selectedCategory ? Math.round(selectedCategory.ratio * 100) : 0;
   const totalCount = composition.reduce((sum, c) => sum + c.count, 0);
   return (
-    <div className="space-y-4">
-      {/* 도넛 크기를 키우면서 범례(수직 스크롤 목록)를 옆에 둘 자리가 필요해
-          이 카드는 더 이상 1.4fr 컬럼에 끼워두지 않고 전체 폭을 쓴다 —
-          경쟁도/상권 통계는 그 아래 별도 2단 그리드로 뺐다. */}
+    <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
       <Card className="rounded-xl border-border/70 bg-surface p-6 shadow-card">
         <div className="flex items-baseline justify-between">
           <h3 className="text-base font-semibold text-navy">업종 구성</h3>
@@ -411,7 +408,7 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
           <p className="mt-3 text-xs text-muted-foreground">실 데이터 연동 전 예시값입니다.</p>
         )}
       </Card>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="space-y-4">
         <Card className="rounded-xl border-border/70 bg-surface p-6 shadow-card">
           <div className="flex items-baseline justify-between">
             <h3 className="text-base font-semibold text-navy">경쟁도</h3>
@@ -551,11 +548,11 @@ function CompositionDonut({
     } = props;
     const sin = Math.sin(-RADIAN * midAngle);
     const cos = Math.cos(-RADIAN * midAngle);
-    const sx = cx + (outerRadius + 14) * cos;
-    const sy = cy + (outerRadius + 14) * sin;
-    const mx = cx + (outerRadius + 40) * cos;
-    const my = cy + (outerRadius + 40) * sin;
-    const ex = mx + (cos >= 0 ? 1 : -1) * 28;
+    const sx = cx + (outerRadius + 10) * cos;
+    const sy = cy + (outerRadius + 10) * sin;
+    const mx = cx + (outerRadius + 28) * cos;
+    const my = cy + (outerRadius + 28) * sin;
+    const ex = mx + (cos >= 0 ? 1 : -1) * 20;
     const ey = my;
     const textAnchor = cos >= 0 ? "start" : "end";
     const entry = payload as CompositionEntry;
@@ -575,25 +572,25 @@ function CompositionDonut({
           cy={cy}
           startAngle={startAngle}
           endAngle={endAngle}
-          innerRadius={outerRadius + 6}
-          outerRadius={outerRadius + 11}
+          innerRadius={outerRadius + 5}
+          outerRadius={outerRadius + 9}
           fill={fill}
         />
-        <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={fill} fill="none" strokeWidth={2} />
-        <circle cx={ex} cy={ey} r={4} fill={fill} stroke="none" />
+        <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={fill} fill="none" strokeWidth={1.5} />
+        <circle cx={ex} cy={ey} r={3} fill={fill} stroke="none" />
         <text
-          x={ex + (cos >= 0 ? 1 : -1) * 10}
-          y={ey - 8}
+          x={ex + (cos >= 0 ? 1 : -1) * 8}
+          y={ey - 7}
           textAnchor={textAnchor}
-          className="fill-navy text-[17px] font-semibold"
+          className="fill-navy text-[15px] font-semibold"
         >
           {entry.category}
         </text>
         <text
-          x={ex + (cos >= 0 ? 1 : -1) * 10}
-          y={ey + 13}
+          x={ex + (cos >= 0 ? 1 : -1) * 8}
+          y={ey + 11}
           textAnchor={textAnchor}
-          className="fill-muted-foreground text-[14px]"
+          className="fill-muted-foreground text-[12px]"
         >
           {`${value}개 · ${Math.round(percent * 100)}%`}
         </text>
@@ -606,10 +603,13 @@ function CompositionDonut({
     // 늘어나도(현재는 foldToChartCategories가 6개로 접지만, 팔레트 슬롯이
     // 늘어나 더 많은 카테고리를 그대로 보여주게 되는 경우를 대비) 차트 크기에
     // 맞춰 세로 스크롤만 늘어나고 차트 레이아웃 자체는 흔들리지 않는다.
-    <div className="mt-4 flex flex-col items-center gap-6 sm:flex-row sm:items-stretch">
+    // items-center(기존 items-stretch였음)로 바꾼 이유: stretch는 두 자식
+    // 중 더 큰 쪽(도넛) 높이에 맞춰 짧은 목록도 강제로 늘려서, 항목이
+    // 6개뿐일 때 목록 아래에 아무 의미 없는 빈 여백이 크게 남았다.
+    <div className="mt-3 flex flex-col items-center gap-4 sm:flex-row sm:items-center">
       <ChartContainer
         config={chartConfig}
-        className="mx-auto aspect-square max-h-[560px] w-full sm:mx-0 sm:flex-1"
+        className="mx-auto aspect-square max-h-[320px] w-full sm:mx-0 sm:flex-1"
       >
         <PieChart>
           <Pie
@@ -645,10 +645,10 @@ function CompositionDonut({
                   const { cx, cy } = viewBox;
                   return (
                     <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
-                      <tspan x={cx} y={cy} className="fill-navy text-4xl font-bold">
+                      <tspan x={cx} y={cy} className="fill-navy text-3xl font-bold">
                         {total}
                       </tspan>
-                      <tspan x={cx} y={(cy ?? 0) + 26} className="fill-muted-foreground text-sm">
+                      <tspan x={cx} y={(cy ?? 0) + 20} className="fill-muted-foreground text-xs">
                         개 점포
                       </tspan>
                     </text>
@@ -664,7 +664,7 @@ function CompositionDonut({
           대비가 3:1 미만이라 텍스트 라벨이 없으면 식별 자체가 안 됨). 세로
           목록 + max-h(overflow-y-auto)라 카테고리가 늘어나도 카드 높이가
           아니라 이 목록 내부만 스크롤된다. */}
-      <ul className="flex w-full flex-col gap-1 sm:w-64 sm:max-h-[560px] sm:overflow-y-auto sm:border-l sm:border-border/60 sm:pl-5">
+      <ul className="flex w-full flex-col gap-1 sm:w-48 sm:max-h-[320px] sm:overflow-y-auto sm:border-l sm:border-border/60 sm:pl-4">
         {composition.map((c, i) => (
           <li key={c.category}>
             <button
