@@ -1,6 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
-import { Bar, BarChart, CartesianGrid, Cell, Label, Pie, PieChart, Sector, XAxis, YAxis } from "recharts";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Label,
+  Pie,
+  PieChart,
+  ReferenceLine,
+  Sector,
+  XAxis,
+  YAxis,
+} from "recharts";
 import {
   AlertTriangle,
   ArrowRight,
@@ -367,11 +379,42 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
   const competitionScore = selectedCategory ? Math.round(selectedCategory.ratio * 100) : 0;
   const totalCount = composition.reduce((sum, c) => sum + c.count, 0);
   return (
-    <div>
-      <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+    <div className="space-y-4">
+      {/* 도넛 크기를 키우면서 범례(수직 스크롤 목록)를 옆에 둘 자리가 필요해
+          이 카드는 더 이상 1.4fr 컬럼에 끼워두지 않고 전체 폭을 쓴다 —
+          경쟁도/상권 통계는 그 아래 별도 2단 그리드로 뺐다. */}
+      <Card className="rounded-xl border-border/70 bg-surface p-6 shadow-card">
+        <div className="flex items-baseline justify-between">
+          <h3 className="text-base font-semibold text-navy">업종 구성</h3>
+          <div className="flex items-center gap-2">
+            {isPlaceholder && (
+              <Badge
+                variant="outline"
+                className="rounded-full border-border text-[10px] text-muted-foreground"
+              >
+                예시
+              </Badge>
+            )}
+            <span className="text-xs text-muted-foreground">반경 300m · 업종별 점포 수</span>
+          </div>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          이 자리 반경 300m 안 상가 {totalCount}곳을 업종별 비중으로 나눈 도넛입니다. 조각이나
+          오른쪽 항목을 누르면 아래 경쟁도가 그 업종 기준으로 바뀝니다.
+        </p>
+        <CompositionDonut
+          composition={composition}
+          selectedCategory={selectedCategory?.category}
+          onSelect={setSelectedCategoryName}
+        />
+        {isPlaceholder && (
+          <p className="mt-3 text-xs text-muted-foreground">실 데이터 연동 전 예시값입니다.</p>
+        )}
+      </Card>
+      <div className="grid gap-4 sm:grid-cols-2">
         <Card className="rounded-xl border-border/70 bg-surface p-6 shadow-card">
           <div className="flex items-baseline justify-between">
-            <h3 className="text-base font-semibold text-navy">업종 구성</h3>
+            <h3 className="text-base font-semibold text-navy">경쟁도</h3>
             <div className="flex items-center gap-2">
               {isPlaceholder && (
                 <Badge
@@ -381,100 +424,70 @@ function DistrictAnalysis({ district }: { district: UnitAnalysis["district"] }) 
                   예시
                 </Badge>
               )}
-              <span className="text-xs text-muted-foreground">반경 300m · 업종별 점포 수</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-8 rounded-full border-border/70 px-3 text-xs text-muted-foreground"
+                  >
+                    {selectedCategory?.category ?? "업종 선택"}
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-auto max-w-[320px] p-3">
+                  <div className="flex flex-wrap gap-2">
+                    {composition.map((c) => {
+                      const active = selectedCategory?.category === c.category;
+                      return (
+                        <button
+                          key={c.category}
+                          type="button"
+                          onClick={() => setSelectedCategoryName(c.category)}
+                          className={
+                            "rounded-full px-3 py-1.5 text-xs transition " +
+                            (active
+                              ? "bg-navy text-navy-foreground"
+                              : "border border-border bg-surface text-muted-foreground hover:border-brand/40 hover:text-navy")
+                          }
+                        >
+                          {c.category}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            이 자리 반경 300m 안 상가 {totalCount}곳을 업종별 비중으로 나눈 도넛입니다. 조각이나
-            아래 항목을 누르면 오른쪽 경쟁도가 그 업종 기준으로 바뀝니다.
+          <div className="mt-4 flex items-baseline gap-2">
+            <span className="text-4xl font-bold tabular-nums text-navy">{competitionScore}</span>
+            <span className="text-sm text-muted-foreground">/ 100</span>
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
+            <div
+              className="h-full rounded-full bg-warn"
+              style={{ width: `${competitionScore}%` }}
+            />
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            {competitionCaptionOf(competitionScore)}
           </p>
-          <CompositionDonut
-            composition={composition}
-            selectedCategory={selectedCategory?.category}
-            onSelect={setSelectedCategoryName}
-          />
+          {/* muted-foreground/70은 11px에서 대비 3.3:1로 WCAG AA(4.5:1) 미달 —
+            불투명 muted-foreground(6.5:1)로 낮춤. */}
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            선택한 업종의 반경 300m 내 점포 비중 기준 참고 지표입니다.
+          </p>
         </Card>
-        <div className="space-y-4">
-          <Card className="rounded-xl border-border/70 bg-surface p-6 shadow-card">
-            <div className="flex items-baseline justify-between">
-              <h3 className="text-base font-semibold text-navy">경쟁도</h3>
-              <div className="flex items-center gap-2">
-                {isPlaceholder && (
-                  <Badge
-                    variant="outline"
-                    className="rounded-full border-border text-[10px] text-muted-foreground"
-                  >
-                    예시
-                  </Badge>
-                )}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-8 rounded-full border-border/70 px-3 text-xs text-muted-foreground"
-                    >
-                      {selectedCategory?.category ?? "업종 선택"}
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent align="end" className="w-auto max-w-[320px] p-3">
-                    <div className="flex flex-wrap gap-2">
-                      {composition.map((c) => {
-                        const active = selectedCategory?.category === c.category;
-                        return (
-                          <button
-                            key={c.category}
-                            type="button"
-                            onClick={() => setSelectedCategoryName(c.category)}
-                            className={
-                              "rounded-full px-3 py-1.5 text-xs transition " +
-                              (active
-                                ? "bg-navy text-navy-foreground"
-                                : "border border-border bg-surface text-muted-foreground hover:border-brand/40 hover:text-navy")
-                            }
-                          >
-                            {c.category}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-            <div className="mt-4 flex items-baseline gap-2">
-              <span className="text-4xl font-bold tabular-nums text-navy">{competitionScore}</span>
-              <span className="text-sm text-muted-foreground">/ 100</span>
-            </div>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
-              <div
-                className="h-full rounded-full bg-warn"
-                style={{ width: `${competitionScore}%` }}
-              />
-            </div>
-            <p className="mt-3 text-xs text-muted-foreground">
-              {competitionCaptionOf(competitionScore)}
-            </p>
-            {/* muted-foreground/70은 11px에서 대비 3.3:1로 WCAG AA(4.5:1) 미달 —
-              불투명 muted-foreground(6.5:1)로 낮춤. */}
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              선택한 업종의 반경 300m 내 점포 비중 기준 참고 지표입니다.
-            </p>
-          </Card>
-          <Card className="rounded-xl border-border/70 bg-surface p-6 shadow-card">
-            <h3 className="text-base font-semibold text-navy">상권 통계</h3>
-            <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-              <StatRow k="동일 업종" v={String(stats.sameCategory ?? 0)} />
-              <StatRow k="전체 점포" v={String(stats.totalStores)} placeholder={isPlaceholder} />
-              <StatRow k="집계 기준일" v={stats.referenceDate} />
-            </dl>
-          </Card>
-        </div>
+        <Card className="rounded-xl border-border/70 bg-surface p-6 shadow-card">
+          <h3 className="text-base font-semibold text-navy">상권 통계</h3>
+          <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+            <StatRow k="동일 업종" v={String(stats.sameCategory ?? 0)} />
+            <StatRow k="전체 점포" v={String(stats.totalStores)} placeholder={isPlaceholder} />
+            <StatRow k="집계 기준일" v={stats.referenceDate} />
+          </dl>
+        </Card>
       </div>
-      {isPlaceholder && (
-        <p className="mt-3 text-xs text-muted-foreground">실 데이터 연동 전 예시값입니다.</p>
-      )}
     </div>
   );
 }
@@ -538,11 +551,11 @@ function CompositionDonut({
     } = props;
     const sin = Math.sin(-RADIAN * midAngle);
     const cos = Math.cos(-RADIAN * midAngle);
-    const sx = cx + (outerRadius + 8) * cos;
-    const sy = cy + (outerRadius + 8) * sin;
-    const mx = cx + (outerRadius + 22) * cos;
-    const my = cy + (outerRadius + 22) * sin;
-    const ex = mx + (cos >= 0 ? 1 : -1) * 16;
+    const sx = cx + (outerRadius + 14) * cos;
+    const sy = cy + (outerRadius + 14) * sin;
+    const mx = cx + (outerRadius + 40) * cos;
+    const my = cy + (outerRadius + 40) * sin;
+    const ex = mx + (cos >= 0 ? 1 : -1) * 28;
     const ey = my;
     const textAnchor = cos >= 0 ? "start" : "end";
     const entry = payload as CompositionEntry;
@@ -562,25 +575,25 @@ function CompositionDonut({
           cy={cy}
           startAngle={startAngle}
           endAngle={endAngle}
-          innerRadius={outerRadius + 4}
-          outerRadius={outerRadius + 7}
+          innerRadius={outerRadius + 6}
+          outerRadius={outerRadius + 11}
           fill={fill}
         />
-        <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={fill} fill="none" strokeWidth={1.5} />
-        <circle cx={ex} cy={ey} r={2.5} fill={fill} stroke="none" />
+        <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={fill} fill="none" strokeWidth={2} />
+        <circle cx={ex} cy={ey} r={4} fill={fill} stroke="none" />
         <text
-          x={ex + (cos >= 0 ? 1 : -1) * 8}
-          y={ey - 6}
+          x={ex + (cos >= 0 ? 1 : -1) * 10}
+          y={ey - 8}
           textAnchor={textAnchor}
-          className="fill-navy text-[13px] font-semibold"
+          className="fill-navy text-[17px] font-semibold"
         >
           {entry.category}
         </text>
         <text
-          x={ex + (cos >= 0 ? 1 : -1) * 8}
-          y={ey + 10}
+          x={ex + (cos >= 0 ? 1 : -1) * 10}
+          y={ey + 13}
           textAnchor={textAnchor}
-          className="fill-muted-foreground text-[11px]"
+          className="fill-muted-foreground text-[14px]"
         >
           {`${value}개 · ${Math.round(percent * 100)}%`}
         </text>
@@ -589,8 +602,15 @@ function CompositionDonut({
   };
 
   return (
-    <div>
-      <ChartContainer config={chartConfig} className="mx-auto mt-2 aspect-square max-h-[340px]">
+    // 범례를 원형 그래프 아래 가로 나열 대신 오른쪽에 세로로 둔다 — 항목이
+    // 늘어나도(현재는 foldToChartCategories가 6개로 접지만, 팔레트 슬롯이
+    // 늘어나 더 많은 카테고리를 그대로 보여주게 되는 경우를 대비) 차트 크기에
+    // 맞춰 세로 스크롤만 늘어나고 차트 레이아웃 자체는 흔들리지 않는다.
+    <div className="mt-4 flex flex-col items-center gap-6 sm:flex-row sm:items-stretch">
+      <ChartContainer
+        config={chartConfig}
+        className="mx-auto aspect-square max-h-[560px] w-full sm:mx-0 sm:flex-1"
+      >
         <PieChart>
           <Pie
             data={composition}
@@ -625,10 +645,10 @@ function CompositionDonut({
                   const { cx, cy } = viewBox;
                   return (
                     <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
-                      <tspan x={cx} y={cy} className="fill-navy text-2xl font-bold">
+                      <tspan x={cx} y={cy} className="fill-navy text-4xl font-bold">
                         {total}
                       </tspan>
-                      <tspan x={cx} y={(cy ?? 0) + 18} className="fill-muted-foreground text-xs">
+                      <tspan x={cx} y={(cy ?? 0) + 26} className="fill-muted-foreground text-sm">
                         개 점포
                       </tspan>
                     </text>
@@ -641,25 +661,27 @@ function CompositionDonut({
       </ChartContainer>
       {/* 범례를 겸하는 클릭 목록 — 색만으로 구분하지 않도록 스와치 옆에 항상
           업종명·개수·비율을 텍스트로 병기한다(마젠타/노랑/아쿠아 슬롯은 배경
-          대비가 3:1 미만이라 텍스트 라벨이 없으면 식별 자체가 안 됨). */}
-      <ul className="mt-4 flex flex-wrap justify-center gap-2">
+          대비가 3:1 미만이라 텍스트 라벨이 없으면 식별 자체가 안 됨). 세로
+          목록 + max-h(overflow-y-auto)라 카테고리가 늘어나도 카드 높이가
+          아니라 이 목록 내부만 스크롤된다. */}
+      <ul className="flex w-full flex-col gap-1 sm:w-64 sm:max-h-[560px] sm:overflow-y-auto sm:border-l sm:border-border/60 sm:pl-5">
         {composition.map((c, i) => (
           <li key={c.category}>
             <button
               type="button"
               onClick={() => onSelect(c.category)}
               className={
-                "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition " +
+                "flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm transition " +
                 (selectedCategory === c.category ? "bg-secondary/60" : "hover:bg-secondary/30")
               }
             >
               <span
                 aria-hidden
-                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                className="h-3 w-3 shrink-0 rounded-full"
                 style={{ background: CHART_CATEGORY_COLORS[i % CHART_CATEGORY_COLORS.length] }}
               />
-              <span className="font-medium text-navy">{c.category}</span>
-              <span className="tabular-nums text-muted-foreground">
+              <span className="min-w-0 flex-1 truncate font-medium text-navy">{c.category}</span>
+              <span className="shrink-0 tabular-nums text-muted-foreground">
                 {c.count}개 · {Math.round(c.ratio * 100)}%
               </span>
             </button>
@@ -1068,6 +1090,10 @@ function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
   // 항상 120개월 이상이다 — 분기 단위로 올림해 눈금 경계와 맞춘다.
   const totalMonths = Math.ceil(monthsBetween(origin, now) / 3) * 3;
   const quarterTicks = Array.from({ length: totalMonths / 3 + 1 }, (_, i) => i * 3);
+  // 연초(1월)에 해당하는 눈금만 골라 그 자리에 더 진한 "연도 구분선"을 한
+  // 겹 더 그린다 — 표준 간트차트(예: dhtmlxGantt, frappe-gantt)가 연/월
+  // 경계를 옅은 하위 눈금보다 굵은 선으로 강조하는 것과 같은 관례.
+  const yearTicks = quarterTicks.filter((v) => formatYearTick(originDate, v) !== "");
   // 막대 자체는 얇게 줄이고(barSize) 그만큼 왼쪽 라벨 폭을 넓혀 매장명이
   // 잘리지 않게 여유를 준다 — 실제 기간 비율(offset/duration)은 그대로.
   const rowHeight = 26;
@@ -1082,18 +1108,46 @@ function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
 
   return (
     <Card className="rounded-xl border-border/70 bg-surface p-5 shadow-card">
-      <p className="text-xs text-muted-foreground">개업·폐업 이력(기간) · 분기 단위</p>
-      <ChartContainer config={chartConfig} className="mt-2 aspect-auto w-full" style={{ height: chartHeight }}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-xs text-muted-foreground">개업·폐업 이력(기간) · 분기 단위</p>
+        {/* 범례를 차트 위쪽에 둔다 — dhtmlxGantt/frappe-gantt 등 일반적인
+            간트차트가 범례를 차트 아래보다 위쪽(제목 옆)에 두는 관례를
+            따른다. 스와치도 점(●) 대신 막대 자체를 닮은 작은 사각형으로 —
+            이 색이 "막대의 색"이라는 걸 형태로도 알 수 있게. */}
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {(["영업", "휴업", "기타"] as const).map((key) => (
+            <span key={key} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <span
+                aria-hidden
+                className="h-2 w-3.5 shrink-0 rounded-sm"
+                style={{ background: chartConfig[key].color as string }}
+              />
+              {chartConfig[key].label as string}
+            </span>
+          ))}
+        </div>
+      </div>
+      <ChartContainer config={chartConfig} className="mt-3 aspect-auto w-full" style={{ height: chartHeight }}>
         <BarChart
           data={rows}
           layout="vertical"
           margin={{ top: 2, right: 16, bottom: 4, left: 0 }}
           barCategoryGap={4}
         >
-          {/* 세로 그리드선을 XAxis와 같은 분기 눈금에 맞춰 그려 "분기 단위로
-              쪼갠" 시간축을 시각적으로도 드러낸다(가로선은 끔 — 행 구분은
-              막대 자체로 충분). */}
-          <CartesianGrid vertical horizontal={false} stroke="var(--color-border)" />
+          {/* 세로 그리드선을 XAxis와 같은 분기 눈금에 정확히 맞춘다.
+              CartesianGrid는 verticalValues를 안 주면 자체적으로 "적당한"
+              눈금 개수를 다시 계산해서 그리는데, 그 결과가 XAxis의 커스텀
+              분기 눈금(quarterTicks)과 어긋나 "이상하게" 보이는 원인이었다
+              — verticalValues로 두 축을 강제로 동기화한다(가로선은 끔 —
+              행 구분은 막대 자체로 충분). Recharts는 <CartesianGrid>를
+              차트당 하나만 렌더링하므로(renderMap의 once:true — 두 번째
+              인스턴스는 조용히 무시됨) 연초(1월) 구분선은 별도로 여러 개
+              둘 수 있는 <ReferenceLine>으로 겹쳐 그려 표준 간트차트의
+              "연도 구분선"처럼 굵게 강조한다. */}
+          <CartesianGrid vertical horizontal={false} verticalValues={quarterTicks} stroke="var(--color-border)" />
+          {yearTicks.map((v) => (
+            <ReferenceLine key={v} x={v} stroke="var(--color-muted-foreground)" strokeOpacity={0.6} />
+          ))}
           <XAxis
             type="number"
             domain={[0, totalMonths]}
@@ -1116,13 +1170,17 @@ function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
           />
           <ChartTooltip
             cursor={false}
+            // 기본은 차트 영역(viewBox) 안에서만 움직이도록 갇혀 있어 왼쪽
+            // 라벨 열 근처에서는 툴팁이 뭉개져 보였다 — allowEscapeViewBox로
+            // 카드 밖까지도 자유롭게 마우스를 따라가게 푼다.
+            allowEscapeViewBox={{ x: true, y: true }}
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null;
               const row = payload[0].payload as GanttRow;
               return (
-                <div className="rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
+                <div className="min-w-[200px] rounded-xl border border-border/50 bg-background px-4 py-3 text-sm shadow-xl">
                   <p className="font-semibold text-navy">{row.businessName}</p>
-                  <p className="mt-0.5 text-muted-foreground">
+                  <p className="mt-1 text-muted-foreground">
                     {row.licensedAt.slice(0, 7)} — {row.closedAt ? row.closedAt.slice(0, 7) : "현재"}
                   </p>
                   <p className="text-muted-foreground">
@@ -1140,19 +1198,7 @@ function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
           </Bar>
         </BarChart>
       </ChartContainer>
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
-        {(["영업", "휴업", "기타"] as const).map((key) => (
-          <span key={key} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <span
-              aria-hidden
-              className="h-2 w-2 shrink-0 rounded-full"
-              style={{ background: chartConfig[key].color as string }}
-            />
-            {chartConfig[key].label as string}
-          </span>
-        ))}
-      </div>
-      <p className="mt-2 text-xs text-muted-foreground">
+      <p className="mt-3 text-xs text-muted-foreground">
         막대 길이가 실제 운영 기간입니다. 총 {timeline.length}번 개업했고, 그중 {closedCount}번
         폐업으로 이어졌습니다.
       </p>
