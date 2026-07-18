@@ -8,6 +8,7 @@ import {
   Label,
   Pie,
   PieChart,
+  Rectangle,
   ReferenceArea,
   ReferenceLine,
   Sector,
@@ -1099,12 +1100,13 @@ const namesLikelySame = (a: string, b: string): boolean => {
 };
 
 // 같은 물건(unit) 안에서 서로 다른 인허가 레코드로 쪼개졌지만 실제로는
-// 하나의 영업으로 보이는 경우(기간이 겹치고 상호명도 사실상 같음)를 간트
-// 차트 표시용으로만 하나의 막대로 합친다. 통계 카드 등 다른 곳의
-// 개업/폐업 횟수는 백엔드가 내려준 원본 timeline 그대로 쓰고, 이 함수는
-// 이 차트의 "표시"에만 영향을 준다(그래서 병합이 실제로 일어났을 때는
-// 그 사실을 캡션에 따로 밝힌다 — TenancyHistoryGantt의 wasMerged 참고).
-const mergeSimilarOverlappingTenancies = (timeline: Tenancy[], now: string): Tenancy[] => {
+// 하나의 영업으로 보이는 경우(기간이 겹치고 상호명도 사실상 같음)를
+// "그룹"으로만 묶는다. 막대 자체는 합치지 않는다 — 각 레코드의 실제 기간을
+// 그대로 보여줘야 하므로, 그룹에 속한 행에만 배경 강조를 입혀 시각적으로만
+// 연결해 보여준다(TenancyHistoryGantt의 Bar background 참고). 반환값은
+// tenancyId → 그룹 번호 맵이며, 그룹 크기가 1인(묶일 상대가 없는) 레코드는
+// 맵에 포함하지 않는다.
+const groupSimilarOverlappingTenancies = (timeline: Tenancy[], now: string): Map<string, number> => {
   const sorted = [...timeline].sort((a, b) => a.licensedAt.localeCompare(b.licensedAt));
   const groups: Tenancy[][] = [];
   for (const t of sorted) {
@@ -1122,24 +1124,21 @@ const mergeSimilarOverlappingTenancies = (timeline: Tenancy[], now: string): Ten
     if (group) group.push(t);
     else groups.push([t]);
   }
-  return groups.map((g) => {
-    if (g.length === 1) return g[0];
-    // 상태·종료일 등은 가장 최근 레그(licensedAt이 가장 늦은 레코드) 기준으로
-    // 채택한다 — 그게 이 병합된 막대의 "현재 상태"에 가장 가까운 정보다.
-    const byDate = [...g].sort((a, b) => a.licensedAt.localeCompare(b.licensedAt));
-    const earliest = byDate[0];
-    const latest = byDate[byDate.length - 1];
-    const longestName = [...g].sort((a, b) => b.businessName.length - a.businessName.length)[0].businessName;
-    return {
-      ...latest,
-      tenancyId: g.map((x) => x.tenancyId).join("+"),
-      businessName: longestName,
-      licensedAt: earliest.licensedAt,
-    };
+  const groupIdOf = new Map<string, number>();
+  groups.forEach((g, i) => {
+    if (g.length > 1) {
+      for (const t of g) groupIdOf.set(t.tenancyId, i);
+    }
   });
+  return groupIdOf;
 };
 
-type GanttRow = Tenancy & { offset: number; duration: number; hasUnknownEnd: boolean };
+type GanttRow = Tenancy & {
+  offset: number;
+  duration: number;
+  hasUnknownEnd: boolean;
+  groupId: number | null;
+};
 
 // 개업/폐업을 고립된 숫자 비교(막대 2개)로 보여주는 대신, 운영 이력
 // 타임라인 자체를 간트차트로 그린다 — 몇 번 개폐업했는지(행 수)뿐 아니라
@@ -1160,15 +1159,16 @@ function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
   }
   const now = new Date().toISOString().slice(0, 10);
   // 같은 물건에서 기간이 겹치고 상호명도 사실상 같은(공백/괄호/지점명
-  // 접미어 차이 정도) 레코드는 이 차트에서만 한 막대로 합쳐 보여준다 —
-  // 서로 다른 인허가 레코드로 쪼개졌을 뿐 실제로는 하나의 영업일 가능성이
-  // 큰 경우(원 프로젝트 CLAUDE.md의 물건 분리 규칙 D-1과 같은 종류의
-  // 데이터 파편화)를 시각적으로 정리한다.
-  const mergedTimeline = mergeSimilarOverlappingTenancies(timeline, now);
-  const wasMerged = mergedTimeline.length < timeline.length;
-  const earliestRaw = mergedTimeline.reduce(
+  // 접미어 차이 정도) 레코드는 막대는 그대로 각자 두고, 배경 강조로만
+  // 시각적으로 묶어 보여준다 — 서로 다른 인허가 레코드로 쪼개졌을 뿐
+  // 실제로는 하나의 영업일 가능성이 큰 경우(원 프로젝트 CLAUDE.md의 물건
+  // 분리 규칙 D-1과 같은 종류의 데이터 파편화)를 알려주되, 각 레코드의
+  // 실제 기간 정보는 잃지 않는다.
+  const groupIdOf = groupSimilarOverlappingTenancies(timeline, now);
+  const hasGroups = groupIdOf.size > 0;
+  const earliestRaw = timeline.reduce(
     (min, t) => (t.licensedAt < min ? t.licensedAt : min),
-    mergedTimeline[0].licensedAt,
+    timeline[0].licensedAt,
   );
   // 끝점(오른쪽)은 항상 "지금"으로 고정하고, 시작점(왼쪽)은 거기서 최소
   // 10년 전으로 잡는다 — 실제 이력이 10년보다 오래됐으면(earliestRaw가 더
@@ -1183,7 +1183,7 @@ function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
       : tenYearsAgo.toISOString().slice(0, 10);
   const originDate = quarterAlignedOrigin(windowStartRaw);
   const origin = originDate.toISOString().slice(0, 10);
-  const rows: GanttRow[] = [...mergedTimeline]
+  const rows: GanttRow[] = [...timeline]
     .sort((a, b) => b.licensedAt.localeCompare(a.licensedAt))
     .map((t) => {
       const hasUnknownEnd = !isOccupiedStatus(t.status) && !t.closedAt;
@@ -1194,6 +1194,7 @@ function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
           ? UNKNOWN_END_DURATION_MONTHS
           : Math.max(1, monthsBetween(t.licensedAt, t.closedAt ?? now)),
         hasUnknownEnd,
+        groupId: groupIdOf.get(t.tenancyId) ?? null,
       };
     });
   // 축 오른쪽 끝을 "지금"이 아니라 "올해 12월 말"까지 늘려, 아직 오지 않은
@@ -1215,7 +1216,7 @@ function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
   // 잘리지 않게 여유를 준다 — 실제 기간 비율(offset/duration)은 그대로.
   const rowHeight = 26;
   const chartHeight = rows.length * rowHeight + 36;
-  const closedCount = mergedTimeline.filter((t) => !isOccupiedStatus(t.status)).length;
+  const closedCount = timeline.filter((t) => !isOccupiedStatus(t.status)).length;
 
   const chartConfig: ChartConfig = {
     영업: { label: "영업", color: "var(--color-brand)" },
@@ -1355,7 +1356,35 @@ function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
             }}
           />
           <Bar dataKey="offset" stackId="gantt" fill="transparent" isAnimationActive={false} />
-          <Bar dataKey="duration" stackId="gantt" radius={3} barSize={12} isAnimationActive={false}>
+          <Bar
+            dataKey="duration"
+            stackId="gantt"
+            radius={3}
+            barSize={12}
+            isAnimationActive={false}
+            // 병합하지 않고 각 레코드를 그대로 별도 막대로 두되, 기간이 겹치고
+            // 상호명도 사실상 같아 같은 그룹으로 묶인 행에는 그 행 전체 폭에
+            // 걸친 옅은 배경 + 테두리를 깔아 "이 행들은 같은 영업으로
+            // 추정됨"을 시각적으로만 표시한다(groupSimilarOverlappingTenancies
+            // 참고). background는 Bar 자체 값과 무관하게 그 행의 전체
+            // 트랙(0~축 끝)을 채운다.
+            background={(rawProps: unknown) => {
+              const props = rawProps as { index?: number };
+              const row = rows[props.index ?? 0];
+              if (row?.groupId == null) return <Rectangle {...props} fill="transparent" />;
+              return (
+                <Rectangle
+                  {...props}
+                  fill="var(--color-brand)"
+                  fillOpacity={0.08}
+                  stroke="var(--color-brand)"
+                  strokeOpacity={0.35}
+                  strokeWidth={1}
+                  radius={4}
+                />
+              );
+            }}
+          >
             {rows.map((row) => (
               <Cell
                 key={row.tenancyId}
@@ -1366,10 +1395,10 @@ function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
         </BarChart>
       </ChartContainer>
       <p className="mt-3 text-xs text-muted-foreground">
-        막대 길이가 실제 운영 기간입니다. 총 {mergedTimeline.length}번 개업했고, 그중 {closedCount}번
+        막대 길이가 실제 운영 기간입니다. 총 {timeline.length}번 개업했고, 그중 {closedCount}번
         폐업으로 이어졌습니다.
-        {wasMerged &&
-          " 기간이 겹치고 상호명이 사실상 같은 이력은 하나의 막대로 합쳐 표시했습니다."}
+        {hasGroups &&
+          " 배경이 강조된 행은 기간이 겹치고 상호명이 사실상 같아 같은 영업으로 추정되는 이력입니다."}
         {rows.some((r) => r.hasUnknownEnd) &&
           " 옅어지는 막대는 종료일을 알 수 없는 이력으로, 실제 운영기간과 무관한 표시 길이입니다."}
         {totalMonths > nowOffset && " 빗금 표시된 구간은 오늘 이후, 아직 일어나지 않은 미래입니다."}
