@@ -45,6 +45,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { EdgeScroller } from "@/components/edge-scroller";
 import { RiskBadge } from "@/components/risk-badge";
+import { groupSimilarOverlappingTenancies } from "@/lib/tenancy-grouping";
 import {
   ApiRequestError,
   buildUnitAnalysis,
@@ -1082,56 +1083,6 @@ const ganttColorOf = (status: string) => GANTT_STATUS_COLOR[status] ?? "var(--co
 const UNKNOWN_END_DURATION_MONTHS = 6;
 const GANTT_UNKNOWN_END_GRADIENT_ID = "ganttUnknownEndFade";
 const GANTT_FUTURE_HATCH_ID = "ganttFutureHatch";
-
-// 공백·괄호·가운뎃점·하이픈 차이는 무시하고 비교하기 위한 정규화(예:
-// "이디야커피 강남점" vs "이디야커피강남점" vs "(주)이디야커피").
-const normalizeBusinessName = (name: string): string =>
-  name.replace(/[\s()（）·.\-㈜]/g, "").toLowerCase();
-
-// 정확히 같거나, 한쪽이 다른 쪽의 접두어면(지점명 등 접미어만 다른 경우)
-// 같은 상호로 본다. 접두어 길이 2 미만은 오탐 위험이 커 제외.
-const namesLikelySame = (a: string, b: string): boolean => {
-  const na = normalizeBusinessName(a);
-  const nb = normalizeBusinessName(b);
-  if (!na || !nb) return false;
-  if (na === nb) return true;
-  const [shorter, longer] = na.length <= nb.length ? [na, nb] : [nb, na];
-  return shorter.length >= 2 && longer.startsWith(shorter);
-};
-
-// 같은 물건(unit) 안에서 서로 다른 인허가 레코드로 쪼개졌지만 실제로는
-// 하나의 영업으로 보이는 경우(기간이 겹치고 상호명도 사실상 같음)를
-// "그룹"으로만 묶는다. 막대 자체는 합치지 않는다 — 각 레코드의 실제 기간을
-// 그대로 보여줘야 하므로, 그룹에 속한 행에만 배경 강조를 입혀 시각적으로만
-// 연결해 보여준다(TenancyHistoryGantt의 Bar background 참고). 반환값은
-// tenancyId → 그룹 번호 맵이며, 그룹 크기가 1인(묶일 상대가 없는) 레코드는
-// 맵에 포함하지 않는다.
-const groupSimilarOverlappingTenancies = (timeline: Tenancy[], now: string): Map<string, number> => {
-  const sorted = [...timeline].sort((a, b) => a.licensedAt.localeCompare(b.licensedAt));
-  const groups: Tenancy[][] = [];
-  for (const t of sorted) {
-    const tEnd = t.closedAt ?? now;
-    const group = groups.find((g) =>
-      g.some((existing) => {
-        const existingEnd = existing.closedAt ?? now;
-        return (
-          namesLikelySame(existing.businessName, t.businessName) &&
-          existing.licensedAt <= tEnd &&
-          t.licensedAt <= existingEnd
-        );
-      }),
-    );
-    if (group) group.push(t);
-    else groups.push([t]);
-  }
-  const groupIdOf = new Map<string, number>();
-  groups.forEach((g, i) => {
-    if (g.length > 1) {
-      for (const t of g) groupIdOf.set(t.tenancyId, i);
-    }
-  });
-  return groupIdOf;
-};
 
 type GanttRow = Tenancy & {
   offset: number;
