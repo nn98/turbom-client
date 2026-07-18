@@ -63,6 +63,13 @@
 
 **후속 조사(2026-07-18)**: 이 케이스를 계기로 "검색결과에서 서로 다른 pnu가 같은 자리로 보이면 시각적으로 묶어줄 수 있는가"를 검토했다(`docs/superpowers/specs/2026-07-18-site-entity-similarity-design.md` 참고). 결론은 **프론트에서 지오+문자열 유사도 휴리스틱으로 구현하지 않는다**로 확정 — Google Places API(Place ID Refresh는 서버 API)·Overture Maps GERS(Jaro-Winkler 매칭이 배치 ETL)를 조사한 결과, 이런 "동일 개체 판정"은 일반적으로 백엔드가 안정적 ID/신호 필드로 내려주는 영역이지 클라이언트가 매 요청마다 재추정하는 영역이 아니다. 근본 수정(jibunAddress "산" 접두어 반영) 또는 명시적 신호 필드(`isMountainLot` 등) 추가를 백엔드에 제안했고, `server/spec/CHANGELOG.md`에 교차 기록해뒀다(미커밋, 백엔드 세션 검토 대기). 반대로 같은 조사에서 **테넌시 그룹핑(간트차트, `tenancy-grouping.ts`)은 계속 프론트에 둬도 된다고 확인**했다 — 서버가 이미 내려준 한 유닛의 타임라인을 그 화면 안에서만 시각적으로 묶는 순수 프레젠테이션 로직이라 이 원칙에 저촉되지 않는다.
 
+### 지하/B 층 표기를 파서가 인식 못 함 + 파싱 신뢰도 HIGH로 일치하는데도 유닛이 안 합쳐지는 케이스
+
+2026-07-18 실측(위든타워, `pnu 4113111600106900000`, 성남시 수정구 금토동 690) — 둘 다 백엔드 버그, 프론트에서 고칠 수 없어 `server/spec/CHANGELOG.md`에 교차 기록(미커밋, 백엔드 세션 검토 대기). unitId 그대로 남겨 재현 가능.
+
+- **버그 A(파서 누락)**: `4113111600106900000-U1`(`jibunAddress: "690 지1층 B113호"`)과 `-U2`(`"690 지1층 B114호"`) 둘 다 `parsedFloor`/`parsedUnitNo`가 `null`, `parseConfidence: "LOW"`, `label: "단일 점포"`로 떨어진다. 물건 분리 자체(B113/B114가 서로 다른 유닛으로 나뉘는 것)는 정확한데, "지1층"/"B113호" 같은 지하 표기를 `AddressDetailParser`가 못 알아봐서 **라벨 표시만** 두 물건이 똑같이 "단일 점포"로 보인다 — 실제로 다른 물건인데 목록에서 구분이 안 됨.
+- **버그 B(물건 병합 누락)**: `-U3`(`jibunAddress: "690"`, `parsedFloor:"1"`/`parsedUnitNo:"102"`/`parseConfidence:"HIGH"`, 담배소매업 "지에스25 위든타워점")와 `-U5`(`jibunAddress: "690 1층 102(일부)호"`, 파싱 결과 U3와 완전 동일, 식품자동판매기업 "지에스(GS)25 위든타워점")는 같은 GS25 편의점이 겸업 인허가 2개를 낸 것(원본 주소 텍스트만 다르고 파싱 결과는 HIGH 신뢰도로 일치)인데도 서로 다른 유닛으로 남아 리포트 페이지 자체가 갈린다. 위 "산 지번" 항목에서 결론 낸 것과 같은 부류 문제(이미 신뢰도 높은 판정 결과가 있는데 병합에 안 씀) — `tenancy-grouping.ts`(한 유닛의 timeline 안에서만 동작)는 애초에 이 케이스를 볼 수 있는 범위 밖이라 프론트 대응 불가.
+
 ### 백엔드 로컬 스펙(`D:\...\woowaTon\spec\api-spec.md`)과 이 레포 미러(`docs/spec/api-spec.md`)가 내용 기준으로 서로 다르게 갱신돼 있음
 
 2026-07-18 확인: 백엔드 세션이 작업 중인 로컬 `spec/api-spec.md`엔 그날 새로 추가된 `noStorefrontRegistrations[]`(무점포/자가신고형 업종 분리, 11차)와 units 0개 자리 검색 제외(12차)는 반영돼 있지만, 그보다 먼저(2026-07-10~17) 추가됐어야 할 `currentSubCategory`/`parsedFloor`·`parsedUnitNo`·`parseConfidence`/`categoryBreakdown`·`totalStoreCount`/`survivalMonths` null 처리 관련 서술은 빠져 있다 — 반대로 이 레포의 `docs/spec/api-spec.md`는 그 반대 상태(오래된 항목은 있고 `noStorefrontRegistrations`는 없음). 실 배포 API로 직접 확인한 결과 **두 세트 다 실제로 라이브 상태**(`/api/sites/{pnu}` 응답에 양쪽 필드가 동시에 존재) — 로컬 `spec/` 파일 쪽이 어느 시점엔가 오래된 베이스에서 편집을 시작해 일부 구간을 유실한 것으로 보인다. 이 레포에서 고칠 대상은 아니고(그 파일은 서버 레포 소관), 백엔드 세션 쪽에 알려서 정리가 필요함. `noStorefrontRegistrations`는 실측 확인 후 `SiteDetail` 타입(`src/lib/api/types.ts`)에 반영해뒀지만 — 아직 어느 화면에도 노출하는 UI는 안 만듦(필요하면 요청).
