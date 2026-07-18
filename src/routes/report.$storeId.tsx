@@ -8,6 +8,7 @@ import {
   Label,
   Pie,
   PieChart,
+  ReferenceArea,
   ReferenceLine,
   Sector,
   XAxis,
@@ -203,24 +204,24 @@ export function ReportView({ storeId }: { storeId: string }) {
           </div>
         </Section>
 
-        <Section number="02" title="종합 분석" subtitle="운영 이력과 상권 데이터를 함께 해석했습니다">
+        <Section number="02" title="운영 이력" subtitle="이 자리를 거쳐간 업종의 시간 흐름입니다.">
+          <TimelineCard timeline={detail.timeline} />
+        </Section>
+
+        <Section number="03" title="종합 분석" subtitle="운영 이력과 상권 데이터를 함께 해석했습니다">
           <NarrativeCard lines={analysis.narrative} />
         </Section>
 
-        <Section number="03" title="주변 상권 분석" subtitle="주변 경쟁 환경을 시각적으로 정리했습니다">
+        <Section number="04" title="주변 상권 분석" subtitle="주변 경쟁 환경을 시각적으로 정리했습니다">
           <DistrictAnalysis district={analysis.district} />
         </Section>
 
-        <Section number="04" title="위험도" subtitle="여러 신호를 종합한 참고용 등급">
+        <Section number="05" title="위험도" subtitle="여러 신호를 종합한 참고용 등급">
           <RiskCard
             level={analysis.riskLevel}
             label={analysis.riskLabel}
             lowNearbyDensity={analysis.lowNearbyDensity}
           />
-        </Section>
-
-        <Section number="05" title="운영 이력" subtitle="이 자리를 거쳐간 업종의 시간 흐름입니다.">
-          <TimelineCard timeline={detail.timeline} />
         </Section>
 
         <Section number="06" title="계약 체크리스트" subtitle="계약 전에 반드시 확인해야 하는 항목">
@@ -743,19 +744,18 @@ function RiskCard({
     <Card className="rounded-xl border-border/70 bg-surface p-8 shadow-card">
       <div className="grid gap-8 lg:grid-cols-[auto_1fr] lg:items-center">
         <div className="text-center">
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <RiskBadge level={level} label={label} />
-            {/* 반경 300m 내 동일 업종이 5개 미만 — 상권 자체가 희박하다는
-                신호라 위험도 배지 옆에 별도 경고로 붙인다(unit-analysis.ts의
-                lowNearbyDensity 계산 참고). */}
-            {lowNearbyDensity && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-warn-soft px-2.5 py-1 text-xs font-semibold text-warn">
-                <AlertTriangle className="h-3.5 w-3.5" />
-                주변 점포가 적습니다
-              </span>
-            )}
-          </div>
+          <RiskBadge level={level} label={label} />
           <p className="mt-3 text-xs tabular-nums text-muted-foreground">Level {level} / 5</p>
+          {/* 배지와 같은 줄에 두면 줄바꿈 여부에 따라 "Level N/5" 텍스트와의
+              세로 정렬이 흔들렸다 — 그 아래 별도 줄로 내려 항상 같은
+              위치에 고정한다(반경 300m 내 동일 업종이 5개 미만일 때의
+              경고, unit-analysis.ts의 lowNearbyDensity 계산 참고). */}
+          {lowNearbyDensity && (
+            <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-warn-soft px-2.5 py-1 text-xs font-semibold text-warn">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              주변 점포가 적습니다
+            </span>
+          )}
         </div>
         <div>
           <div className="relative">
@@ -1080,6 +1080,64 @@ const ganttColorOf = (status: string) => GANTT_STATUS_COLOR[status] ?? "var(--co
 // 표시한다.
 const UNKNOWN_END_DURATION_MONTHS = 6;
 const GANTT_UNKNOWN_END_GRADIENT_ID = "ganttUnknownEndFade";
+const GANTT_FUTURE_HATCH_ID = "ganttFutureHatch";
+
+// 공백·괄호·가운뎃점·하이픈 차이는 무시하고 비교하기 위한 정규화(예:
+// "이디야커피 강남점" vs "이디야커피강남점" vs "(주)이디야커피").
+const normalizeBusinessName = (name: string): string =>
+  name.replace(/[\s()（）·.\-㈜]/g, "").toLowerCase();
+
+// 정확히 같거나, 한쪽이 다른 쪽의 접두어면(지점명 등 접미어만 다른 경우)
+// 같은 상호로 본다. 접두어 길이 2 미만은 오탐 위험이 커 제외.
+const namesLikelySame = (a: string, b: string): boolean => {
+  const na = normalizeBusinessName(a);
+  const nb = normalizeBusinessName(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  const [shorter, longer] = na.length <= nb.length ? [na, nb] : [nb, na];
+  return shorter.length >= 2 && longer.startsWith(shorter);
+};
+
+// 같은 물건(unit) 안에서 서로 다른 인허가 레코드로 쪼개졌지만 실제로는
+// 하나의 영업으로 보이는 경우(기간이 겹치고 상호명도 사실상 같음)를 간트
+// 차트 표시용으로만 하나의 막대로 합친다. 통계 카드 등 다른 곳의
+// 개업/폐업 횟수는 백엔드가 내려준 원본 timeline 그대로 쓰고, 이 함수는
+// 이 차트의 "표시"에만 영향을 준다(그래서 병합이 실제로 일어났을 때는
+// 그 사실을 캡션에 따로 밝힌다 — TenancyHistoryGantt의 wasMerged 참고).
+const mergeSimilarOverlappingTenancies = (timeline: Tenancy[], now: string): Tenancy[] => {
+  const sorted = [...timeline].sort((a, b) => a.licensedAt.localeCompare(b.licensedAt));
+  const groups: Tenancy[][] = [];
+  for (const t of sorted) {
+    const tEnd = t.closedAt ?? now;
+    const group = groups.find((g) =>
+      g.some((existing) => {
+        const existingEnd = existing.closedAt ?? now;
+        return (
+          namesLikelySame(existing.businessName, t.businessName) &&
+          existing.licensedAt <= tEnd &&
+          t.licensedAt <= existingEnd
+        );
+      }),
+    );
+    if (group) group.push(t);
+    else groups.push([t]);
+  }
+  return groups.map((g) => {
+    if (g.length === 1) return g[0];
+    // 상태·종료일 등은 가장 최근 레그(licensedAt이 가장 늦은 레코드) 기준으로
+    // 채택한다 — 그게 이 병합된 막대의 "현재 상태"에 가장 가까운 정보다.
+    const byDate = [...g].sort((a, b) => a.licensedAt.localeCompare(b.licensedAt));
+    const earliest = byDate[0];
+    const latest = byDate[byDate.length - 1];
+    const longestName = [...g].sort((a, b) => b.businessName.length - a.businessName.length)[0].businessName;
+    return {
+      ...latest,
+      tenancyId: g.map((x) => x.tenancyId).join("+"),
+      businessName: longestName,
+      licensedAt: earliest.licensedAt,
+    };
+  });
+};
 
 type GanttRow = Tenancy & { offset: number; duration: number; hasUnknownEnd: boolean };
 
@@ -1100,11 +1158,18 @@ function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
       </Card>
     );
   }
-  const earliestRaw = timeline.reduce(
-    (min, t) => (t.licensedAt < min ? t.licensedAt : min),
-    timeline[0].licensedAt,
-  );
   const now = new Date().toISOString().slice(0, 10);
+  // 같은 물건에서 기간이 겹치고 상호명도 사실상 같은(공백/괄호/지점명
+  // 접미어 차이 정도) 레코드는 이 차트에서만 한 막대로 합쳐 보여준다 —
+  // 서로 다른 인허가 레코드로 쪼개졌을 뿐 실제로는 하나의 영업일 가능성이
+  // 큰 경우(원 프로젝트 CLAUDE.md의 물건 분리 규칙 D-1과 같은 종류의
+  // 데이터 파편화)를 시각적으로 정리한다.
+  const mergedTimeline = mergeSimilarOverlappingTenancies(timeline, now);
+  const wasMerged = mergedTimeline.length < timeline.length;
+  const earliestRaw = mergedTimeline.reduce(
+    (min, t) => (t.licensedAt < min ? t.licensedAt : min),
+    mergedTimeline[0].licensedAt,
+  );
   // 끝점(오른쪽)은 항상 "지금"으로 고정하고, 시작점(왼쪽)은 거기서 최소
   // 10년 전으로 잡는다 — 실제 이력이 10년보다 오래됐으면(earliestRaw가 더
   // 과거) 그만큼 왼쪽으로 늘어난다. 예전엔 원점을 earliestRaw 기준으로만
@@ -1118,7 +1183,7 @@ function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
       : tenYearsAgo.toISOString().slice(0, 10);
   const originDate = quarterAlignedOrigin(windowStartRaw);
   const origin = originDate.toISOString().slice(0, 10);
-  const rows: GanttRow[] = [...timeline]
+  const rows: GanttRow[] = [...mergedTimeline]
     .sort((a, b) => b.licensedAt.localeCompare(a.licensedAt))
     .map((t) => {
       const hasUnknownEnd = !isOccupiedStatus(t.status) && !t.closedAt;
@@ -1131,9 +1196,16 @@ function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
         hasUnknownEnd,
       };
     });
+  // 축 오른쪽 끝을 "지금"이 아니라 "올해 12월 말"까지 늘려, 아직 오지 않은
+  // 미래 구간을 빗금으로 마스킹해 "오늘" 기준선을 명확히 보여준다(연도를
+  // 하드코딩하지 않고 매번 현재 연도 기준으로 계산 — 그래야 해가 바뀌어도
+  // 계속 맞는다). nowOffset(오늘 위치)과 totalMonths(축 끝) 사이가 마스킹
+  // 대상 구간이다.
+  const yearEnd = `${now.slice(0, 4)}-12-31`;
+  const nowOffset = monthsBetween(origin, now);
   // origin이 이미 "지금"으로부터 최소 10년 전(또는 그 이상)이라 결과는
   // 항상 120개월 이상이다 — 분기 단위로 올림해 눈금 경계와 맞춘다.
-  const totalMonths = Math.ceil(monthsBetween(origin, now) / 3) * 3;
+  const totalMonths = Math.ceil(monthsBetween(origin, yearEnd) / 3) * 3;
   const quarterTicks = Array.from({ length: totalMonths / 3 + 1 }, (_, i) => i * 3);
   // 연초(1월)에 해당하는 눈금만 골라 그 자리에 더 진한 "연도 구분선"을 한
   // 겹 더 그린다 — 표준 간트차트(예: dhtmlxGantt, frappe-gantt)가 연/월
@@ -1143,7 +1215,7 @@ function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
   // 잘리지 않게 여유를 준다 — 실제 기간 비율(offset/duration)은 그대로.
   const rowHeight = 26;
   const chartHeight = rows.length * rowHeight + 36;
-  const closedCount = timeline.filter((t) => !isOccupiedStatus(t.status)).length;
+  const closedCount = mergedTimeline.filter((t) => !isOccupiedStatus(t.status)).length;
 
   const chartConfig: ChartConfig = {
     영업: { label: "영업", color: "var(--color-brand)" },
@@ -1196,11 +1268,46 @@ function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
               <stop offset="0%" stopColor="var(--color-muted-foreground)" stopOpacity={1} />
               <stop offset="100%" stopColor="var(--color-muted-foreground)" stopOpacity={0} />
             </linearGradient>
+            {/* "오늘" 이후(아직 오지 않은 미래) 구간을 덮는 45도 빗금 패턴. */}
+            <pattern
+              id={GANTT_FUTURE_HATCH_ID}
+              width="6"
+              height="6"
+              patternTransform="rotate(45)"
+              patternUnits="userSpaceOnUse"
+            >
+              <rect width="6" height="6" fill="var(--color-secondary)" />
+              <line x1="0" y1="0" x2="0" y2="6" stroke="var(--color-border)" strokeWidth="1.5" />
+            </pattern>
           </defs>
           <CartesianGrid vertical horizontal={false} verticalValues={quarterTicks} stroke="var(--color-border)" />
           {yearTicks.map((v) => (
             <ReferenceLine key={v} x={v} stroke="var(--color-muted-foreground)" strokeOpacity={0.6} />
           ))}
+          {/* 오늘 ~ 축 끝(올해 12월 말)까지를 빗금으로 마스킹해 "여기부터는
+              아직 일어나지 않은 미래"임을 보여주고, 그 경계에 "오늘" 기준선을
+              점선으로 명확히 긋는다. */}
+          {totalMonths > nowOffset && (
+            <ReferenceArea
+              x1={nowOffset}
+              x2={totalMonths}
+              fill={`url(#${GANTT_FUTURE_HATCH_ID})`}
+              stroke="none"
+              ifOverflow="visible"
+            />
+          )}
+          <ReferenceLine
+            x={nowOffset}
+            stroke="var(--color-navy)"
+            strokeDasharray="4 3"
+            label={{
+              value: "오늘",
+              position: "insideTopRight",
+              fill: "var(--color-navy)",
+              fontSize: 10,
+              fontWeight: 600,
+            }}
+          />
           <XAxis
             type="number"
             domain={[0, totalMonths]}
@@ -1259,10 +1366,13 @@ function TenancyHistoryGantt({ timeline }: { timeline: Tenancy[] }) {
         </BarChart>
       </ChartContainer>
       <p className="mt-3 text-xs text-muted-foreground">
-        막대 길이가 실제 운영 기간입니다. 총 {timeline.length}번 개업했고, 그중 {closedCount}번
+        막대 길이가 실제 운영 기간입니다. 총 {mergedTimeline.length}번 개업했고, 그중 {closedCount}번
         폐업으로 이어졌습니다.
+        {wasMerged &&
+          " 기간이 겹치고 상호명이 사실상 같은 이력은 하나의 막대로 합쳐 표시했습니다."}
         {rows.some((r) => r.hasUnknownEnd) &&
           " 옅어지는 막대는 종료일을 알 수 없는 이력으로, 실제 운영기간과 무관한 표시 길이입니다."}
+        {totalMonths > nowOffset && " 빗금 표시된 구간은 오늘 이후, 아직 일어나지 않은 미래입니다."}
       </p>
     </Card>
   );
@@ -1289,17 +1399,20 @@ function SurvivalRangeMeter({
       </Card>
     );
   }
-  const shortPct = (shortest / longest) * 100;
-  const avgPct = average != null ? Math.min(100, (average / longest) * 100) : null;
+  // 예전엔 트랙을 0~longest로 고정해서, 최단·최장이 둘 다 longest에
+  // 가까우면(값 자체의 폭이 좁으면) 강조 구간과 레이블이 전부 우측
+  // 100% 근처로 쏠리며 서로 겹쳤다. 트랙 자체를 실제 값의 범위인
+  // shortest~longest로 다시 잡아(0을 원점으로 두지 않음) 최단은 항상
+  // 왼쪽 끝, 최장은 항상 오른쪽 끝에 오도록 고쳤다 — 값 폭과 무관하게
+  // 항상 트랙 전체를 채워 쓴다.
+  const range = longest - shortest;
+  const avgPct =
+    average != null ? (range > 0 ? Math.min(100, Math.max(0, ((average - shortest) / range) * 100)) : 50) : null;
   return (
     <Card className="rounded-xl border-border/70 bg-surface p-5 shadow-card">
       <p className="text-xs text-muted-foreground">생존기간 범위(최단–최장)</p>
       <div className="relative mt-5 h-2 rounded-full bg-secondary">
-        <div
-          aria-hidden
-          className="absolute inset-y-0 rounded-full bg-brand/40"
-          style={{ left: `${shortPct}%`, right: 0 }}
-        />
+        <div aria-hidden className="absolute inset-0 rounded-full bg-brand/40" />
         {avgPct != null && (
           <div
             aria-hidden
@@ -1309,9 +1422,7 @@ function SurvivalRangeMeter({
         )}
       </div>
       <div className="relative mt-2 h-4 text-xs tabular-nums text-muted-foreground">
-        <span className="absolute -translate-x-1/2" style={{ left: `${shortPct}%` }}>
-          {shortest}개월
-        </span>
+        <span className="absolute left-0">{shortest}개월</span>
         <span className="absolute right-0">{longest}개월</span>
       </div>
       <p className="mt-4 text-xs text-muted-foreground">
