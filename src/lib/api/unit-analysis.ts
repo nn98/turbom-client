@@ -41,6 +41,12 @@ export const RISK_LABELS: Record<RiskLevel, string> = {
 export interface UnitAnalysis {
   riskLevel: RiskLevel;
   riskLabel: string;
+  // 반경 300m 내 동일 업종 점포 수(marketInfo의 유일한 실값, §6 참고)가 5개
+  // 미만이면 상권 자체가 희박하다는 신호로 보고 riskLevel을 한 단계 올린다.
+  // sameCategoryNearbyCount가 null(집계 실패/미확보)일 땐 판단 근거가 없어
+  // 적용하지 않는다 — placeholder 수치(FALLBACK_TOTAL_STORES 등)로는 절대
+  // 판단하지 않는다.
+  lowNearbyDensity: boolean;
   narrative: string[];
   district: {
     composition: { category: string; count: number; ratio: number }[];
@@ -87,10 +93,14 @@ export const buildUnitAnalysis = (detail: UnitDetail): UnitAnalysis => {
   const { statistics, timeline } = detail;
   // 영업 중이거나 휴업 중인(=아직 폐업하지 않은) 이력을 "현재 점유자"로 본다.
   const current = findOccupant(timeline);
-  const riskLevel = riskLevelOf(statistics.closedCount);
   // 폴백으로 임의의 숫자(예: 14)를 지어내지 않는다 — 실데이터가 없으면 null로
   // 두고 화면에서 "정보 없음"으로 정직하게 표시한다.
   const sameCategoryCount = current?.marketInfo.sameCategoryNearbyCount ?? null;
+  const lowNearbyDensity = sameCategoryCount != null && sameCategoryCount < 5;
+  const baseRiskLevel = riskLevelOf(statistics.closedCount);
+  const riskLevel = lowNearbyDensity
+    ? (Math.min(5, baseRiskLevel + 1) as RiskLevel)
+    : baseRiskLevel;
   const categoryBreakdown = current?.marketInfo.categoryBreakdown;
   const isPlaceholder = !(categoryBreakdown && categoryBreakdown.length > 0);
   const composition = !isPlaceholder
@@ -105,6 +115,7 @@ export const buildUnitAnalysis = (detail: UnitDetail): UnitAnalysis => {
   return {
     riskLevel,
     riskLabel: RISK_LABELS[riskLevel],
+    lowNearbyDensity,
     narrative: [
       `최근 관측 기간 중 총 ${statistics.closedCount}회의 폐업이 발생했습니다.`,
       statistics.averageSurvivalMonths != null

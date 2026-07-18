@@ -106,3 +106,71 @@ describe("buildUnitAnalysis district.isPlaceholder", () => {
     expect(buildUnitAnalysis(detail).district.isPlaceholder).toBe(false);
   });
 });
+
+describe("buildUnitAnalysis lowNearbyDensity / riskLevel bump", () => {
+  const withSameCategoryCount = (n: number | null) =>
+    baseDetail([
+      baseTenancy({
+        status: "영업",
+        marketInfo: {
+          isPlaceholder: false,
+          leaseAreaSqm: null,
+          depositKrw: null,
+          monthlyRentKrw: null,
+          keyMoneyKrw: null,
+          dailyFloatingPopulation: null,
+          sameCategoryNearbyCount: n,
+          vacancyRatePercent: null,
+          asOf: "2026-07-16",
+          totalStoreCount: null,
+          categoryBreakdown: null,
+        },
+      }),
+    ]);
+
+  it("is false and leaves riskLevel unchanged when sameCategoryNearbyCount is null (not collected)", () => {
+    const analysis = buildUnitAnalysis(withSameCategoryCount(null));
+    expect(analysis.lowNearbyDensity).toBe(false);
+    expect(analysis.riskLevel).toBe(1);
+  });
+
+  it("is false when sameCategoryNearbyCount is 5 or more", () => {
+    const analysis = buildUnitAnalysis(withSameCategoryCount(5));
+    expect(analysis.lowNearbyDensity).toBe(false);
+    expect(analysis.riskLevel).toBe(1);
+  });
+
+  it("is true and bumps riskLevel by 1 when sameCategoryNearbyCount is under 5", () => {
+    const analysis = buildUnitAnalysis(withSameCategoryCount(4));
+    expect(analysis.lowNearbyDensity).toBe(true);
+    expect(analysis.riskLevel).toBe(2); // base 1(폐업 0회) + 1
+  });
+
+  it("caps the bumped riskLevel at 5 instead of overflowing", () => {
+    const detail = baseDetail([
+      baseTenancy({ status: "폐업", closedAt: "2020-01-01" }),
+      baseTenancy({ status: "폐업", closedAt: "2020-02-01" }),
+      baseTenancy({ status: "폐업", closedAt: "2020-03-01" }),
+      baseTenancy({ status: "폐업", closedAt: "2020-04-01" }),
+      baseTenancy({
+        status: "영업",
+        marketInfo: {
+          isPlaceholder: false,
+          leaseAreaSqm: null,
+          depositKrw: null,
+          monthlyRentKrw: null,
+          keyMoneyKrw: null,
+          dailyFloatingPopulation: null,
+          sameCategoryNearbyCount: 1,
+          vacancyRatePercent: null,
+          asOf: "2026-07-16",
+          totalStoreCount: null,
+          categoryBreakdown: null,
+        },
+      }),
+    ]);
+    const analysis = buildUnitAnalysis(detail);
+    expect(analysis.lowNearbyDensity).toBe(true);
+    expect(analysis.riskLevel).toBe(5);
+  });
+});

@@ -212,7 +212,11 @@ export function ReportView({ storeId }: { storeId: string }) {
         </Section>
 
         <Section number="04" title="위험도" subtitle="여러 신호를 종합한 참고용 등급">
-          <RiskCard level={analysis.riskLevel} label={analysis.riskLabel} />
+          <RiskCard
+            level={analysis.riskLevel}
+            label={analysis.riskLabel}
+            lowNearbyDensity={analysis.lowNearbyDensity}
+          />
         </Section>
 
         <Section number="05" title="운영 이력" subtitle="이 자리를 거쳐간 업종의 시간 흐름입니다.">
@@ -505,6 +509,12 @@ function CompositionDonut({
 }) {
   const total = composition.reduce((sum, c) => sum + c.count, 0);
   const [hoverIndex, setHoverIndex] = useState<number | undefined>(undefined);
+  const selectedIndex = composition.findIndex((c) => c.category === selectedCategory);
+  // 실제로 강조 표시할(확대된 조각+리더선) 인덱스 — 마우스가 올라가 있는 동안엔
+  // 그 조각을, 마우스가 떠나면(hoverIndex undefined) 선택된 업종을 그대로
+  // 보여준다. 클릭해서 선택한 뒤에도 마우스를 떼면 강조가 사라지던 문제 수정.
+  const activeIndex = hoverIndex ?? (selectedIndex >= 0 ? selectedIndex : undefined);
+  const selectedEntry = selectedIndex >= 0 ? composition[selectedIndex] : undefined;
   const chartConfig: ChartConfig = Object.fromEntries(
     composition.map((c, i) => [
       c.category,
@@ -620,7 +630,7 @@ function CompositionDonut({
             paddingAngle={2}
             stroke="var(--color-surface)"
             strokeWidth={2}
-            activeIndex={hoverIndex}
+            activeIndex={activeIndex}
             activeShape={renderActiveShape}
             onMouseEnter={(_, index) => setHoverIndex(index)}
             onMouseLeave={() => setHoverIndex(undefined)}
@@ -634,8 +644,11 @@ function CompositionDonut({
                 fillOpacity={selectedCategory && selectedCategory !== c.category ? 0.45 : 1}
               />
             ))}
-            {/* 호버 중엔 activeShape가 리더선+라벨로 대체 표시하므로, 가운데
-                총합 라벨은 호버가 없을 때만 그려 겹치지 않게 한다. */}
+            {/* 다른 조각에 실시간으로 마우스가 올라간 동안(hoverIndex != null)엔
+                activeShape가 그 조각의 리더선+라벨로 대체 표시하므로 겹치지
+                않게 가운데 라벨을 뺀다. 마우스를 떼면 선택된 업종 기준으로
+                되돌아온다 — 선택 자체가 없으면(hoverIndex도 selectedIndex도
+                없으면) 전체 합계를 보여준다. */}
             {hoverIndex == null && (
               <Label
                 position="center"
@@ -645,10 +658,10 @@ function CompositionDonut({
                   return (
                     <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
                       <tspan x={cx} y={cy} className="fill-navy text-3xl font-bold">
-                        {total}
+                        {selectedEntry?.count ?? total}
                       </tspan>
                       <tspan x={cx} y={(cy ?? 0) + 20} className="fill-muted-foreground text-xs">
-                        개 점포
+                        {selectedEntry ? selectedEntry.category : "개 점포"}
                       </tspan>
                     </text>
                   );
@@ -715,14 +728,33 @@ function StatRow({ k, v, placeholder }: { k: string; v: string; placeholder?: bo
   );
 }
 
-function RiskCard({ level, label }: { level: RiskLevel; label: string }) {
+function RiskCard({
+  level,
+  label,
+  lowNearbyDensity,
+}: {
+  level: RiskLevel;
+  label: string;
+  lowNearbyDensity: boolean;
+}) {
   // 세그먼트 중앙(각 1/5 구간의 가운데)에 현재 단계 마커를 둔다.
   const markerPct = ((level - 0.5) / 5) * 100;
   return (
     <Card className="rounded-xl border-border/70 bg-surface p-8 shadow-card">
       <div className="grid gap-8 lg:grid-cols-[auto_1fr] lg:items-center">
         <div className="text-center">
-          <RiskBadge level={level} label={label} />
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <RiskBadge level={level} label={label} />
+            {/* 반경 300m 내 동일 업종이 5개 미만 — 상권 자체가 희박하다는
+                신호라 위험도 배지 옆에 별도 경고로 붙인다(unit-analysis.ts의
+                lowNearbyDensity 계산 참고). */}
+            {lowNearbyDensity && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-warn-soft px-2.5 py-1 text-xs font-semibold text-warn">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                주변 점포가 적습니다
+              </span>
+            )}
+          </div>
           <p className="mt-3 text-xs tabular-nums text-muted-foreground">Level {level} / 5</p>
         </div>
         <div>
