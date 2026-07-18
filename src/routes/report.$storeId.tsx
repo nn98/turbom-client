@@ -135,16 +135,28 @@ export const Route = createFileRoute("/report/$storeId")({
 
 function ReportPage() {
   const { storeId } = Route.useParams();
+  return (
+    <div className="min-h-screen bg-background">
+      <SiteHeader />
+      <ReportView storeId={storeId} />
+      <SiteFooter />
+    </div>
+  );
+}
+
+// 검색 결과 화면(search.tsx)의 오버레이에서도 그대로 재사용한다 — 상세 페이지
+// 진입 시 검색 화면을 언마운트하지 않고(스크롤 위치·지도 위치·필터 상태 보존)
+// 이 컴포넌트만 위에 새로 띄운 뒤, 뒤로가기로 오버레이만 닫히게 하기 위함.
+// SiteHeader/Footer 같은 페이지 크롬은 포함하지 않는다 — 단독 라우트(ReportPage)와
+// 오버레이(search.tsx의 ReportOverlay) 각자가 자신에게 맞는 크롬을 씌운다.
+export function ReportView({ storeId }: { storeId: string }) {
   const unitQuery = useUnitDetail(storeId);
 
   if (unitQuery.isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <SiteHeader />
-        <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-          <ReportSkeleton />
-        </main>
-      </div>
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <ReportSkeleton />
+      </main>
     );
   }
 
@@ -152,33 +164,23 @@ function ReportPage() {
     const notFound =
       unitQuery.error instanceof ApiRequestError && unitQuery.error.code === "UNIT_NOT_FOUND";
     return (
-      <div className="min-h-screen bg-background">
-        <SiteHeader />
-        <div className="mx-auto max-w-lg px-4 py-24 text-center">
-          {notFound ? (
-            <>
-              <h1 className="text-xl font-semibold text-navy">해당 자리를 찾을 수 없습니다</h1>
-              <Button
-                asChild
-                className="mt-6 rounded-lg bg-navy text-navy-foreground hover:bg-navy/90"
-              >
-                <Link to="/search">다른 자리 찾기</Link>
-              </Button>
-            </>
-          ) : (
-            <>
-              <AlertTriangle className="mx-auto h-8 w-8 text-danger" />
-              <p className="mt-4 text-sm text-danger">{errorMessage(unitQuery.error)}</p>
-              <Button
-                variant="outline"
-                className="mt-6 rounded-lg"
-                onClick={() => unitQuery.refetch()}
-              >
-                다시 시도
-              </Button>
-            </>
-          )}
-        </div>
+      <div className="mx-auto max-w-lg px-4 py-24 text-center">
+        {notFound ? (
+          <>
+            <h1 className="text-xl font-semibold text-navy">해당 자리를 찾을 수 없습니다</h1>
+            <Button asChild className="mt-6 rounded-lg bg-navy text-navy-foreground hover:bg-navy/90">
+              <Link to="/search">다른 자리 찾기</Link>
+            </Button>
+          </>
+        ) : (
+          <>
+            <AlertTriangle className="mx-auto h-8 w-8 text-danger" />
+            <p className="mt-4 text-sm text-danger">{errorMessage(unitQuery.error)}</p>
+            <Button variant="outline" className="mt-6 rounded-lg" onClick={() => unitQuery.refetch()}>
+              다시 시도
+            </Button>
+          </>
+        )}
       </div>
     );
   }
@@ -189,61 +191,41 @@ function ReportPage() {
   const current = findOccupant(detail.timeline);
 
   return (
-    <div className="min-h-screen bg-background">
-      <SiteHeader />
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <Breadcrumbs detail={detail} />
-        <ReportHeader detail={detail} current={current} riskLevel={analysis.riskLevel} />
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <Breadcrumbs detail={detail} />
+      <ReportHeader detail={detail} current={current} riskLevel={analysis.riskLevel} />
 
-        <div className="mt-10 space-y-16">
-          <Section number="01" title="통계" subtitle="이 자리에서 먼저 확인할 핵심 지표">
-            <SummaryGrid detail={detail} analysis={analysis} current={current} />
-            <div className="mt-6">
-              <StatsBoard detail={detail} current={current} />
-            </div>
-          </Section>
+      <div className="mt-10 space-y-16">
+        <Section number="01" title="통계" subtitle="이 자리에서 먼저 확인할 핵심 지표">
+          <SummaryGrid detail={detail} analysis={analysis} current={current} />
+          <div className="mt-6">
+            <StatsBoard detail={detail} current={current} />
+          </div>
+        </Section>
 
-          <Section
-            number="02"
-            title="종합 분석"
-            subtitle="운영 이력과 상권 데이터를 함께 해석했습니다"
-          >
-            <NarrativeCard lines={analysis.narrative} />
-          </Section>
+        <Section number="02" title="종합 분석" subtitle="운영 이력과 상권 데이터를 함께 해석했습니다">
+          <NarrativeCard lines={analysis.narrative} />
+        </Section>
 
-          <Section
-            number="03"
-            title="주변 상권 분석"
-            subtitle="주변 경쟁 환경을 시각적으로 정리했습니다"
-          >
-            <DistrictAnalysis district={analysis.district} />
-          </Section>
+        <Section number="03" title="주변 상권 분석" subtitle="주변 경쟁 환경을 시각적으로 정리했습니다">
+          <DistrictAnalysis district={analysis.district} />
+        </Section>
 
-          <Section number="04" title="위험도" subtitle="여러 신호를 종합한 참고용 등급">
-            <RiskCard level={analysis.riskLevel} label={analysis.riskLabel} />
-          </Section>
+        <Section number="04" title="위험도" subtitle="여러 신호를 종합한 참고용 등급">
+          <RiskCard level={analysis.riskLevel} label={analysis.riskLabel} />
+        </Section>
 
-          <Section
-            number="05"
-            title="운영 이력"
-            subtitle="이 자리를 거쳐간 업종의 시간 흐름입니다."
-          >
-            <TimelineCard timeline={detail.timeline} />
-          </Section>
+        <Section number="05" title="운영 이력" subtitle="이 자리를 거쳐간 업종의 시간 흐름입니다.">
+          <TimelineCard timeline={detail.timeline} />
+        </Section>
 
-          <Section
-            number="06"
-            title="계약 체크리스트"
-            subtitle="계약 전에 반드시 확인해야 하는 항목"
-          >
-            <ChecklistCard items={analysis.checklist} />
-          </Section>
-        </div>
+        <Section number="06" title="계약 체크리스트" subtitle="계약 전에 반드시 확인해야 하는 항목">
+          <ChecklistCard items={analysis.checklist} />
+        </Section>
+      </div>
 
-        <ReportCta />
-      </main>
-      <SiteFooter />
-    </div>
+      <ReportCta />
+    </main>
   );
 }
 

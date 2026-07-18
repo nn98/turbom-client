@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
-import { AlertTriangle, ChevronRight, List, MapPin, Search as SearchIcon } from "lucide-react";
+import { AlertTriangle, ChevronRight, List, MapPin, Search as SearchIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -23,6 +23,7 @@ import {
   dongCandidateCounts,
   extractLotLabel,
 } from "@/lib/site-markers";
+import { ReportView } from "@/routes/report.$storeId";
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
@@ -79,6 +80,12 @@ const searchSchema = z.object({
   // 식별자로 쓰면 이런 경우 두 후보를 구분할 수 없어(항상 첫 번째만 찾아짐) pnu로
   // 바꿨다 — pnu는 후보마다 항상 고유하다.
   pnu: z.string().optional().catch(""),
+  // 물건 상세로 "이동"하는 대신 이 값이 채워지면 검색 화면 위에 리포트를
+  // 오버레이로 띄운다 — 뒤로가기를 누르면 이 파라미터만 사라지고 검색
+  // 화면(SearchPage)은 그대로 마운트돼 있던 상태라 스크롤/지도 위치/필터가
+  // 그대로 보존된다(예전엔 /report/$storeId로 라우트 자체를 이동해 검색
+  // 화면이 통째로 언마운트됐다가 뒤로가기 시 처음부터 다시 그려졌다).
+  unit: z.string().optional().catch(""),
   demo: z.boolean().optional().catch(false),
 });
 
@@ -97,13 +104,10 @@ export const Route = createFileRoute("/search")({
 });
 
 function SearchPage() {
-  const { q = "", pnu = "" } = Route.useSearch();
+  const { q = "", pnu = "", unit = "" } = Route.useSearch();
   const navigate = useNavigate();
   const [input, setInput] = useState(q);
   const [collapsed, setCollapsed] = useState(false);
-  // 상세 화면으로 넘어갈 때 잠깐 덮는 커버(고정된 지도 레이아웃을 깨지 않도록
-  // opacity/translate만 쓴다). 커버가 화면을 덮은 뒤에 실제 라우트를 이동한다.
-  const [cover, setCover] = useState(false);
 
   useEffect(() => setInput(q), [q]);
 
@@ -166,8 +170,7 @@ function SearchPage() {
   };
 
   const goToReport = (storeId: string) => {
-    setCover(true);
-    setTimeout(() => navigate({ to: "/report/$storeId", params: { storeId } }), 300);
+    navigate({ to: "/search", search: { q, pnu, unit: storeId } });
   };
 
   return (
@@ -365,7 +368,37 @@ function SearchPage() {
         )}
       </div>
 
-      {cover && <div className="cover-slide fixed inset-0 z-[2000] bg-navy" />}
+      {unit && (
+        <ReportOverlay
+          key={unit}
+          storeId={unit}
+          onClose={() => navigate({ to: "/search", search: { q, pnu } })}
+        />
+      )}
+    </div>
+  );
+}
+
+// 검색 화면을 언마운트하지 않고 그 위에 새로 띄우는 리포트 패널 — 닫으면
+// (X 버튼 또는 브라우저 뒤로가기, 둘 다 결과적으로 search 파라미터의 unit이
+// 사라지는 것) 이 컴포넌트만 사라지고 아래 깔려있던 SearchPage는 계속
+// 마운트된 채로 남아있던 상태 그대로 다시 보인다.
+function ReportOverlay({ storeId, onClose }: { storeId: string; onClose: () => void }) {
+  return (
+    <div className="cover-slide fixed inset-0 z-[2000] flex flex-col bg-background">
+      <div className="flex shrink-0 items-center justify-between border-b border-border/70 bg-surface/95 px-4 py-3 shadow-elevated backdrop-blur">
+        <span className="text-sm font-bold text-navy">자리 리포트</span>
+        <button
+          onClick={onClose}
+          className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition hover:bg-secondary hover:text-navy"
+          aria-label="닫기"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <ReportView storeId={storeId} />
+      </div>
     </div>
   );
 }
