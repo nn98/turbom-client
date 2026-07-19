@@ -11,6 +11,8 @@
 
 그 외(`backend-spec.md`, `schema.sql`, 인허가/상가API 파이프라인 문서 등)는 백엔드(`turbom-server`) 소관이며 이 레포는 참조하지 않는다. (이전에 있던 `spec/` 전체 사본 폴더는 `turbom-server`/`turbom-spec` 어디에도 문서화되지 않은 비공식 사본이었어서 제거했다 — 아래 §2의 `docs/spec/`만 공식 미러다.)
 
+**이 레포에서 백엔드에 알려야 할 발견사항(버그, 스펙-실측 차이 등)을 찾으면 여기 CLAUDE.md에만 적어두지 말고 `../turbom-spec/CHANGELOG.md`에도 직접 교차 기록하고 커밋+push까지 끝낸다.** 예전엔 `server/spec/CHANGELOG.md`(비공식 사본)에 적어두는 관례였는데, 그게 며칠씩 미커밋 상태로 방치되다가 2026-07-19 스펙 통합 때 겨우 복구된 전례가 있다(`turbom-spec/CHANGELOG.md` 17차 참고) — "기록은 해뒀으니 나중에 정리되겠지"가 반복해서 실패했으니 그 자리에서 바로 push까지 한다.
+
 ## 2. 로컬 미러
 
 위 두 파일은 `docs/spec/api-spec.md`, `docs/spec/frontend-spec.md`로 로컬에 동기화되어 있다 — 원본 파일명 그대로, 내용은 원본과 바이트 단위로 동일하게 유지한다(로컬에서 직접 수정하지 않는다). 코드 주석에서 이 계약을 가리킬 땐 반드시 `docs/spec/api-spec.md` 경로를 쓴다.
