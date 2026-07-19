@@ -15,7 +15,7 @@
 
 ## 공통 규약
 
-- Base URL: 로컬 `http://localhost:8080`, 운영 Railway 도메인.
+- Base URL: 로컬 `http://localhost:8080`, 운영 AWS 도메인.
 - JSON, `Content-Type: application/json; charset=UTF-8`. 인증 없음.
 - 날짜 `YYYY-MM-DD`. 값 없으면 `null`.
 - 모든 조회 응답에 `disclaimer` 상시 포함.
@@ -58,18 +58,16 @@
       "latitude": 37.4012,
       "longitude": 127.1045,
       "unitCount": 3,
-      "closedCount": 8,
-      "currentSubCategory": "일반음식점"
+      "closedCount": 8
     }
   ]
 }
 ```
-
-| 필드 | 타입 | 설명 |
-|---|---|---|
-| currentSubCategory | string\|null | 현재 영업 중인 첫 번째 물건의 인허가 소분류. 전체 공실이면 null. Sangga API 미호출 — 추가 지연 없음 |
-
 빈 결과: `{ "candidates": [] }` (200). query 누락: 400 `INVALID_QUERY`.
+
+`units`가 0개인 자리(무점포업종만 있는 PNU, `noStorefrontRegistrations[]` 참고)는 후보에서 제외한다 —
+**2026-07-18부터**. 실사례: 금토동 390-11/436-3/517-7(고압가스업·통신판매업만 있음)이 지도 마커만
+뜨고 실제 가게 정보가 없는 버그로 발견됨.
 
 ---
 
@@ -88,17 +86,24 @@
   "units": [
     {
       "unitId": "4113310300104050001-U1",
-      "label": "115-4호",
+      "label": "1층 101호",
       "currentBusinessName": "치킨나라",
       "currentStatus": "영업",
       "totalTenancyCount": 5,
       "closedCount": 4,
       "averageSurvivalMonths": 27,
       "industryDetail": "후라이드/양념치킨",
-      "locationSource": "sangga_api",
-      "parsedFloor": null,
-      "parsedUnitNo": "115-4",
-      "parseConfidence": "HIGH"
+      "locationSource": "sangga_api"
+    }
+  ],
+  "noStorefrontRegistrations": [
+    {
+      "businessName": "에스트(est)",
+      "category": "생활",
+      "subCategory": "통신판매업",
+      "licensedAt": "2019-06-04",
+      "closedAt": null,
+      "status": "영업"
     }
   ],
   "disclaimer": {
@@ -113,7 +118,7 @@
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | unitId | string | 물건 키 |
-| label | string | **[변경]** 아래 "label 산출 규칙" 참고 |
+| label | string | 상세주소 있으면 그 값, 없으면 `물건 A`, 단일이면 `단일 점포` |
 | currentBusinessName | string\|null | 현재 영업 가게명(공실이면 null) |
 | currentStatus | `영업`\|`공실` | |
 | totalTenancyCount | number | 거쳐간 가게 수 |
@@ -121,23 +126,25 @@
 | averageSurvivalMonths | number\|null | 폐업 이력만 평균 |
 | industryDetail | string\|null | 세부 업종(상가API indsSclsNm). 공실·보강실패 시 null |
 | locationSource | `"license"`\|`"sangga_api"`\|`"overlap_inferred"` | label 출처 |
-| parsedFloor | string\|null | **[신규]** 도로명주소 상세에서 파싱한 층수(예: `"1"`, `"B1"`). 없으면 null |
-| parsedUnitNo | string\|null | **[신규]** 파싱한 호수(예: `"115-4"`, `"202"`). 없으면 null |
-| parseConfidence | `"HIGH"`\|`"LOW"`\|null | **[신규]** 파싱 신뢰도. `HIGH`만 `label`·`parsedFloor`·`parsedUnitNo` 조합을 신뢰 가능. `LOW`는 정규식이 상세주소 패턴을 못 잡아 원본을 보존만 한 상태 — 화면에 별도 뱃지/구분 없이 그대로 쓰면 부정확한 값으로 오인될 수 있음 |
+
+### `noStorefrontRegistrations[]` 필드 — **2026-07-18 신규**
+
+물리적 자리(Unit) 개념이 없는 업종의 인허가 이력. `units[]`와 배타적 — 한 레코드가 둘 다에 나타나지 않음.
+통신판매업·방문판매업 등 자가/사무실 주소로 신고 가능한 업종(원본 데이터에 층/호 정보가 구조적으로
+없는 업종, 판별 기준은 `spec/backend-spec.md` §무점포업종 참고)이 여기 담긴다. `unitId`/`marketInfo`/
+통계 없음 — 물리적 자리가 아니므로.
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| businessName | string | |
+| category | string | 대분류 |
+| subCategory | string | 소분류 |
+| licensedAt | string(date) | |
+| closedAt | string(date)\|null | |
+| status | string | 원본 영업상태명 원문(5버킷) |
 
 - pnu 없음: 404 `SITE_NOT_FOUND`
 - units 정렬: 폐업 많은 순.
-
-### `label` 산출 규칙 (2026-07-10 변경 — 상세주소 오프라인 파싱 반영)
-
-- 도로명주소의 상세 부분(콤마~괄호 사이, 예: "성남대로 151, **분당엠코헤리츠 115-4호** (구미동)")을 `AddressDetailParser`로 미리 파싱해 `data.sql`에 `parsed_*` 컬럼으로 구워 넣고, `label`은 그 컬럼 값을 조합해 만든다 — 응답 시점 실시간 정규식 파싱은 더 이상 하지 않는다(런타임 비용 0).
-- 조합 규칙은 `parseConfidence == "HIGH"`일 때만 적용:
-  1. `parsedUnitNo`가 있으면 `(parsedFloor + "층 " if parsedFloor else "") + parsedUnitNo + "호"` (예: `"115-4호"`, `"1층 202호"`)
-  2. `parsedUnitNo`는 없고 `parsedFloor`만 있으면 `parsedFloor + "층"`
-  3. 층/호 정보가 전혀 없고 건물명만 파싱됐으면 건물명 문자열 그대로(단, 건물명 자체는 별도 필드로 응답에 노출되지 않음 — `label`에만 반영)
-- `parseConfidence`가 `"LOW"`이거나 null이면(파싱 실패·원본 패턴 미매칭) 위 조합을 시도하지 않고 항상 `"단일 점포"`로 표시한다 — 기존에 존재하던 "괄호가 먼저 나오면 층 정보가 통째로 유실되는" 버그(예: "1(일부)층" 패턴)도 이번에 같이 수정됨.
-- 실측 데이터(47,532건) 기준 `parseConfidence` 분포: `HIGH` 89.2%, `LOW` 10.8%.
-- **프론트 반영 권장**: `parseConfidence`가 `LOW`인 물건은 `label`이 무조건 `"단일 점포"`로만 내려오므로, 상세 위치 정보를 더 정확히 보여주고 싶다면 물건 상세 화면(③)에서 `jibunAddress`/`roadAddress` 원문을 함께 노출하는 걸 권장. `HIGH`인 경우에만 `parsedFloor`/`parsedUnitNo` 배지를 별도로 붙이는 것도 가능.
 
 ---
 
@@ -148,12 +155,9 @@
 {
   "unit": {
     "unitId": "4113310300104050001-U1",
-    "label": "115-4호",
+    "label": "1층 101호",
     "jibunAddress": "경기도 성남시 수정구 금토동 405-1",
-    "roadAddress": "경기도 성남시 수정구 대왕판교로 815",
-    "parsedFloor": null,
-    "parsedUnitNo": "115-4",
-    "parseConfidence": "HIGH"
+    "roadAddress": "경기도 성남시 수정구 대왕판교로 815"
   },
   "statistics": {
     "totalTenancyCount": 5,
@@ -183,13 +187,7 @@
         "dailyFloatingPopulation": 21400,
         "sameCategoryNearbyCount": 14,
         "vacancyRatePercent": 6.2,
-        "asOf": "2026-07-04",
-        "totalStoreCount": 28,
-        "categoryBreakdown": [
-          { "code": "I2", "name": "음식", "count": 14, "ratio": 0.5 },
-          { "code": "G2", "name": "소매", "count": 8, "ratio": 0.2857142857142857 },
-          { "code": "S2", "name": "수리·개인", "count": 6, "ratio": 0.21428571428571427 }
-        ]
+        "asOf": "2026-07-04"
       }
     },
     {
@@ -212,13 +210,7 @@
         "dailyFloatingPopulation": 21400,
         "sameCategoryNearbyCount": 11,
         "vacancyRatePercent": 6.2,
-        "asOf": "2026-07-04",
-        "totalStoreCount": 28,
-        "categoryBreakdown": [
-          { "code": "I2", "name": "음식", "count": 11, "ratio": 0.39285714285714285 },
-          { "code": "G2", "name": "소매", "count": 10, "ratio": 0.35714285714285715 },
-          { "code": "S2", "name": "수리·개인", "count": 7, "ratio": 0.25 }
-        ]
+        "asOf": "2026-07-04"
       }
     }
   ],
@@ -229,14 +221,6 @@
 }
 ```
 
-### `unit` 필드 (신규 부분)
-
-| 필드 | 타입 | 설명 |
-|---|---|---|
-| parsedFloor | string\|null | **[신규]** ②와 동일. `parseConfidence`가 `HIGH`일 때만 신뢰 가능 |
-| parsedUnitNo | string\|null | **[신규]** ②와 동일 |
-| parseConfidence | `"HIGH"`\|`"LOW"`\|null | **[신규]** ②의 "label 산출 규칙" 참고 |
-
 ### `timeline[]` 필드 (신규 부분)
 
 | 필드 | 타입 | 설명 |
@@ -245,6 +229,7 @@
 | category | string | 인허가 대분류(예: 음식, 동물). 항상 존재 |
 | subCategory | string | 인허가 소분류(예: 일반음식점, 동물미용업). 항상 존재 |
 | industryDetail | string\|null | 상가API 세부업종. **있으면 이걸 우선 표시, 없으면 subCategory로 폴백**. 폐업 이력은 원천적으로 null |
+| survivalMonths | number\|null | **2026-07-17부터 null 가능.** `status`가 "영업"이 아닌데 `closedAt`이 null이면(원본에 종료일자가 없는 취소/말소/휴업 등) 계산 불가로 null — licensedAt~오늘로 계산하면 아직 영업 중인 것처럼 보이는 왜곡이 생기기 때문. 프론트는 null이면 "기간 미상" 등으로 표시할 것 |
 | enrichmentSource | `"sangga_api"`\|`"license_only"` | 보강 성공 여부 |
 | **marketInfo** | object | **[신규]** 아래 표 |
 
@@ -260,21 +245,15 @@
 | monthlyRentKrw | number\|null | **없음(목업)** | 월세 |
 | keyMoneyKrw | number\|null | **없음(목업)** | 권리금(0=무) |
 | dailyFloatingPopulation | number\|null | **없음(목업)** | 일평균 유동인구 |
-| sameCategoryNearbyCount | number\|null | **실제 — 상가API 반경조회** | 자리 좌표 기준 반경(300m) 내 동일 업종(대분류 매핑) 점포 수. `isPlaceholder`와 무관하게 항상 실값 시도, 실패 시에만 null |
+| sameCategoryNearbyCount | number | **실제 — 상가API 반경조회** | 자리 좌표 기준 반경 내 동일 업종 점포 수. `isPlaceholder`와 무관하게 항상 실값 시도, 실패 시에만 null |
 | vacancyRatePercent | number\|null | **없음(목업)** | 주변 공실률 |
 | asOf | string(date) | — | 기준일 |
-| totalStoreCount | number\|null | **[신규] 실제 — 상가API 반경조회** | 업종 필터 없이 같은 반경 내 전체 점포 수. `sameCategoryNearbyCount` 조회는 성공했는데 이 호출만 실패하면 null(별개 호출로 격리) |
-| categoryBreakdown | array\|null | **[신규] 실제 — 상가API 반경조회** | 반경 내 상가 대분류별 점포수·비중(`ratio`=count/totalStoreCount). 아래 표. 실패 시 빈 배열 |
 
-`categoryBreakdown[]` 원소: `{ code, name, count, ratio }` — `code`/`name`은 상가API 대분류 코드·이름(예: `I2`/`음식`), `count`는 그 대분류의 반경 내 점포수, `ratio`는 0~1 소수(전체 대비 비중). 프론트는 이 배열로 업종을 선택하게 하고, 선택한 업종의 `count`/`ratio`를 보여줄 수 있다 — `sameCategoryNearbyCount`는 **이 물건의 현재 업종** 기준 고정값이라는 점과 구분할 것.
-
-인허가 소분류(136종 실측)와 상가API 대분류(G2 소매·I1 숙박·I2 음식·L1 부동산·M1 과학·기술·N1 시설관리·임대·P1 교육·Q1 보건의료·R1 예술·스포츠·S2 수리·개인, 10종)는 서로 다른 분류 체계라 공식 매핑표가 없다 — 도축업·제조업·도매업처럼 애초에 "상가 상권" 개념이 없는 소분류는 매핑하지 않고, 그 경우 `sameCategoryNearbyCount`/`totalStoreCount`/`categoryBreakdown` 전부 null·빈 배열로 응답한다(실패가 아니라 "비교 대상 없음").
-
-`sameCategoryNearbyCount`·`totalStoreCount`·`categoryBreakdown`은 선택된 이력이 어느 것이든 **현재 시점 기준 동일 값**이 나간다 — 상가API가 현재 스냅샷만 주기 때문에 과거 이력을 조회해도 "그 시절 주변 상황"은 알 수 없다. 이 값이 과거를 재현한 게 아니라 "지금 기준"이라는 걸 화면에 명시해야 한다(marketInfo.asOf가 그 역할).
+`sameCategoryNearbyCount`는 선택된 이력이 어느 것이든 **현재 시점 기준 동일 값**이 나간다 — 상가API가 현재 스냅샷만 주기 때문에 과거 이력을 조회해도 "그 시절 주변 상황"은 알 수 없다. 이 값이 과거를 재현한 게 아니라 "지금 기준"이라는 걸 화면에 명시해야 한다(marketInfo.asOf가 그 역할).
 
 - unitId 없음: 404 `UNIT_NOT_FOUND`
 - `timeline`은 `licensedAt` 오름차순.
-- `marketInfo`는 매 이력 항목마다 내려가지만(드롭다운에서 어느 걸 선택해도 즉시 표시 가능하도록), 값 자체는 목업 5필드(leaseAreaSqm~vacancyRatePercent) 한정으로 전 항목 동일. `sameCategoryNearbyCount`/`totalStoreCount`/`categoryBreakdown`은 선택 물건의 업종·좌표에 따라 달라질 수 있음(물건마다 대표 업종이 다르면).
+- `marketInfo`는 매 이력 항목마다 내려가지만(드롭다운에서 어느 걸 선택해도 즉시 표시 가능하도록), 값 자체는 6개 목업 필드 한정으로 전 항목 동일. `sameCategoryNearbyCount`만 선택 물건의 업종에 따라 달라질 수 있음(물건마다 대표 업종이 다르면).
 
 ---
 
@@ -291,5 +270,5 @@
 | UNIT_NOT_FOUND | 404 | unitId 없음 |
 | INTERNAL_ERROR | 500 | 서버 오류 |
 
-`sameCategoryNearbyCount`/`totalStoreCount`/`categoryBreakdown` 산출 실패(상가API 오류)는 별도 에러 코드 없이 해당 필드만 `null`(또는 빈 배열)로 응답한다 — 전체 요청은 계속 200. 세 필드는 각각 독립적인 API 호출 결과라 하나만 실패할 수도 있다(`sameCategoryNearbyCount`는 있는데 `totalStoreCount`/`categoryBreakdown`만 null인 경우 등).
+`sameCategoryNearbyCount` 산출 실패(상가API 오류)는 별도 에러 코드 없이 해당 필드만 `null`로 응답한다 — 전체 요청은 계속 200.
 

@@ -55,8 +55,7 @@ React 18 + Vite + TS · React Router · TanStack Query · Tailwind · react-leaf
 - 선택 시 2단 카드 레이아웃:
   - **좌: 인허가 정보** — 상호명·업종·개업일자·폐업일자·영업기간·영업상태. 전부 이미 `timeline[]`에 있는 필드 그대로(신규 API 불필요).
   - **우: 계약·주변상권 정보** — `marketInfo` 객체 렌더링. 카드 헤더 옆에 "예시" 뱃지 상시(참고 이미지와 동일). 필드: 전용면적 / 보증금·월세(슬래시로 함께 표기) / 권리금(0이면 "무") / 일평균 유동인구 / 주변 같은업종(N)곳 / 주변 공실률(%). 카드 최하단에 항상 "실 데이터 연동 전 예시값입니다" 캡션 — **`isPlaceholder` 여부와 무관하게 상시 노출**(현재는 항상 true라 사실상 상시).
-  - `sameCategoryNearbyCount`/`totalStoreCount`/`categoryBreakdown`은 실값(상가API 반경조회)일 수 있으므로, 목업 5필드(전용면적~공실률)와 시각적으로 살짝 구분(예: 색을 다르게)하는 걸 권장하되 필수는 아님.
-  - **[신규] 2026-07-10 — 업종 선택 UI(선택 구현)**: `categoryBreakdown`이 비어있지 않으면, 사용자가 업종(대분류)을 골라 그 업종의 `count`/`ratio`(경쟁률)를 볼 수 있는 드롭다운/토글을 "주변 같은업종" 필드 옆에 추가할 수 있다. 기본 선택값은 이 물건의 현재 업종(`sameCategoryNearbyCount`가 이미 그 값). `totalStoreCount`는 "전체 N곳 중"처럼 분모로 같이 보여주면 좋다. `categoryBreakdown`이 빈 배열이면(매핑 없는 소분류 등) 이 UI 자체를 숨긴다.
+  - `sameCategoryNearbyCount`만 실값일 수 있으므로, 이 필드 하나는 다른 5개와 시각적으로 살짝 구분(예: 색을 다르게)하는 걸 권장하되 필수는 아님.
 
 disclaimer 하단. 상태: 로딩/404/이력0.
 
@@ -69,13 +68,11 @@ interface SearchResponse { candidates: Candidate[]; }
 interface Disclaimer { dataAsOf: string; note: string; }
 
 type LocationSource = "license" | "sangga_api" | "overlap_inferred";
-type ParseConfidence = "HIGH" | "LOW" | null;
 interface UnitSummary {
   unitId: string; label: string;
   currentBusinessName: string|null; currentStatus: "영업"|"공실";
   totalTenancyCount: number; closedCount: number; averageSurvivalMonths: number|null;
   industryDetail: string|null; locationSource: LocationSource;
-  parsedFloor: string|null; parsedUnitNo: string|null; parseConfidence: ParseConfidence; // [신규] 2026-07-10
 }
 interface SiteDetail {
   site: { pnu: string; jibunAddress: string; roadAddress: string; latitude: number|null; longitude: number|null; };
@@ -86,7 +83,6 @@ interface SiteDetail {
 type EnrichmentSource = "sangga_api" | "license_only";
 interface Statistics { totalTenancyCount: number; closedCount: number; averageSurvivalMonths: number|null; longestSurvivalMonths: number|null; shortestSurvivalMonths: number|null; }
 
-interface CategoryCount { code: string; name: string; count: number; ratio: number; } // [신규] 2026-07-10, ratio는 0~1
 interface MarketInfo {
   isPlaceholder: boolean;
   leaseAreaSqm: number|null;
@@ -94,23 +90,20 @@ interface MarketInfo {
   monthlyRentKrw: number|null;
   keyMoneyKrw: number|null;
   dailyFloatingPopulation: number|null;
-  sameCategoryNearbyCount: number|null;  // 실값 — 이 물건의 현재 업종 기준 반경 내 동일업종 점포수
+  sameCategoryNearbyCount: number|null;  // 유일한 실값 후보
   vacancyRatePercent: number|null;
   asOf: string;
-  totalStoreCount: number|null;          // [신규] 2026-07-10, 실값 — 업종 무관 반경 내 전체 점포수
-  categoryBreakdown: CategoryCount[];     // [신규] 2026-07-10, 실값 — 업종 선택 UI용(비어있으면 실패/매핑없음)
 }
 
 interface Tenancy {
   tenancyId: string;
   businessName: string; category: string; subCategory: string; industryDetail: string|null;
-  licensedAt: string; closedAt: string|null; status: "영업"|"폐업";
+  licensedAt: string; closedAt: string|null; status: "영업"|"폐업"|"휴업";
   survivalMonths: number|null; closedAtEstimated: boolean; enrichmentSource: EnrichmentSource;
   marketInfo: MarketInfo;
 }
 interface UnitDetail {
-  unit: { unitId: string; label: string; jibunAddress: string; roadAddress: string;
-    parsedFloor: string|null; parsedUnitNo: string|null; parseConfidence: ParseConfidence; }; // [신규] 2026-07-10
+  unit: { unitId: string; label: string; jibunAddress: string; roadAddress: string; };
   statistics: Statistics; timeline: Tenancy[]; disclaimer: Disclaimer;
 }
 
@@ -132,9 +125,9 @@ interface ApiError { error: string; message: string; }
 {
   "site": { "pnu": "4113310300104050001", "jibunAddress": "경기도 성남시 수정구 금토동 405-1", "roadAddress": "경기도 성남시 수정구 대왕판교로 815", "latitude": 37.4012, "longitude": 127.1045 },
   "units": [
-    { "unitId": "4113310300104050001-U1", "label": "1층 101호", "currentBusinessName": "치킨나라", "currentStatus": "영업", "totalTenancyCount": 5, "closedCount": 4, "averageSurvivalMonths": 27, "industryDetail": "후라이드/양념치킨", "locationSource": "sangga_api", "parsedFloor": "1", "parsedUnitNo": "101", "parseConfidence": "HIGH" },
-    { "unitId": "4113310300104050001-U2", "label": "2층 201호", "currentBusinessName": null, "currentStatus": "공실", "totalTenancyCount": 3, "closedCount": 3, "averageSurvivalMonths": 14, "industryDetail": null, "locationSource": "overlap_inferred", "parsedFloor": "2", "parsedUnitNo": "201", "parseConfidence": "HIGH" },
-    { "unitId": "4113310300104050001-U3", "label": "1층 102호", "currentBusinessName": "파리바게뜨", "currentStatus": "영업", "totalTenancyCount": 2, "closedCount": 1, "averageSurvivalMonths": 60, "industryDetail": "제과점", "locationSource": "sangga_api", "parsedFloor": "1", "parsedUnitNo": "102", "parseConfidence": "HIGH" }
+    { "unitId": "4113310300104050001-U1", "label": "1층 101호", "currentBusinessName": "치킨나라", "currentStatus": "영업", "totalTenancyCount": 5, "closedCount": 4, "averageSurvivalMonths": 27, "industryDetail": "후라이드/양념치킨", "locationSource": "sangga_api" },
+    { "unitId": "4113310300104050001-U2", "label": "2층 201호", "currentBusinessName": null, "currentStatus": "공실", "totalTenancyCount": 3, "closedCount": 3, "averageSurvivalMonths": 14, "industryDetail": null, "locationSource": "overlap_inferred" },
+    { "unitId": "4113310300104050001-U3", "label": "1층 102호", "currentBusinessName": "파리바게뜨", "currentStatus": "영업", "totalTenancyCount": 2, "closedCount": 1, "averageSurvivalMonths": 60, "industryDetail": "제과점", "locationSource": "sangga_api" }
   ],
   "disclaimer": { "dataAsOf": "2026-07-04", "note": "인허가 신고 기준 데이터로 실제 영업 현황과 차이가 있을 수 있습니다." }
 }
@@ -144,7 +137,7 @@ interface ApiError { error: string; message: string; }
 {
   "site": { "pnu": "4113310300104050003", "jibunAddress": "경기도 성남시 수정구 금토동 405-3", "roadAddress": "경기도 성남시 수정구 대왕판교로 817", "latitude": 37.4015, "longitude": 127.1050 },
   "units": [
-    { "unitId": "4113310300104050003-U1", "label": "단일 점포", "currentBusinessName": null, "currentStatus": "공실", "totalTenancyCount": 3, "closedCount": 3, "averageSurvivalMonths": 9, "industryDetail": null, "locationSource": "license", "parsedFloor": null, "parsedUnitNo": null, "parseConfidence": "LOW" }
+    { "unitId": "4113310300104050003-U1", "label": "단일 점포", "currentBusinessName": null, "currentStatus": "공실", "totalTenancyCount": 3, "closedCount": 3, "averageSurvivalMonths": 9, "industryDetail": null, "locationSource": "license" }
   ],
   "disclaimer": { "dataAsOf": "2026-07-04", "note": "인허가 신고 기준 데이터로 실제 영업 현황과 차이가 있을 수 있습니다." }
 }
@@ -154,19 +147,19 @@ interface ApiError { error: string; message: string; }
 
 ```json
 {
-  "unit": { "unitId": "4113310300104050001-U1", "label": "1층 101호", "jibunAddress": "경기도 성남시 수정구 금토동 405-1", "roadAddress": "경기도 성남시 수정구 대왕판교로 815", "parsedFloor": "1", "parsedUnitNo": "101", "parseConfidence": "HIGH" },
+  "unit": { "unitId": "4113310300104050001-U1", "label": "1층 101호", "jibunAddress": "경기도 성남시 수정구 금토동 405-1", "roadAddress": "경기도 성남시 수정구 대왕판교로 815" },
   "statistics": { "totalTenancyCount": 5, "closedCount": 4, "averageSurvivalMonths": 27, "longestSurvivalMonths": 44, "shortestSurvivalMonths": 11 },
   "timeline": [
     { "tenancyId": "t-1001", "businessName": "고기굽는집", "category": "음식", "subCategory": "일반음식점", "industryDetail": null, "licensedAt": "2013-05-02", "closedAt": "2017-01-10", "status": "폐업", "survivalMonths": 44, "closedAtEstimated": false, "enrichmentSource": "license_only",
-      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 42.6, "depositKrw": 50000000, "monthlyRentKrw": 2800000, "keyMoneyKrw": 0, "dailyFloatingPopulation": 21400, "sameCategoryNearbyCount": 14, "vacancyRatePercent": 6.2, "asOf": "2026-07-04", "totalStoreCount": null, "categoryBreakdown": [] } },
+      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 42.6, "depositKrw": 50000000, "monthlyRentKrw": 2800000, "keyMoneyKrw": 0, "dailyFloatingPopulation": 21400, "sameCategoryNearbyCount": 14, "vacancyRatePercent": 6.2, "asOf": "2026-07-04" } },
     { "tenancyId": "t-1002", "businessName": "카페모모", "category": "음식", "subCategory": "휴게음식점", "industryDetail": null, "licensedAt": "2017-03-01", "closedAt": "2018-05-20", "status": "폐업", "survivalMonths": 14, "closedAtEstimated": false, "enrichmentSource": "license_only",
-      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 42.6, "depositKrw": 50000000, "monthlyRentKrw": 2800000, "keyMoneyKrw": 0, "dailyFloatingPopulation": 21400, "sameCategoryNearbyCount": 6, "vacancyRatePercent": 6.2, "asOf": "2026-07-04", "totalStoreCount": null, "categoryBreakdown": [] } },
+      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 42.6, "depositKrw": 50000000, "monthlyRentKrw": 2800000, "keyMoneyKrw": 0, "dailyFloatingPopulation": 21400, "sameCategoryNearbyCount": 6, "vacancyRatePercent": 6.2, "asOf": "2026-07-04" } },
     { "tenancyId": "t-1003", "businessName": "마라방", "category": "음식", "subCategory": "일반음식점", "industryDetail": null, "licensedAt": "2018-08-15", "closedAt": "2019-07-10", "status": "폐업", "survivalMonths": 11, "closedAtEstimated": true, "enrichmentSource": "license_only",
-      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 42.6, "depositKrw": 50000000, "monthlyRentKrw": 2800000, "keyMoneyKrw": 0, "dailyFloatingPopulation": 21400, "sameCategoryNearbyCount": 3, "vacancyRatePercent": 6.2, "asOf": "2026-07-04", "totalStoreCount": null, "categoryBreakdown": [] } },
+      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 42.6, "depositKrw": 50000000, "monthlyRentKrw": 2800000, "keyMoneyKrw": 0, "dailyFloatingPopulation": 21400, "sameCategoryNearbyCount": 3, "vacancyRatePercent": 6.2, "asOf": "2026-07-04" } },
     { "tenancyId": "t-1004", "businessName": "분식왕", "category": "음식", "subCategory": "일반음식점", "industryDetail": null, "licensedAt": "2019-10-01", "closedAt": "2022-12-05", "status": "폐업", "survivalMonths": 38, "closedAtEstimated": false, "enrichmentSource": "license_only",
-      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 42.6, "depositKrw": 50000000, "monthlyRentKrw": 2800000, "keyMoneyKrw": 0, "dailyFloatingPopulation": 21400, "sameCategoryNearbyCount": 9, "vacancyRatePercent": 6.2, "asOf": "2026-07-04", "totalStoreCount": null, "categoryBreakdown": [] } },
+      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 42.6, "depositKrw": 50000000, "monthlyRentKrw": 2800000, "keyMoneyKrw": 0, "dailyFloatingPopulation": 21400, "sameCategoryNearbyCount": 9, "vacancyRatePercent": 6.2, "asOf": "2026-07-04" } },
     { "tenancyId": "t-1005", "businessName": "치킨나라", "category": "음식", "subCategory": "일반음식점", "industryDetail": "후라이드/양념치킨", "licensedAt": "2023-01-15", "closedAt": null, "status": "영업", "survivalMonths": 41, "closedAtEstimated": false, "enrichmentSource": "sangga_api",
-      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 42.6, "depositKrw": 50000000, "monthlyRentKrw": 2800000, "keyMoneyKrw": 0, "dailyFloatingPopulation": 21400, "sameCategoryNearbyCount": 14, "vacancyRatePercent": 6.2, "asOf": "2026-07-04", "totalStoreCount": null, "categoryBreakdown": [] } }
+      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 42.6, "depositKrw": 50000000, "monthlyRentKrw": 2800000, "keyMoneyKrw": 0, "dailyFloatingPopulation": 21400, "sameCategoryNearbyCount": 14, "vacancyRatePercent": 6.2, "asOf": "2026-07-04" } }
   ],
   "disclaimer": { "dataAsOf": "2026-07-04", "note": "인허가 신고 기준 데이터로 실제 영업 현황과 차이가 있을 수 있습니다." }
 }
@@ -174,15 +167,15 @@ interface ApiError { error: string; message: string; }
 
 ```json
 {
-  "unit": { "unitId": "4113310300104050001-U2", "label": "2층 201호", "jibunAddress": "경기도 성남시 수정구 금토동 405-1", "roadAddress": "경기도 성남시 수정구 대왕판교로 815", "parsedFloor": "2", "parsedUnitNo": "201", "parseConfidence": "HIGH" },
+  "unit": { "unitId": "4113310300104050001-U2", "label": "2층 201호", "jibunAddress": "경기도 성남시 수정구 금토동 405-1", "roadAddress": "경기도 성남시 수정구 대왕판교로 815" },
   "statistics": { "totalTenancyCount": 3, "closedCount": 3, "averageSurvivalMonths": 14, "longestSurvivalMonths": 20, "shortestSurvivalMonths": 8 },
   "timeline": [
     { "tenancyId": "t-2001", "businessName": "호프하우스", "category": "음식", "subCategory": "단란주점", "industryDetail": null, "licensedAt": "2019-02-01", "closedAt": "2020-10-01", "status": "폐업", "survivalMonths": 20, "closedAtEstimated": false, "enrichmentSource": "license_only",
-      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 28.9, "depositKrw": 30000000, "monthlyRentKrw": 1800000, "keyMoneyKrw": 0, "dailyFloatingPopulation": 21400, "sameCategoryNearbyCount": 2, "vacancyRatePercent": 6.2, "asOf": "2026-07-04", "totalStoreCount": null, "categoryBreakdown": [] } },
+      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 28.9, "depositKrw": 30000000, "monthlyRentKrw": 1800000, "keyMoneyKrw": 0, "dailyFloatingPopulation": 21400, "sameCategoryNearbyCount": 2, "vacancyRatePercent": 6.2, "asOf": "2026-07-04" } },
     { "tenancyId": "t-2002", "businessName": "샐러디", "category": "음식", "subCategory": "일반음식점", "industryDetail": null, "licensedAt": "2021-01-10", "closedAt": "2021-09-15", "status": "폐업", "survivalMonths": 8, "closedAtEstimated": false, "enrichmentSource": "license_only",
-      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 28.9, "depositKrw": 30000000, "monthlyRentKrw": 1800000, "keyMoneyKrw": 0, "dailyFloatingPopulation": 21400, "sameCategoryNearbyCount": 4, "vacancyRatePercent": 6.2, "asOf": "2026-07-04", "totalStoreCount": null, "categoryBreakdown": [] } },
+      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 28.9, "depositKrw": 30000000, "monthlyRentKrw": 1800000, "keyMoneyKrw": 0, "dailyFloatingPopulation": 21400, "sameCategoryNearbyCount": 4, "vacancyRatePercent": 6.2, "asOf": "2026-07-04" } },
     { "tenancyId": "t-2003", "businessName": "떡볶이연구소", "category": "음식", "subCategory": "일반음식점", "industryDetail": null, "licensedAt": "2022-03-01", "closedAt": "2023-04-20", "status": "폐업", "survivalMonths": 13, "closedAtEstimated": false, "enrichmentSource": "license_only",
-      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 28.9, "depositKrw": 30000000, "monthlyRentKrw": 1800000, "keyMoneyKrw": 0, "dailyFloatingPopulation": 21400, "sameCategoryNearbyCount": 9, "vacancyRatePercent": 6.2, "asOf": "2026-07-04", "totalStoreCount": null, "categoryBreakdown": [] } }
+      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 28.9, "depositKrw": 30000000, "monthlyRentKrw": 1800000, "keyMoneyKrw": 0, "dailyFloatingPopulation": 21400, "sameCategoryNearbyCount": 9, "vacancyRatePercent": 6.2, "asOf": "2026-07-04" } }
   ],
   "disclaimer": { "dataAsOf": "2026-07-04", "note": "인허가 신고 기준 데이터로 실제 영업 현황과 차이가 있을 수 있습니다." }
 }
@@ -190,13 +183,13 @@ interface ApiError { error: string; message: string; }
 
 ```json
 {
-  "unit": { "unitId": "4113310300104050001-U3", "label": "1층 102호", "jibunAddress": "경기도 성남시 수정구 금토동 405-1", "roadAddress": "경기도 성남시 수정구 대왕판교로 815", "parsedFloor": "1", "parsedUnitNo": "102", "parseConfidence": "HIGH" },
+  "unit": { "unitId": "4113310300104050001-U3", "label": "1층 102호", "jibunAddress": "경기도 성남시 수정구 금토동 405-1", "roadAddress": "경기도 성남시 수정구 대왕판교로 815" },
   "statistics": { "totalTenancyCount": 2, "closedCount": 1, "averageSurvivalMonths": 60, "longestSurvivalMonths": 60, "shortestSurvivalMonths": 60 },
   "timeline": [
     { "tenancyId": "t-3001", "businessName": "김밥천국", "category": "음식", "subCategory": "일반음식점", "industryDetail": null, "licensedAt": "2013-01-05", "closedAt": "2018-01-05", "status": "폐업", "survivalMonths": 60, "closedAtEstimated": false, "enrichmentSource": "license_only",
-      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 35.0, "depositKrw": 40000000, "monthlyRentKrw": 2200000, "keyMoneyKrw": 5000000, "dailyFloatingPopulation": 21400, "sameCategoryNearbyCount": 9, "vacancyRatePercent": 6.2, "asOf": "2026-07-04", "totalStoreCount": null, "categoryBreakdown": [] } },
+      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 35.0, "depositKrw": 40000000, "monthlyRentKrw": 2200000, "keyMoneyKrw": 5000000, "dailyFloatingPopulation": 21400, "sameCategoryNearbyCount": 9, "vacancyRatePercent": 6.2, "asOf": "2026-07-04" } },
     { "tenancyId": "t-3002", "businessName": "파리바게뜨", "category": "음식", "subCategory": "제과점", "industryDetail": "제과점", "licensedAt": "2018-04-01", "closedAt": null, "status": "영업", "survivalMonths": 99, "closedAtEstimated": false, "enrichmentSource": "sangga_api",
-      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 35.0, "depositKrw": 40000000, "monthlyRentKrw": 2200000, "keyMoneyKrw": 5000000, "dailyFloatingPopulation": 21400, "sameCategoryNearbyCount": 3, "vacancyRatePercent": 6.2, "asOf": "2026-07-04", "totalStoreCount": null, "categoryBreakdown": [] } }
+      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 35.0, "depositKrw": 40000000, "monthlyRentKrw": 2200000, "keyMoneyKrw": 5000000, "dailyFloatingPopulation": 21400, "sameCategoryNearbyCount": 3, "vacancyRatePercent": 6.2, "asOf": "2026-07-04" } }
   ],
   "disclaimer": { "dataAsOf": "2026-07-04", "note": "인허가 신고 기준 데이터로 실제 영업 현황과 차이가 있을 수 있습니다." }
 }
@@ -204,15 +197,15 @@ interface ApiError { error: string; message: string; }
 
 ```json
 {
-  "unit": { "unitId": "4113310300104050003-U1", "label": "단일 점포", "jibunAddress": "경기도 성남시 수정구 금토동 405-3", "roadAddress": "경기도 성남시 수정구 대왕판교로 817", "parsedFloor": null, "parsedUnitNo": null, "parseConfidence": "LOW" },
+  "unit": { "unitId": "4113310300104050003-U1", "label": "단일 점포", "jibunAddress": "경기도 성남시 수정구 금토동 405-3", "roadAddress": "경기도 성남시 수정구 대왕판교로 817" },
   "statistics": { "totalTenancyCount": 3, "closedCount": 3, "averageSurvivalMonths": 9, "longestSurvivalMonths": 12, "shortestSurvivalMonths": 6 },
   "timeline": [
     { "tenancyId": "t-4001", "businessName": "무한리필고기", "category": "음식", "subCategory": "일반음식점", "industryDetail": null, "licensedAt": "2020-01-01", "closedAt": "2021-01-01", "status": "폐업", "survivalMonths": 12, "closedAtEstimated": false, "enrichmentSource": "license_only",
-      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 50.2, "depositKrw": 20000000, "monthlyRentKrw": 1500000, "keyMoneyKrw": 0, "dailyFloatingPopulation": 8600, "sameCategoryNearbyCount": 1, "vacancyRatePercent": 11.4, "asOf": "2026-07-04", "totalStoreCount": null, "categoryBreakdown": [] } },
+      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 50.2, "depositKrw": 20000000, "monthlyRentKrw": 1500000, "keyMoneyKrw": 0, "dailyFloatingPopulation": 8600, "sameCategoryNearbyCount": 1, "vacancyRatePercent": 11.4, "asOf": "2026-07-04" } },
     { "tenancyId": "t-4002", "businessName": "포케올데이", "category": "음식", "subCategory": "일반음식점", "industryDetail": null, "licensedAt": "2021-05-01", "closedAt": "2021-11-01", "status": "폐업", "survivalMonths": 6, "closedAtEstimated": false, "enrichmentSource": "license_only",
-      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 50.2, "depositKrw": 20000000, "monthlyRentKrw": 1500000, "keyMoneyKrw": 0, "dailyFloatingPopulation": 8600, "sameCategoryNearbyCount": 0, "vacancyRatePercent": 11.4, "asOf": "2026-07-04", "totalStoreCount": null, "categoryBreakdown": [] } },
+      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 50.2, "depositKrw": 20000000, "monthlyRentKrw": 1500000, "keyMoneyKrw": 0, "dailyFloatingPopulation": 8600, "sameCategoryNearbyCount": 0, "vacancyRatePercent": 11.4, "asOf": "2026-07-04" } },
     { "tenancyId": "t-4003", "businessName": "마차코", "category": "음식", "subCategory": "휴게음식점", "industryDetail": null, "licensedAt": "2022-02-01", "closedAt": "2022-11-01", "status": "폐업", "survivalMonths": 9, "closedAtEstimated": false, "enrichmentSource": "license_only",
-      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 50.2, "depositKrw": 20000000, "monthlyRentKrw": 1500000, "keyMoneyKrw": 0, "dailyFloatingPopulation": 8600, "sameCategoryNearbyCount": 2, "vacancyRatePercent": 11.4, "asOf": "2026-07-04", "totalStoreCount": null, "categoryBreakdown": [] } }
+      "marketInfo": { "isPlaceholder": true, "leaseAreaSqm": 50.2, "depositKrw": 20000000, "monthlyRentKrw": 1500000, "keyMoneyKrw": 0, "dailyFloatingPopulation": 8600, "sameCategoryNearbyCount": 2, "vacancyRatePercent": 11.4, "asOf": "2026-07-04" } }
   ],
   "disclaimer": { "dataAsOf": "2026-07-04", "note": "인허가 신고 기준 데이터로 실제 영업 현황과 차이가 있을 수 있습니다." }
 }
