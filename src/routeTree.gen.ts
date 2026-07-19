@@ -9,13 +9,25 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UpdatesRouteImport } from './routes/updates'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as AuctionsRouteImport } from './routes/auctions'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReportStoreIdRouteImport } from './routes/report.$storeId'
 
+const UpdatesRoute = UpdatesRouteImport.update({
+  id: '/updates',
+  path: '/updates',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuctionsRoute = AuctionsRouteImport.update({
+  id: '/auctions',
+  path: '/auctions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -31,41 +43,69 @@ const ReportStoreIdRoute = ReportStoreIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auctions': typeof AuctionsRoute
   '/search': typeof SearchRoute
+  '/updates': typeof UpdatesRoute
   '/report/$storeId': typeof ReportStoreIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auctions': typeof AuctionsRoute
   '/search': typeof SearchRoute
+  '/updates': typeof UpdatesRoute
   '/report/$storeId': typeof ReportStoreIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auctions': typeof AuctionsRoute
   '/search': typeof SearchRoute
+  '/updates': typeof UpdatesRoute
   '/report/$storeId': typeof ReportStoreIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/search' | '/report/$storeId'
+  fullPaths: '/' | '/auctions' | '/search' | '/updates' | '/report/$storeId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/search' | '/report/$storeId'
-  id: '__root__' | '/' | '/search' | '/report/$storeId'
+  to: '/' | '/auctions' | '/search' | '/updates' | '/report/$storeId'
+  id:
+    | '__root__'
+    | '/'
+    | '/auctions'
+    | '/search'
+    | '/updates'
+    | '/report/$storeId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuctionsRoute: typeof AuctionsRoute
   SearchRoute: typeof SearchRoute
+  UpdatesRoute: typeof UpdatesRoute
   ReportStoreIdRoute: typeof ReportStoreIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/updates': {
+      id: '/updates'
+      path: '/updates'
+      fullPath: '/updates'
+      preLoaderRoute: typeof UpdatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/search': {
       id: '/search'
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auctions': {
+      id: '/auctions'
+      path: '/auctions'
+      fullPath: '/auctions'
+      preLoaderRoute: typeof AuctionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -87,7 +127,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuctionsRoute: AuctionsRoute,
   SearchRoute: SearchRoute,
+  UpdatesRoute: UpdatesRoute,
   ReportStoreIdRoute: ReportStoreIdRoute,
 }
 export const routeTree = rootRouteImport

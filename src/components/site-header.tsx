@@ -26,6 +26,22 @@ export function SiteHeader({ floating = false }: { floating?: boolean }) {
             <span className="text-xs text-muted-foreground">Turbohm</span>
           </span>
         </Link>
+        <nav className="flex items-center gap-5">
+          <Link
+            to="/updates"
+            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            activeProps={{ className: "text-foreground font-medium" }}
+          >
+            업데이트
+          </Link>
+          <Link
+            to="/auctions"
+            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            activeProps={{ className: "text-foreground font-medium" }}
+          >
+            경매물건
+          </Link>
+        </nav>
       </div>
     </header>
   );
