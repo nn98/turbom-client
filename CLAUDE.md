@@ -4,12 +4,12 @@
 
 ## 1. 스펙 소스
 
-이 레포는 `github.com/nn98/turbom-server`의 `spec/` 문서 중 다음 두 개만 규범으로 삼는다:
+2026-07-19(스펙 통합)부터 스펙 원본은 독립 저장소 [`nn98/turbom-spec`](https://github.com/nn98/turbom-spec)(public)에 있다. 이 레포는 그중 다음 두 개만 규범으로 삼는다:
 
-- `spec/api-spec.md` — 프론트-백 연동 계약(요청/응답 스키마)
-- `spec/frontend-spec.md` — 프론트 단독 명세
+- `api-spec.md` — 프론트-백 연동 계약(요청/응답 스키마)
+- `frontend-spec.md` — 프론트 단독 명세
 
-그 외(`backend-spec.md`, `schema.sql`, 인허가/상가API 파이프라인 문서 등)는 서버 레포 소관이며 이 레포는 참조하지 않는다.
+그 외(`backend-spec.md`, `schema.sql`, 인허가/상가API 파이프라인 문서 등)는 백엔드(`turbom-server`) 소관이며 이 레포는 참조하지 않는다. (이전에 있던 `spec/` 전체 사본 폴더는 `turbom-server`/`turbom-spec` 어디에도 문서화되지 않은 비공식 사본이었어서 제거했다 — 아래 §2의 `docs/spec/`만 공식 미러다.)
 
 ## 2. 로컬 미러
 
@@ -25,7 +25,7 @@
 
 ## 4. 스펙 드리프트 자동 감지
 
-`.github/workflows/spec-drift-check.yml`이 매일 1회(+수동 실행)로 `turbom-server`의 `spec/api-spec.md`, `spec/frontend-spec.md`를 로컬 미러와 비교한다. 다르면 `spec-drift` 라벨의 이슈를 새로 열거나(이미 열려있으면 코멘트로) 갱신한다. GitHub Actions만 쓰고 외부 유료/LLM API 호출은 없다.
+`.github/workflows/spec-drift-check.yml`이 매일 1회(+수동 실행)로 `turbom-spec`(2026-07-19부터 스펙 원본 저장소, 이전엔 `turbom-server`의 `spec/`를 봤음)의 `api-spec.md`, `frontend-spec.md`를 로컬 미러와 비교한다. 다르면 `spec-drift` 라벨의 이슈를 새로 열거나(이미 열려있으면 코멘트로) 갱신한다. GitHub Actions만 쓰고 외부 유료/LLM API 호출은 없다.
 
 ## 5. 알려진 스펙-실측 차이
 
@@ -59,8 +59,8 @@
 
 2026-07-19, 사용자 요청("백엔드 스펙 변경점·API 변경로그 보고 + 경매물건 확인 페이지")으로 신설. 설계 근거는 `docs/superpowers/specs/2026-07-19-updates-and-auctions-pages-design.md` 참고.
 
-- **`/updates`**: `server/spec/CHANGELOG.md`(및 그 드리프트된 루트 사본 `spec/CHANGELOG.md`, §의 "백엔드 로컬 스펙과 이 레포 미러가 다르게 갱신돼 있음" 항목 참고)의 실제 항목을 사용자가 읽을 수 있는 평문으로 큐레이션해 `src/lib/updates-data.ts`에 정적 배열로 하드코딩. **"n차" 내부 번호는 화면에 노출하지 않는다** — 두 CHANGELOG 사본 간 번호가 실제로 다른 변경사항을 가리키는 경우가 있어(예: 두 사본의 "11차"가 서로 다른 항목) 그대로 보여주면 사용자에게 오해를 준다. 라이브 API 호출 없음 — CHANGELOG가 갱신되면 이 배열은 수동으로 다시 동기화해야 한다(`docs/spec/*.md` 미러와 동일한 수동 동기화 컨벤션).
-- **`/auctions`**: 백엔드에 이 기능을 위한 엔드포인트가 전혀 없다(`server`의 `AuctionCase`/`AuctionScheduleEntry`는 어떤 `@RestController`에도 연결되지 않은 개발용 스파이크 — courtauction.go.kr 이용약관 이슈로 보류 중, `server/spec/CHANGELOG.md` 16차). 그래서 `src/lib/api/auction.ts`에 그 백엔드 레코드 필드를 1:1로 미러링한 TS 타입만 정의하고, 목업 데이터로 채운 뒤 카드마다 "예시" Badge(`report.$storeId.tsx`의 `marketInfo.isPlaceholder` 패턴과 동일)와 "백엔드가 `api-spec.md`에 경매 엔드포인트를 먼저 추가해야 한다"는 안내 배너를 넣었다. **백엔드가 실제 엔드포인트를 열면 이 페이지가 손댈 곳은 목업 배열 자리의 `fetch` 호출 하나뿐**이도록 타입을 미리 맞춰뒀다.
+- **`/updates`**: `turbom-spec/CHANGELOG.md`(2026-07-19 스펙 통합 이전엔 `server/spec/CHANGELOG.md`)의 실제 항목을 사용자가 읽을 수 있는 평문으로 큐레이션해 `src/lib/updates-data.ts`에 정적 배열로 하드코딩. **"n차" 내부 번호는 화면에 노출하지 않는다** — 두 CHANGELOG 사본 간 번호가 실제로 다른 변경사항을 가리키는 경우가 있어(예: 두 사본의 "11차"가 서로 다른 항목) 그대로 보여주면 사용자에게 오해를 준다. 라이브 API 호출 없음 — CHANGELOG가 갱신되면 이 배열은 수동으로 다시 동기화해야 한다(`docs/spec/*.md` 미러와 동일한 수동 동기화 컨벤션).
+- **`/auctions`**: 백엔드에 이 기능을 위한 엔드포인트가 전혀 없다(`server`의 `AuctionCase`/`AuctionScheduleEntry`는 어떤 `@RestController`에도 연결되지 않은 개발용 스파이크 — courtauction.go.kr 이용약관 이슈로 보류 중, `turbom-spec/CHANGELOG.md` 16차). 그래서 `src/lib/api/auction.ts`에 그 백엔드 레코드 필드를 1:1로 미러링한 TS 타입만 정의하고, 목업 데이터로 채운 뒤 카드마다 "예시" Badge(`report.$storeId.tsx`의 `marketInfo.isPlaceholder` 패턴과 동일)와 "백엔드가 `api-spec.md`에 경매 엔드포인트를 먼저 추가해야 한다"는 안내 배너를 넣었다. **백엔드가 실제 엔드포인트를 열면 이 페이지가 손댈 곳은 목업 배열 자리의 `fetch` 호출 하나뿐**이도록 타입을 미리 맞춰뒀다.
 - 두 화면 모두 실 API에 의존하지 않으므로, 위에 나열된 "알려진 스펙-실측 차이" 항목들과는 성격이 다르다(실측 대비 코드 정정이 아니라, 애초에 없는 API를 정적 콘텐츠/목업으로 대체한 신규 화면).
 
 ### 서로 다른 `pnu`가 동일한 `jibunAddress` 텍스트를 공유하는 경우가 있다 — 지도 마커가 "축소 시 2개, 확대 시 1개"로 보이는 원인
@@ -69,15 +69,15 @@
 
 **영향과 조치**: 좌표가 완전히 같아 지도가 축소 상태(클러스터)에서는 "2"로 뭉쳐 보이다가, 확대해 클러스터가 풀려도 두 마커가 정확히 같은 픽셀 위치에 겹쳐 "1개"처럼 보인다. 더 심각한 프론트 버그를 같이 발견해 수정함: `search.tsx`/`site-markers.ts`가 "선택된 자리"를 `jibunAddress` 문자열로 식별하고 있었는데, 위 경우 두 후보가 텍스트까지 동일해 `.find()`가 항상 첫 번째만 찾고 두 번째 후보는 탭을 눌러도 선택할 수 없었다(활성 마커 표시도 둘 다 동시에 active가 되거나 안 되거나 했음). `pnu`(항상 고유)를 식별자로 바꿔 수정 — URL 검색 파라미터도 `jibun`→`pnu`로 개명(`selectJibun`→`selectSite`). `MapMarker.jibunAddress` 필드는 더 이상 아무도 안 읽어서 함께 제거.
 
-**후속 조사(2026-07-18)**: 이 케이스를 계기로 "검색결과에서 서로 다른 pnu가 같은 자리로 보이면 시각적으로 묶어줄 수 있는가"를 검토했다(`docs/superpowers/specs/2026-07-18-site-entity-similarity-design.md` 참고). 결론은 **프론트에서 지오+문자열 유사도 휴리스틱으로 구현하지 않는다**로 확정 — Google Places API(Place ID Refresh는 서버 API)·Overture Maps GERS(Jaro-Winkler 매칭이 배치 ETL)를 조사한 결과, 이런 "동일 개체 판정"은 일반적으로 백엔드가 안정적 ID/신호 필드로 내려주는 영역이지 클라이언트가 매 요청마다 재추정하는 영역이 아니다. 근본 수정(jibunAddress "산" 접두어 반영) 또는 명시적 신호 필드(`isMountainLot` 등) 추가를 백엔드에 제안했고, `server/spec/CHANGELOG.md`에 교차 기록해뒀다(미커밋, 백엔드 세션 검토 대기). 반대로 같은 조사에서 **테넌시 그룹핑(간트차트, `tenancy-grouping.ts`)은 계속 프론트에 둬도 된다고 확인**했다 — 서버가 이미 내려준 한 유닛의 타임라인을 그 화면 안에서만 시각적으로 묶는 순수 프레젠테이션 로직이라 이 원칙에 저촉되지 않는다.
+**후속 조사(2026-07-18)**: 이 케이스를 계기로 "검색결과에서 서로 다른 pnu가 같은 자리로 보이면 시각적으로 묶어줄 수 있는가"를 검토했다(`docs/superpowers/specs/2026-07-18-site-entity-similarity-design.md` 참고). 결론은 **프론트에서 지오+문자열 유사도 휴리스틱으로 구현하지 않는다**로 확정 — Google Places API(Place ID Refresh는 서버 API)·Overture Maps GERS(Jaro-Winkler 매칭이 배치 ETL)를 조사한 결과, 이런 "동일 개체 판정"은 일반적으로 백엔드가 안정적 ID/신호 필드로 내려주는 영역이지 클라이언트가 매 요청마다 재추정하는 영역이 아니다. 근본 수정(jibunAddress "산" 접두어 반영) 또는 명시적 신호 필드(`isMountainLot` 등) 추가를 백엔드에 제안했고, 당시 `server/spec/CHANGELOG.md`에 교차 기록해뒀던 것 — 백엔드 세션이 정식 검토해 `turbom-spec/CHANGELOG.md` 15차("PNU 권위 파일 조인 정정")로 반영·해결함(2026-07-18). 반대로 같은 조사에서 **테넌시 그룹핑(간트차트, `tenancy-grouping.ts`)은 계속 프론트에 둬도 된다고 확인**했다 — 서버가 이미 내려준 한 유닛의 타임라인을 그 화면 안에서만 시각적으로 묶는 순수 프레젠테이션 로직이라 이 원칙에 저촉되지 않는다.
 
 ### 지하/B 층 표기를 파서가 인식 못 함 + 파싱 신뢰도 HIGH로 일치하는데도 유닛이 안 합쳐지는 케이스
 
-2026-07-18 실측(위든타워, `pnu 4113111600106900000`, 성남시 수정구 금토동 690) — 둘 다 백엔드 버그, 프론트에서 고칠 수 없어 `server/spec/CHANGELOG.md`에 교차 기록(미커밋, 백엔드 세션 검토 대기). unitId 그대로 남겨 재현 가능.
+2026-07-18 실측(위든타워, `pnu 4113111600106900000`, 성남시 수정구 금토동 690) — 둘 다 백엔드 버그, 프론트에서 고칠 수 없어 당시 `server/spec/CHANGELOG.md`에 교차 기록(미커밋 상태로 방치돼 있던 걸 2026-07-19 스펙 통합 세션이 발견해 `turbom-spec/CHANGELOG.md`로 정식 이관 — 아직 백엔드 세션 검토 전). unitId 그대로 남겨 재현 가능.
 
 - **버그 A(파서 누락)**: `4113111600106900000-U1`(`jibunAddress: "690 지1층 B113호"`)과 `-U2`(`"690 지1층 B114호"`) 둘 다 `parsedFloor`/`parsedUnitNo`가 `null`, `parseConfidence: "LOW"`, `label: "단일 점포"`로 떨어진다. 물건 분리 자체(B113/B114가 서로 다른 유닛으로 나뉘는 것)는 정확한데, "지1층"/"B113호" 같은 지하 표기를 `AddressDetailParser`가 못 알아봐서 **라벨 표시만** 두 물건이 똑같이 "단일 점포"로 보인다 — 실제로 다른 물건인데 목록에서 구분이 안 됨.
 - **버그 B(물건 병합 누락)**: `-U3`(`jibunAddress: "690"`, `parsedFloor:"1"`/`parsedUnitNo:"102"`/`parseConfidence:"HIGH"`, 담배소매업 "지에스25 위든타워점")와 `-U5`(`jibunAddress: "690 1층 102(일부)호"`, 파싱 결과 U3와 완전 동일, 식품자동판매기업 "지에스(GS)25 위든타워점")는 같은 GS25 편의점이 겸업 인허가 2개를 낸 것(원본 주소 텍스트만 다르고 파싱 결과는 HIGH 신뢰도로 일치)인데도 서로 다른 유닛으로 남아 리포트 페이지 자체가 갈린다. 위 "산 지번" 항목에서 결론 낸 것과 같은 부류 문제(이미 신뢰도 높은 판정 결과가 있는데 병합에 안 씀) — `tenancy-grouping.ts`(한 유닛의 timeline 안에서만 동작)는 애초에 이 케이스를 볼 수 있는 범위 밖이라 프론트 대응 불가.
 
-### 백엔드 로컬 스펙(`D:\...\woowaTon\spec\api-spec.md`)과 이 레포 미러(`docs/spec/api-spec.md`)가 내용 기준으로 서로 다르게 갱신돼 있음
+### 백엔드 로컬 스펙(당시 `D:\...\woowaTon\spec\api-spec.md`, 2026-07-19부터 `turbom-spec/api-spec.md`)과 이 레포 미러(`docs/spec/api-spec.md`)가 내용 기준으로 서로 다르게 갱신돼 있음
 
-2026-07-18 확인: 백엔드 세션이 작업 중인 로컬 `spec/api-spec.md`엔 그날 새로 추가된 `noStorefrontRegistrations[]`(무점포/자가신고형 업종 분리, 11차)와 units 0개 자리 검색 제외(12차)는 반영돼 있지만, 그보다 먼저(2026-07-10~17) 추가됐어야 할 `currentSubCategory`/`parsedFloor`·`parsedUnitNo`·`parseConfidence`/`categoryBreakdown`·`totalStoreCount`/`survivalMonths` null 처리 관련 서술은 빠져 있다 — 반대로 이 레포의 `docs/spec/api-spec.md`는 그 반대 상태(오래된 항목은 있고 `noStorefrontRegistrations`는 없음). 실 배포 API로 직접 확인한 결과 **두 세트 다 실제로 라이브 상태**(`/api/sites/{pnu}` 응답에 양쪽 필드가 동시에 존재) — 로컬 `spec/` 파일 쪽이 어느 시점엔가 오래된 베이스에서 편집을 시작해 일부 구간을 유실한 것으로 보인다. 이 레포에서 고칠 대상은 아니고(그 파일은 서버 레포 소관), 백엔드 세션 쪽에 알려서 정리가 필요함. `noStorefrontRegistrations`는 실측 확인 후 `SiteDetail` 타입(`src/lib/api/types.ts`)에 반영해뒀지만 — 아직 어느 화면에도 노출하는 UI는 안 만듦(필요하면 요청).
+2026-07-18 확인(당시 기록, 경로는 위 참고): 백엔드 세션이 작업 중인 로컬 `spec/api-spec.md`엔 그날 새로 추가된 `noStorefrontRegistrations[]`(무점포/자가신고형 업종 분리, 11차)와 units 0개 자리 검색 제외(12차)는 반영돼 있지만, 그보다 먼저(2026-07-10~17) 추가됐어야 할 `currentSubCategory`/`parsedFloor`·`parsedUnitNo`·`parseConfidence`/`categoryBreakdown`·`totalStoreCount`/`survivalMonths` null 처리 관련 서술은 빠져 있다 — 반대로 이 레포의 `docs/spec/api-spec.md`는 그 반대 상태(오래된 항목은 있고 `noStorefrontRegistrations`는 없음). 실 배포 API로 직접 확인한 결과 **두 세트 다 실제로 라이브 상태**(`/api/sites/{pnu}` 응답에 양쪽 필드가 동시에 존재) — 로컬 `spec/` 파일 쪽이 어느 시점엔가 오래된 베이스에서 편집을 시작해 일부 구간을 유실한 것으로 보인다. 이 레포에서 고칠 대상은 아니고(그 파일은 서버 레포 소관), 백엔드 세션 쪽에 알려서 정리가 필요함. `noStorefrontRegistrations`는 실측 확인 후 `SiteDetail` 타입(`src/lib/api/types.ts`)에 반영해뒀지만 — 아직 어느 화면에도 노출하는 UI는 안 만듦(필요하면 요청).

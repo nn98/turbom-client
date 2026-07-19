@@ -14,11 +14,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Compare local spec mirror against turbom-server
+      - name: Compare local spec mirror against turbom-spec
         id: diff
         run: |
           set -e
-          UPSTREAM="https://raw.githubusercontent.com/nn98/turbom-server/main/spec"
+          UPSTREAM="https://raw.githubusercontent.com/nn98/turbom-spec/main"
           BODY_FILE="$(mktemp)"
           DRIFT=0
           for f in api-spec.md frontend-spec.md; do
@@ -42,7 +42,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh label create spec-drift --repo "${{ github.repository }}" \
-            --color FBCA04 --description "turbom-server spec 미러와 실제 내용이 어긋남" || true
+            --color FBCA04 --description "turbom-spec 미러와 실제 내용이 어긋남" || true
 
       - name: Open or update drift issue
         if: steps.diff.outputs.drift == '1'
@@ -55,7 +55,7 @@ jobs:
             gh issue comment "$EXISTING" --repo "${{ github.repository }}" --body-file /tmp/issue-body.md
           else
             gh issue create --repo "${{ github.repository }}" \
-              --title "turbom-server spec 변경 감지됨" \
+              --title "turbom-spec 변경 감지됨" \
               --label spec-drift \
               --body-file /tmp/issue-body.md
           fi
