@@ -17,6 +17,7 @@ const candidate = (overrides: Partial<Candidate>): Candidate => ({
   unitCount: 1,
   closedCount: 0,
   currentSubCategory: null,
+  units: [],
   ...overrides,
 });
 

@@ -7,7 +7,14 @@ import {
 } from "./legacy-adapter";
 import { findOccupant } from "./tenancy";
 import { invalidQueryError, siteNotFoundError, unitNotFoundError } from "./errors";
-import type { Candidate, SearchResponse, SiteDetail, UnitDetail, UnitSummary } from "./types";
+import type {
+  Candidate,
+  CandidateUnit,
+  SearchResponse,
+  SiteDetail,
+  UnitDetail,
+  UnitSummary,
+} from "./types";
 
 const DISCLAIMER = {
   dataAsOf: "2026-07-04",
@@ -16,6 +23,15 @@ const DISCLAIMER = {
 
 // Small artificial delay so loading states are exercisable in demo mode.
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// mock-data.ts는 이미 floor/unit이 분리되어 있어 백엔드의 파싱 단계가
+// 필요 없다 — 실 백엔드 전용 필드라 항상 null(mockGetUnitDetail과 동일 이유).
+const toCandidateUnit = (store: Store): CandidateUnit => ({
+  unitId: store.id,
+  parsedFloor: null,
+  parsedUnitNo: null,
+  parseConfidence: null,
+});
 
 // pnu is currently just jibunFull — see legacy-adapter.ts for why.
 const toCandidate = (group: JibunGroup, stores: Store[]): Candidate => ({
@@ -29,6 +45,7 @@ const toCandidate = (group: JibunGroup, stores: Store[]): Candidate => ({
   // api-spec.md: "현재 영업 중인 첫 번째 물건의 인허가 소분류" — 영업 중인
   // 첫 store의 currentCategory(mock-data.ts의 소분류 근사치)를 그대로 쓴다.
   currentSubCategory: stores.find((s) => s.status === "영업")?.currentCategory ?? null,
+  units: stores.map(toCandidateUnit),
 });
 
 const toUnitSummary = (store: Store): UnitSummary => {
@@ -48,6 +65,11 @@ const toUnitSummary = (store: Store): UnitSummary => {
     averageSurvivalMonths: computeAverageSurvivalMonths(timeline),
     industryDetail: current?.industryDetail ?? null,
     locationSource: matchedToLocationSource(store.matched),
+    // mock-data.ts는 이미 floor/unit이 분리되어 있어 실 백엔드 전용 파싱
+    // 필드가 필요 없다 — 항상 null(mockGetUnitDetail과 동일 이유).
+    parsedFloor: null,
+    parsedUnitNo: null,
+    parseConfidence: null,
   };
 };
 

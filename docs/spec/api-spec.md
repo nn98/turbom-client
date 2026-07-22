@@ -47,6 +47,17 @@
 
 **Query**: `query` (string, 필수)
 
+**매칭 방식** (2026-07-22부터): `query`를 공백 기준으로 토큰화해서 모든 토큰이
+`jibunAddress` 또는 `roadAddress`에 순서·인접 여부와 무관하게 전부 나타나는 행만 후보로 삼는다
+(AND 매칭). 숫자만으로 된 토큰은 앞뒤에 다른 숫자가 붙어있지 않은 경우에만 매칭한다(예:
+`"534"` 검색 시 `"534-1"`은 매칭하지만 `"1534"`·`"5340"`은 제외 — 층/호수 등 무관한 숫자 오탐 방지).
+`query`가 `pnu`와 정확히 일치하면 토큰 매칭과 무관하게 항상 통과한다(PNU는 주소 텍스트에
+그대로 나타나지 않으므로 별도 처리).
+
+이전에는 `query` 전체를 하나의 substring으로 `jibunAddress`/`roadAddress`에 `LIKE '%query%'`
+매칭했어서, 토큰 순서가 바뀌거나 중간 토큰(구/동 등) 하나라도 빠지면 매칭이 실패했고, 숫자만
+검색하면 지번이 아닌 층/호수 등 무관한 숫자에도 걸렸다.
+
 **200**
 ```json
 {
@@ -58,7 +69,12 @@
       "latitude": 37.4012,
       "longitude": 127.1045,
       "unitCount": 3,
-      "closedCount": 8
+      "closedCount": 8,
+      "currentSubCategory": "일반음식점",
+      "units": [
+        { "unitId": "4113310300104050001-U1", "parsedFloor": "1", "parsedUnitNo": "101", "parseConfidence": "HIGH" },
+        { "unitId": "4113310300104050001-U2", "parsedFloor": "2", "parsedUnitNo": "201", "parseConfidence": "HIGH" }
+      ]
     }
   ]
 }
@@ -68,6 +84,15 @@
 `units`가 0개인 자리(무점포업종만 있는 PNU, `noStorefrontRegistrations[]` 참고)는 후보에서 제외한다 —
 **2026-07-18부터**. 실사례: 금토동 390-11/436-3/517-7(고압가스업·통신판매업만 있음)이 지도 마커만
 뜨고 실제 가게 정보가 없는 버그로 발견됨.
+
+`currentSubCategory`(string\|null, **2026-07-20 뒤늦게 문서화 — 코드엔 이미 있던 필드**): 현재
+영업 중인 Unit 중 아무 곳이나 하나의 소분류. 전체 공실이면 null.
+
+`candidates[].units[]`(array, **2026-07-22 신규**): `units[]`(§②)의 축약판 — `unitId`/`parsedFloor`/
+`parsedUnitNo`/`parseConfidence` 4필드만. 검색 결과 단계에서 건물별로 묶고 그 안에서 층/호로
+재분리하려는 프론트 워크플로우를 위해, 자리마다 상세 API(`GET /api/sites/{pnu}`)를 추가 호출하지
+않아도 되게 검색 응답에 바로 실어준다. `parseConfidence`가 `"HIGH"`일 때만
+`parsedFloor`/`parsedUnitNo`를 신뢰할 것(§②와 동일 규칙).
 
 ---
 
@@ -93,7 +118,10 @@
       "closedCount": 4,
       "averageSurvivalMonths": 27,
       "industryDetail": "후라이드/양념치킨",
-      "locationSource": "sangga_api"
+      "locationSource": "sangga_api",
+      "parsedFloor": "1",
+      "parsedUnitNo": "101",
+      "parseConfidence": "HIGH"
     }
   ],
   "noStorefrontRegistrations": [
@@ -126,12 +154,15 @@
 | averageSurvivalMonths | number\|null | 폐업 이력만 평균 |
 | industryDetail | string\|null | 세부 업종(상가API indsSclsNm). 공실·보강실패 시 null |
 | locationSource | `"license"`\|`"sangga_api"`\|`"overlap_inferred"` | label 출처 |
+| parsedFloor | string\|null | **2026-07-20 뒤늦게 문서화** — 원본 상세주소에서 파싱된 층. 없으면 null |
+| parsedUnitNo | string\|null | **2026-07-20 뒤늦게 문서화** — 파싱된 호실 번호. 없으면 null |
+| parseConfidence | `"HIGH"`\|`"LOW"` | **2026-07-20 뒤늦게 문서화** — `HIGH`일 때만 `parsedFloor`/`parsedUnitNo`/`label`의 파싱 결과를 신뢰할 것 |
 
 ### `noStorefrontRegistrations[]` 필드 — **2026-07-18 신규**
 
 물리적 자리(Unit) 개념이 없는 업종의 인허가 이력. `units[]`와 배타적 — 한 레코드가 둘 다에 나타나지 않음.
 통신판매업·방문판매업 등 자가/사무실 주소로 신고 가능한 업종(원본 데이터에 층/호 정보가 구조적으로
-없는 업종, 판별 기준은 `spec/backend-spec.md` §무점포업종 참고)이 여기 담긴다. `unitId`/`marketInfo`/
+없는 업종, 판별 기준은 `backend-spec.md` §3.1 무점포업종 분리 참고)이 여기 담긴다. `unitId`/`marketInfo`/
 통계 없음 — 물리적 자리가 아니므로.
 
 | 필드 | 타입 | 설명 |
@@ -157,7 +188,10 @@
     "unitId": "4113310300104050001-U1",
     "label": "1층 101호",
     "jibunAddress": "경기도 성남시 수정구 금토동 405-1",
-    "roadAddress": "경기도 성남시 수정구 대왕판교로 815"
+    "roadAddress": "경기도 성남시 수정구 대왕판교로 815",
+    "parsedFloor": "1",
+    "parsedUnitNo": "101",
+    "parseConfidence": "HIGH"
   },
   "statistics": {
     "totalTenancyCount": 5,
@@ -170,7 +204,8 @@
     {
       "tenancyId": "t-1001",
       "businessName": "고기굽는집",
-      "category": "음식_일반음식점",
+      "category": "음식",
+      "subCategory": "일반음식점",
       "industryDetail": null,
       "licensedAt": "2013-05-02",
       "closedAt": "2017-01-10",
@@ -187,13 +222,19 @@
         "dailyFloatingPopulation": 21400,
         "sameCategoryNearbyCount": 14,
         "vacancyRatePercent": 6.2,
-        "asOf": "2026-07-04"
+        "asOf": "2026-07-04",
+        "totalStoreCount": 132,
+        "categoryBreakdown": [
+          { "code": "I2", "name": "음식", "count": 41, "ratio": 0.31 },
+          { "code": "G2", "name": "소매", "count": 28, "ratio": 0.21 }
+        ]
       }
     },
     {
       "tenancyId": "t-1005",
       "businessName": "치킨나라",
-      "category": "음식_일반음식점",
+      "category": "음식",
+      "subCategory": "일반음식점",
       "industryDetail": "후라이드/양념치킨",
       "licensedAt": "2023-01-15",
       "closedAt": null,
@@ -210,7 +251,12 @@
         "dailyFloatingPopulation": 21400,
         "sameCategoryNearbyCount": 11,
         "vacancyRatePercent": 6.2,
-        "asOf": "2026-07-04"
+        "asOf": "2026-07-04",
+        "totalStoreCount": 132,
+        "categoryBreakdown": [
+          { "code": "I2", "name": "음식", "count": 41, "ratio": 0.31 },
+          { "code": "G2", "name": "소매", "count": 28, "ratio": 0.21 }
+        ]
       }
     }
   ],
@@ -220,6 +266,9 @@
   }
 }
 ```
+
+`unit.parsedFloor`/`parsedUnitNo`/`parseConfidence`(**2026-07-20 뒤늦게 문서화**): §②의 `units[]`와
+동일한 필드·의미(`parseConfidence`가 `HIGH`일 때만 신뢰).
 
 ### `timeline[]` 필드 (신규 부분)
 
@@ -248,8 +297,10 @@
 | sameCategoryNearbyCount | number | **실제 — 상가API 반경조회** | 자리 좌표 기준 반경 내 동일 업종 점포 수. `isPlaceholder`와 무관하게 항상 실값 시도, 실패 시에만 null |
 | vacancyRatePercent | number\|null | **없음(목업)** | 주변 공실률 |
 | asOf | string(date) | — | 기준일 |
+| totalStoreCount | number\|null | **실제 — 상가API 반경조회, 2026-07-20 뒤늦게 문서화** | 같은 반경(300m) 내 업종 필터 없는 전체 점포 수. 실패 시 null |
+| categoryBreakdown | array | **실제, 2026-07-20 뒤늦게 문서화** | 반경 내 상가API 대분류별 개수·비중. 각 항목 `{code, name, count, ratio}`(`ratio`=0~1). 실패 시 빈 배열 |
 
-`sameCategoryNearbyCount`는 선택된 이력이 어느 것이든 **현재 시점 기준 동일 값**이 나간다 — 상가API가 현재 스냅샷만 주기 때문에 과거 이력을 조회해도 "그 시절 주변 상황"은 알 수 없다. 이 값이 과거를 재현한 게 아니라 "지금 기준"이라는 걸 화면에 명시해야 한다(marketInfo.asOf가 그 역할).
+`sameCategoryNearbyCount`는 선택된 이력이 어느 것이든 **현재 시점 기준 동일 값**이 나간다 — 상가API가 현재 스냅샷만 주기 때문에 과거 이력을 조회해도 "그 시절 주변 상황"은 알 수 없다. 이 값이 과거를 재현한 게 아니라 "지금 기준"이라는 걸 화면에 명시해야 한다(marketInfo.asOf가 그 역할). `totalStoreCount`/`categoryBreakdown`도 같은 반경조회 호출에서 나오는 실값이라 동일하게 "지금 기준"이다.
 
 - unitId 없음: 404 `UNIT_NOT_FOUND`
 - `timeline`은 `licensedAt` 오름차순.

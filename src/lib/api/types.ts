@@ -13,6 +13,22 @@ export interface ApiError {
 }
 
 // ---- ① search ----
+// 관측된 값은 "HIGH"/"LOW"/null(파싱 자체가 안 된 경우) 뿐이다 — turbom-spec
+// api-spec.md 2026-07-22 갱신 기준.
+export type ParseConfidence = "HIGH" | "LOW";
+
+// candidates[].units[]의 축약판 유닛 — turbom-spec CHANGELOG 22차(2026-07-22)
+// 신규: 검색 결과를 건물별로 묶고 층/호로 재분리하려는 프론트 워크플로우를
+// 위해, 자리마다 상세 API(GET /api/sites/{pnu})를 추가로 안 불러도 되게
+// 검색 응답에 바로 실어준다. parseConfidence가 "HIGH"일 때만
+// parsedFloor/parsedUnitNo를 신뢰할 것.
+export interface CandidateUnit {
+  unitId: string;
+  parsedFloor: string | null;
+  parsedUnitNo: string | null;
+  parseConfidence: ParseConfidence | null;
+}
+
 export interface Candidate {
   pnu: string;
   jibunAddress: string;
@@ -24,6 +40,7 @@ export interface Candidate {
   // 현재 영업 중인 첫 번째 물건의 인허가 소분류. 전체 공실이면 null. Sangga
   // API를 호출하지 않고 인허가 데이터만으로 나오는 값이라 항상 신뢰 가능.
   currentSubCategory: string | null;
+  units: CandidateUnit[];
 }
 
 export interface SearchResponse {
@@ -43,6 +60,10 @@ export interface UnitSummary {
   averageSurvivalMonths: number | null;
   industryDetail: string | null;
   locationSource: LocationSource;
+  // turbom-spec api-spec.md 2026-07-20 뒤늦게 문서화 — 코드엔 이미 있던 필드.
+  parsedFloor: string | null;
+  parsedUnitNo: string | null;
+  parseConfidence: ParseConfidence | null;
 }
 
 // 물리적 자리(Unit) 개념이 없는 업종의 인허가 이력(통신판매업 등, 원본에
@@ -132,11 +153,10 @@ export interface UnitDetail {
     label: string;
     jibunAddress: string;
     roadAddress: string;
-    // 백엔드가 label 문자열에서 층/호수를 파싱한 결과. 전체 enum은 미확인 —
-    // 지금까지 관측된 값은 "HIGH" 뿐이라 느슨하게 string으로 둔다.
+    // 백엔드가 label 문자열에서 층/호수를 파싱한 결과.
     parsedFloor: string | null;
     parsedUnitNo: string | null;
-    parseConfidence: string | null;
+    parseConfidence: ParseConfidence | null;
   };
   statistics: Statistics;
   timeline: Tenancy[];

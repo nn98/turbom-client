@@ -28,7 +28,7 @@ React 18 + Vite + TS · React Router · TanStack Query · Tailwind · react-leaf
 | `/map?q=&pnu=` | ② 지도+건물 상세(물건목록) | `search`(q 있을 때) · `getSite` |
 | `/units/:unitId` | ③ 물건 상세(타임라인+이력상세) | `getUnit` |
 
-2026-07-10(8차) 정정: ②는 경로 파라미터(`/sites/:pnu`)가 아니라 지도 중심 단일 화면(`/map`)에 쿼리스트링(`q`, `pnu`)으로 구현됐다(nextstep-client 실 구현 기준, `spec/프론트-제작-프롬프트.md` "검색 페이지" 절 참조). API 엔드포인트 `GET /api/sites/{pnu}`는 그대로이며, 바뀐 건 프론트 라우팅 방식뿐이다.
+2026-07-10(8차) 정정: ②는 경로 파라미터(`/sites/:pnu`)가 아니라 지도 중심 단일 화면(`/map`)에 쿼리스트링(`q`, `pnu`)으로 구현됐다(nextstep-client 실 구현 기준, `프론트-제작-프롬프트.md` "검색 페이지" 절 참조). API 엔드포인트 `GET /api/sites/{pnu}`는 그대로이며, 바뀐 건 프론트 라우팅 방식뿐이다.
 
 ## 4. 화면 명세
 
@@ -38,7 +38,7 @@ React 18 + Vite + TS · React Router · TanStack Query · Tailwind · react-leaf
 
 ### ② 지도+건물 상세 `/map?q=&pnu=` (v2에서 단순화, 2026-07-10 8차 라우팅 정정)
 
-- 전체화면 지도 위 플로팅 패널 구조(단일 마커 고정 뷰가 아니라, `search(q)` 후보 전체를 마커로 표시하고 `fitBounds`로 한번에 보여줌 — 후보가 여럿이면 세그먼트 탭으로 전환, 좌표null 후보는 지도에서 제외). 상세: `spec/프론트-제작-프롬프트.md` "검색 페이지" 절.
+- 전체화면 지도 위 플로팅 패널 구조(단일 마커 고정 뷰가 아니라, `search(q)` 후보 전체를 마커로 표시하고 `fitBounds`로 한번에 보여줌 — 후보가 여럿이면 세그먼트 탭으로 전환, 좌표null 후보는 지도에서 제외). 상세: `프론트-제작-프롬프트.md` "검색 페이지" 절.
 - 요약바(`물건 N개`) + 물건 목록.
 - 물건 카드: `label`(+ locationSource 배지) / 상태뱃지 / 현재가게명(+industryDetail 태그) / 미니통계. 클릭 → `/units/:unitId`.
 - **v2에 있던 주변상권 패널은 여기 없음** — ③으로 이동했다. ②는 물건 목록에만 집중.
@@ -55,6 +55,7 @@ React 18 + Vite + TS · React Router · TanStack Query · Tailwind · react-leaf
 - 선택 시 2단 카드 레이아웃:
   - **좌: 인허가 정보** — 상호명·업종·개업일자·폐업일자·영업기간·영업상태. 전부 이미 `timeline[]`에 있는 필드 그대로(신규 API 불필요).
   - **우: 계약·주변상권 정보** — `marketInfo` 객체 렌더링. 카드 헤더 옆에 "예시" 뱃지 상시(참고 이미지와 동일). 필드: 전용면적 / 보증금·월세(슬래시로 함께 표기) / 권리금(0이면 "무") / 일평균 유동인구 / 주변 같은업종(N)곳 / 주변 공실률(%). 카드 최하단에 항상 "실 데이터 연동 전 예시값입니다" 캡션 — **`isPlaceholder` 여부와 무관하게 상시 노출**(현재는 항상 true라 사실상 상시).
+  - **2026-07-20 참고**: `marketInfo`에 `totalStoreCount`/`categoryBreakdown`(둘 다 실값)도 있는데 이 카드 디자인엔 아직 반영 안 돼 있음 — 위 6필드 UX가 확정된 뒤에 추가된 필드라 별도 배치 결정이 필요(예: "반경 내 전체 N곳, 이 중 음식업 M곳" 같은 보조 텍스트). 디자인 결정 전까지는 §5 타입에만 존재.
   - `sameCategoryNearbyCount`만 실값일 수 있으므로, 이 필드 하나는 다른 5개와 시각적으로 살짝 구분(예: 색을 다르게)하는 걸 권장하되 필수는 아님.
 
 disclaimer 하단. 상태: 로딩/404/이력0.
@@ -62,26 +63,36 @@ disclaimer 하단. 상태: 로딩/404/이력0.
 ## 5. 타입
 
 ```ts
-interface Candidate { pnu: string; jibunAddress: string; roadAddress: string; latitude: number|null; longitude: number|null; unitCount: number; closedCount: number; }
+interface CandidateUnit { unitId: string; parsedFloor: string|null; parsedUnitNo: string|null; parseConfidence: ParseConfidence; }  // 2026-07-22 신규
+interface Candidate { pnu: string; jibunAddress: string; roadAddress: string; latitude: number|null; longitude: number|null; unitCount: number; closedCount: number; currentSubCategory: string|null; units: CandidateUnit[]; }
 interface SearchResponse { candidates: Candidate[]; }
 
 interface Disclaimer { dataAsOf: string; note: string; }
 
 type LocationSource = "license" | "sangga_api" | "overlap_inferred";
+type ParseConfidence = "HIGH" | "LOW";
 interface UnitSummary {
   unitId: string; label: string;
   currentBusinessName: string|null; currentStatus: "영업"|"공실";
   totalTenancyCount: number; closedCount: number; averageSurvivalMonths: number|null;
   industryDetail: string|null; locationSource: LocationSource;
+  parsedFloor: string|null; parsedUnitNo: string|null; parseConfidence: ParseConfidence;
+}
+interface NoStorefrontRegistration {
+  businessName: string; category: string; subCategory: string;
+  licensedAt: string; closedAt: string|null; status: string;
 }
 interface SiteDetail {
   site: { pnu: string; jibunAddress: string; roadAddress: string; latitude: number|null; longitude: number|null; };
   units: UnitSummary[];
+  noStorefrontRegistrations: NoStorefrontRegistration[];
   disclaimer: Disclaimer;
 }
 
 type EnrichmentSource = "sangga_api" | "license_only";
 interface Statistics { totalTenancyCount: number; closedCount: number; averageSurvivalMonths: number|null; longestSurvivalMonths: number|null; shortestSurvivalMonths: number|null; }
+
+interface CategoryCount { code: string; name: string; count: number; ratio: number; }  // ratio 0~1
 
 interface MarketInfo {
   isPlaceholder: boolean;
@@ -90,20 +101,24 @@ interface MarketInfo {
   monthlyRentKrw: number|null;
   keyMoneyKrw: number|null;
   dailyFloatingPopulation: number|null;
-  sameCategoryNearbyCount: number|null;  // 유일한 실값 후보
+  sameCategoryNearbyCount: number|null;  // 실값
   vacancyRatePercent: number|null;
   asOf: string;
+  totalStoreCount: number|null;          // 실값, 2026-07-20 뒤늦게 문서화 — 반경 내 전체 점포 수(업종 필터 없음)
+  categoryBreakdown: CategoryCount[];     // 실값, 2026-07-20 뒤늦게 문서화 — 반경 내 대분류별 개수/비중
 }
 
 interface Tenancy {
   tenancyId: string;
   businessName: string; category: string; subCategory: string; industryDetail: string|null;
-  licensedAt: string; closedAt: string|null; status: "영업"|"폐업"|"휴업";
+  licensedAt: string; closedAt: string|null;
+  status: string;  // 2026-07-20 정정 — 고정 3값 아님. "영업"(정규화됨) 외엔 원본 상태명 원문("취소/말소/만료/정지/중지" 등)이 그대로 옴
   survivalMonths: number|null; closedAtEstimated: boolean; enrichmentSource: EnrichmentSource;
   marketInfo: MarketInfo;
 }
 interface UnitDetail {
-  unit: { unitId: string; label: string; jibunAddress: string; roadAddress: string; };
+  unit: { unitId: string; label: string; jibunAddress: string; roadAddress: string;
+    parsedFloor: string|null; parsedUnitNo: string|null; parseConfidence: ParseConfidence; };
   statistics: Statistics; timeline: Tenancy[]; disclaimer: Disclaimer;
 }
 
@@ -111,6 +126,11 @@ interface ApiError { error: string; message: string; }
 ```
 
 ## 6. 목 데이터셋
+
+**2026-07-20 참고**: 아래 목 데이터는 §5 타입 갱신(2026-07-20) 이전에 작성돼 `parsedFloor`/
+`parsedUnitNo`/`parseConfidence`/`currentSubCategory`/`noStorefrontRegistrations`가 예시에 없다.
+목 클라이언트 구현 시엔 §5 타입 기준으로 이 필드들을 채워 넣을 것 — 값 자체는 임의로 지어도
+무방(HIGH 신뢰도, 적당한 층/호 값 등).
 
 ### search / getSite — v2와 동일 구조(neighborhood 필드만 제거)
 
