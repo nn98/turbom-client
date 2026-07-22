@@ -2,8 +2,8 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_BASE_URL?: string;
-  // Naver Cloud Platform Maps "Client ID" (JavaScript key) — see .env.example.
-  readonly VITE_NAVER_MAP_CLIENT_ID?: string;
+  // Kakao Developers "JavaScript" key — see .env.example.
+  readonly VITE_KAKAO_MAP_JS_KEY?: string;
 }
 
 interface ImportMeta {

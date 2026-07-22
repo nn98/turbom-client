@@ -24,12 +24,12 @@
 | 페이지                      | 설명                                                                       |
 | --------------------------- | -------------------------------------------------------------------------- |
 | 랜딩 (`/`)                  | Hero · 지번 검색 · 특징 · 왜 터봄인가 · 제공 정보 · CTA                    |
-| 검색 (`/search?q=...`)      | 지번 → 부번 그룹 → 층·호 목록 · 네이버 지도                                |
+| 검색 (`/search?q=...`)      | 지번 → 부번 그룹 → 층·호 목록 · 카카오 지도                                |
 | 리포트 (`/report/:storeId`) | 요약 · 종합 분석 · 상권 · 위험도 · 인사이트 · 타임라인 · 통계 · 체크리스트 |
 
 - 데모 모드: API 없이 Mock Data 기반으로 동일한 사용자 경험 제공
 - 반응형 (Mobile / Tablet / Desktop)
-- 지도: **네이버 지도(Naver Maps) JS SDK** (Client ID 필요, `.env`의 `VITE_NAVER_MAP_CLIENT_ID`로 설정)
+- 지도: **카카오 지도(Kakao Maps) JS SDK** (JavaScript 키 필요, `.env`의 `VITE_KAKAO_MAP_JS_KEY`로 설정)
 
 ---
 
@@ -40,7 +40,7 @@
 - **Data**: TanStack Query
 - **UI**: Tailwind CSS v4 + shadcn/ui
 - **Icons**: lucide-react
-- **Map**: 네이버 지도(Naver Maps) JS SDK (Client ID 필요)
+- **Map**: 카카오 지도(Kakao Maps) JS SDK (JavaScript 키 필요)
 - **Charts**: Recharts (필요 시)
 - **Build**: Vite 7
 
@@ -69,7 +69,7 @@ src/
 ├── components/
 │   ├── site-header.tsx
 │   ├── site-footer.tsx
-│   ├── map-view.tsx         # 네이버 지도 wrapper (VITE_NAVER_MAP_CLIENT_ID 필요)
+│   ├── map-view.tsx         # 카카오 지도 wrapper (VITE_KAKAO_MAP_JS_KEY 필요)
 │   └── ui/                  # shadcn/ui
 ├── hooks/
 │   └── use-sites.ts         # TanStack Query 훅 (useSiteSearch/useSiteDetail/useUnitDetail)
