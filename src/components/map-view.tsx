@@ -24,6 +24,8 @@ interface KakaoMap {
   setCenter(latlng: KakaoLatLng): void;
   setBounds(bounds: KakaoLatLngBounds): void;
   getBounds(): KakaoLatLngBounds;
+  getLevel(): number;
+  setLevel(level: number, options?: { animate?: { duration: number } }): void;
 }
 interface KakaoMarker {
   setMap(map: KakaoMap | null): void;
@@ -324,7 +326,24 @@ export function MapView({
         ],
       });
       maps.event.addListener(clustererRef.current, "clusterclick", (cluster: unknown) => {
-        mapRef.current?.setBounds((cluster as KakaoCluster).getBounds());
+        const map = mapRef.current;
+        if (!map) return;
+        // ponytail: fitBounds-in-one-click (via setBounds) turned out
+        // unreliable — for a tight cluster it can pick a level no deeper
+        // than the current one (stuck). A single step toward the cluster's
+        // own center, mirroring native scroll-wheel zoom, is simpler and
+        // never gets stuck — it just costs an extra click for a very
+        // spread-out cluster, which is expected zoom UX.
+        // Recenter is instant (setCenter), not panTo — panTo animates too,
+        // and racing it against the animated setLevel below made the level
+        // change win and the map zoom in on the *old* center instead.
+        const bounds = (cluster as KakaoCluster).getBounds();
+        const sw = bounds.getSouthWest();
+        const ne = bounds.getNorthEast();
+        map.setCenter(
+          new maps.LatLng((sw.getLat() + ne.getLat()) / 2, (sw.getLng() + ne.getLng()) / 2),
+        );
+        map.setLevel(Math.max(1, map.getLevel() - 1), { animate: { duration: 300 } });
       });
     }
 
