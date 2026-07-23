@@ -31,6 +31,9 @@ interface KakaoMarker {
 interface KakaoCustomOverlay {
   setMap(map: KakaoMap | null): void;
 }
+interface KakaoCluster {
+  getBounds(): KakaoLatLngBounds;
+}
 interface KakaoMarkerClustererInstance {
   clear(): void;
 }
@@ -61,10 +64,15 @@ interface KakaoMapsNamespace {
     gridSize?: number;
     averageCenter?: boolean;
     minLevel?: number;
+    disableClickZoom?: boolean;
     styles?: Record<string, string | number>[];
   }) => KakaoMarkerClustererInstance;
   event: {
-    addListener(target: KakaoMarker | KakaoMap, eventName: string, handler: () => void): void;
+    addListener(
+      target: KakaoMarker | KakaoMap | KakaoMarkerClustererInstance,
+      eventName: string,
+      handler: (arg?: unknown) => void,
+    ): void;
   };
   load(callback: () => void): void;
 }
@@ -293,6 +301,13 @@ export function MapView({
         markers: markerRefs.current,
         gridSize: 80,
         averageCenter: true,
+        // 기본 클러스터 클릭 동작은 gridSize 기준으로 "한 번에 완전히 풀리는"
+        // 레벨로 즉시(비-애니메이션) 점프한다 — 넓게 퍼진 클러스터일수록 여러
+        // 레벨을 한 번에 건너뛰어 "컷" 전환처럼 보이고, 좌표가 완전히 같은
+        // 마커들(같은 건물 다른 층 등)은 어떤 레벨에서도 안 풀려서 그 자리에서
+        // 멈춘 것처럼 보인다. 대신 클릭된 클러스터의 실제 멤버 bounds로
+        // fitBounds하듯 한 번에 딱 맞는 레벨/중심으로 이동시킨다.
+        disableClickZoom: true,
         styles: [
           {
             width: "34px",
@@ -307,6 +322,9 @@ export function MapView({
             fontWeight: "800",
           },
         ],
+      });
+      maps.event.addListener(clustererRef.current, "clusterclick", (cluster: unknown) => {
+        mapRef.current?.setBounds((cluster as KakaoCluster).getBounds());
       });
     }
 
